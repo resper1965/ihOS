@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: "🔒 Security Vulnerability (Critical/High)"
+    url: https://github.com/resper1965/ihOS/blob/main/SECURITY.md
+    about: For critical or high-severity security vulnerabilities, please follow our Security Policy and email security@ionichealth.com directly.
+  - name: "💬 Questions & Discussions"
+    url: https://github.com/resper1965/ihOS/discussions
+    about: Use discussions for questions, ideas, and general conversation.

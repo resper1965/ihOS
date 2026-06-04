@@ -1,0 +1,30 @@
+# ==============================================================================
+# ihOS - CODEOWNERS
+# ==============================================================================
+# Defines code ownership for automatic review assignment.
+# ==============================================================================
+
+# Default owner for everything
+* @resper1965
+
+# Security-sensitive files
+SECURITY.md @resper1965
+.env.example @resper1965
+.github/workflows/ @resper1965
+.github/CODEOWNERS @resper1965
+
+# API Routes (security-critical)
+src/app/api/ @resper1965
+
+# Authentication
+src/app/(auth)/ @resper1965
+src/lib/supabase/ @resper1965
+
+# AI Agent tools (security review required)
+src/lib/agents/ @resper1965
+
+# Database migrations
+supabase/migrations/ @resper1965
+
+# ETL scripts
+etl/ @resper1965
