@@ -1,0 +1,37 @@
+// Standard GRC Engine API — barrel export
+export {
+  complianceScore,
+  crossCoverage,
+  roiPath,
+  blastRadius,
+  evaluateEvidence,
+  translateRisk,
+  triageIncident,
+  scanVendorContract,
+  council,
+  StandardApiClientError,
+} from "./client";
+
+export type {
+  StandardApiConfig,
+  StandardApiError,
+  StandardApiResponse,
+  ComplianceScoreRequest,
+  ComplianceScoreData,
+  CrossCoverageRequest,
+  CrossCoverageData,
+  RoiPathRequest,
+  RoiPathData,
+  BlastRadiusRequest,
+  BlastRadiusData,
+  EvaluateEvidenceRequest,
+  EvaluateEvidenceData,
+  TranslateRiskRequest,
+  TranslateRiskData,
+  TriageIncidentRequest,
+  TriageIncidentData,
+  ScanVendorContractRequest,
+  ScanVendorContractData,
+  CouncilRequest,
+  CouncilData,
+} from "./types";
