@@ -3,9 +3,9 @@ import {
   FileText,
   ClipboardCheck,
   TrendingUp,
-  ArrowUpRight,
-  Clock,
 } from "lucide-react";
+import { StatsCard } from "@/components/dashboard/stats-card";
+import { ActivityFeed } from "@/components/dashboard/activity-feed";
 
 const STATS = [
   {
@@ -87,56 +87,21 @@ export default function DashboardPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {STATS.map((stat) => (
-          <div
+          <StatsCard
             key={stat.label}
-            className="glass-card group cursor-default p-5 transition-all duration-300 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/5"
-          >
-            <div className="flex items-start justify-between">
-              <div
-                className={`flex h-10 w-10 items-center justify-center rounded-xl ${stat.bgColor}`}
-              >
-                <stat.icon className={`h-5 w-5 ${stat.color}`} />
-              </div>
-              <span className="flex items-center gap-0.5 rounded-lg bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
-                {stat.change}
-                <ArrowUpRight className="h-3 w-3" />
-              </span>
-            </div>
-            <div className="mt-4">
-              <p className="text-3xl font-bold tracking-tight">{stat.value}</p>
-              <p className="mt-1 text-sm text-text-secondary">{stat.label}</p>
-            </div>
-          </div>
+            label={stat.label}
+            value={stat.value}
+            change={stat.change}
+            icon={stat.icon}
+            color={stat.color}
+            bgColor={stat.bgColor}
+          />
         ))}
       </div>
 
       {/* Recent Activity */}
-      <div className="glass-card p-6">
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Recent Activity</h2>
-          <button className="text-sm text-primary transition-colors hover:text-primary-hover">
-            View all
-          </button>
-        </div>
-        <div className="space-y-1">
-          {RECENT_ACTIVITY.map((item, i) => (
-            <div
-              key={i}
-              className="flex items-center justify-between rounded-xl px-4 py-3 transition-all duration-200 hover:bg-white/5"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5">
-                  <Clock className="h-4 w-4 text-text-muted" />
-                </div>
-                <span className="text-sm text-text-primary">{item.action}</span>
-              </div>
-              <span className="shrink-0 text-xs text-text-muted">
-                {item.time}
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
+      <ActivityFeed activities={RECENT_ACTIVITY} />
     </div>
   );
 }
+

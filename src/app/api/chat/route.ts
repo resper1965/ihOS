@@ -1,34 +1,31 @@
 // src/app/api/chat/route.ts
 // Next.js API route for the ihOS AI chat system
-// Uses Vercel AI SDK streamText with tool calling
+// Uses Vercel AI SDK streamText with tool calling + Supabase persistence
 
 import { streamText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { assembleContext } from '@/lib/context/assembler';
 import { agentTools } from '@/lib/agents/tools';
+import { createClient } from '@/lib/supabase/server';
+import {
+  createConversation,
+  saveMessage,
+} from '@/lib/chat/persistence';
 
-// Allow streaming responses up to 30 seconds
 export const maxDuration = 30;
-
-// ---------------------------------------------------------------------------
-// POST /api/chat
-// ---------------------------------------------------------------------------
 
 export async function POST(req: Request) {
   const body = await req.json();
 
   const {
     messages,
-    conversationId = crypto.randomUUID(),
+    conversationId: incomingConversationId,
   }: {
     messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
     conversationId?: string;
   } = body;
 
-  // Get the last user message for intent classification
-  const lastUserMessage = [...messages]
-    .reverse()
-    .find((m) => m.role === 'user');
+  const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user');
 
   if (!lastUserMessage) {
     return new Response(
@@ -37,20 +34,43 @@ export async function POST(req: Request) {
     );
   }
 
-  // Assemble context: classify intent → profile → system prompt + RAG
+  // Auth & Persistence
+  let conversationId = incomingConversationId ?? '';
+  let userId: string | undefined;
+
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (user) {
+      userId = user.id;
+
+      if (!conversationId) {
+        const title = lastUserMessage.content.slice(0, 80) +
+          (lastUserMessage.content.length > 80 ? '…' : '');
+        const conversation = await createConversation(user.id, title);
+        conversationId = conversation.id;
+      }
+
+      await saveMessage(conversationId, 'user', lastUserMessage.content);
+    }
+  } catch (err) {
+    console.error('[Chat] Persistence error (non-blocking):', err);
+    if (!conversationId) conversationId = crypto.randomUUID();
+  }
+
   const context = await assembleContext(
     conversationId,
-    lastUserMessage.content
+    lastUserMessage.content,
+    { userId }
   );
 
-  // Stream the response using Vercel AI SDK
   const result = streamText({
     model: openai('gpt-4o'),
     system: context.systemPrompt,
     messages,
     tools: agentTools,
 
-    // Callback: log tool calls for audit trail
     onStepFinish: async ({ toolCalls }) => {
       if (toolCalls && toolCalls.length > 0) {
         console.log(
@@ -58,9 +78,24 @@ export async function POST(req: Request) {
         );
       }
     },
+
+    onFinish: async ({ text, toolCalls }) => {
+      try {
+        if (userId && conversationId && text) {
+          const toolCallData = toolCalls && toolCalls.length > 0
+            ? toolCalls.map((tc: any) => ({ toolName: tc.toolName, args: tc.args }))
+            : undefined;
+          await saveMessage(
+            conversationId, 'assistant', text,
+            toolCallData as Record<string, unknown>[] | undefined
+          );
+        }
+      } catch (err) {
+        console.error('[Chat] Failed to persist assistant message:', err);
+      }
+    },
   });
 
-  // Return the streaming response compatible with useChat
   return result.toTextStreamResponse({
     headers: {
       'X-Agent-Profile': context.profile.id,

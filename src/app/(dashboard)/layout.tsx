@@ -16,143 +16,148 @@ import {
   Settings,
   LogOut,
 } from "lucide-react";
+import { useUser } from "@/hooks/use-user";
+import { signOut } from "@/lib/supabase/auth-actions";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Chat", href: "/chat", icon: MessageSquare },
-  { label: "Assessments", href: "/assessments", icon: ClipboardCheck },
-  { label: "Documents", href: "/documents", icon: FileText },
-  { label: "Reports", href: "/reports", icon: BarChart3 },
+  { label: "Avaliações", href: "/assessments", icon: ClipboardCheck },
+  { label: "Documentos", href: "/documents", icon: FileText },
+  { label: "Relatórios", href: "/reports", icon: BarChart3 },
 ] as const;
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function getRoleLabel(role: string | undefined | null): string {
+  switch (role) {
+    case "admin": return "Administrador";
+    case "ionic_user": return "Usuário Ionic";
+    case "client_user": return "Usuário Cliente";
+    default: return "Usuário";
+  }
+}
+
+function getInitials(email: string | undefined | null): string {
+  if (!email) return "??";
+  return email.split("@")[0].slice(0, 2).toUpperCase();
+}
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [showUserMenu, setShowUserMenu] = useState(false);
   const pathname = usePathname();
+  const { user, profile, isLoading } = useUser();
+
+  const displayName = user?.email?.split("@")[0] ?? "Usuário";
+  const initials = getInitials(user?.email);
+  const roleLabel = getRoleLabel(profile?.role);
 
   return (
-    <div className="flex h-screen overflow-hidden bg-bg-dark">
-      {/* ─── Sidebar ─── */}
-      <aside
-        className={`glass-surface relative flex flex-col transition-all duration-300 ease-in-out ${
-          sidebarOpen ? "w-64" : "w-20"
-        }`}
-      >
-        {/* Logo */}
-        <div className="flex h-16 items-center gap-3 border-b border-border-glass px-5">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
+    <div className="flex h-screen overflow-hidden bg-[#0f172a]">
+      {/* Sidebar */}
+      <aside className={`glass-surface relative flex flex-col transition-all duration-300 ease-in-out ${sidebarOpen ? "w-64" : "w-20"}`}>
+        <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 shadow-lg shadow-blue-500/20">
             <span className="text-sm font-bold text-white">iH</span>
           </div>
-          {sidebarOpen && (
-            <span className="gradient-text text-lg font-bold tracking-tight">
-              ihOS
-            </span>
-          )}
+          {sidebarOpen && <span className="gradient-text text-lg font-bold tracking-tight">ihOS</span>}
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
           {NAV_ITEMS.map((item) => {
-            const isActive =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
-
+            const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
             return (
-              <Link
-                key={item.href}
-                href={item.href}
+              <Link key={item.href} href={item.href}
                 className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                  isActive
-                    ? "bg-primary/10 text-primary shadow-sm shadow-primary/5"
-                    : "text-text-secondary hover:bg-white/5 hover:text-text-primary"
-                }`}
-              >
-                <item.icon
-                  className={`h-5 w-5 shrink-0 transition-colors ${
-                    isActive
-                      ? "text-primary"
-                      : "text-text-muted group-hover:text-text-secondary"
-                  }`}
-                />
+                  isActive ? "bg-blue-500/10 text-blue-400 shadow-sm shadow-blue-500/5" : "text-slate-400 hover:bg-white/5 hover:text-white"
+                }`}>
+                <item.icon className={`h-5 w-5 shrink-0 ${isActive ? "text-blue-400" : "text-slate-500 group-hover:text-slate-400"}`} />
                 {sidebarOpen && <span>{item.label}</span>}
               </Link>
             );
           })}
         </nav>
 
-        {/* Bottom section */}
-        <div className="border-t border-border-glass p-3">
-          <Link
-            href="/settings"
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-text-secondary transition-all duration-200 hover:bg-white/5 hover:text-text-primary"
-          >
-            <Settings className="h-5 w-5 shrink-0 text-text-muted" />
-            {sidebarOpen && <span>Settings</span>}
+        <div className="space-y-1 border-t border-white/10 p-3">
+          <Link href="/settings"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-all">
+            <Settings className="h-5 w-5 shrink-0 text-slate-500" />
+            {sidebarOpen && <span>Configurações</span>}
           </Link>
+          <button onClick={() => signOut()}
+            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all">
+            <LogOut className="h-5 w-5 shrink-0 text-slate-500" />
+            {sidebarOpen && <span>Sair</span>}
+          </button>
         </div>
 
-        {/* Collapse toggle */}
-        <button
-          onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border border-border-glass bg-bg-card text-text-muted shadow-md transition-all duration-200 hover:border-border-glass-hover hover:text-text-primary"
-          aria-label={sidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-        >
-          <ChevronLeft
-            className={`h-3.5 w-3.5 transition-transform duration-300 ${
-              sidebarOpen ? "" : "rotate-180"
-            }`}
-          />
+        <button onClick={() => setSidebarOpen(!sidebarOpen)}
+          className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-[#1e293b] text-slate-400 shadow-md hover:text-white transition-all"
+          aria-label={sidebarOpen ? "Recolher menu" : "Expandir menu"}>
+          <ChevronLeft className={`h-3.5 w-3.5 transition-transform duration-300 ${sidebarOpen ? "" : "rotate-180"}`} />
         </button>
       </aside>
 
-      {/* ─── Main Area ─── */}
+      {/* Main */}
       <div className="flex flex-1 flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-border-glass bg-bg-dark/80 px-6 backdrop-blur-md">
-          {/* Left: mobile menu + search */}
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-[#0f172a]/80 px-6 backdrop-blur-md">
           <div className="flex items-center gap-4">
-            <button
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="text-text-muted transition-colors hover:text-text-primary lg:hidden"
-            >
+            <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-400 hover:text-white lg:hidden">
               <Menu className="h-5 w-5" />
             </button>
             <div className="relative hidden sm:block">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted" />
-              <input
-                type="text"
-                placeholder="Buscar frameworks, documentos…"
-                className="w-72 rounded-xl border border-border-glass bg-white/5 py-2 pl-10 pr-4 text-sm text-text-primary outline-none transition-all duration-200 placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
-              />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <input type="text" placeholder="Buscar frameworks, documentos…"
+                className="w-72 rounded-xl border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all" />
             </div>
           </div>
 
-          {/* Right: notifications + avatar */}
           <div className="flex items-center gap-3">
-            <button className="relative rounded-xl p-2 text-text-muted transition-colors hover:bg-white/5 hover:text-text-primary">
+            <button className="relative rounded-xl p-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
               <Bell className="h-5 w-5" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-accent" />
+              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-400" />
             </button>
-            <div className="h-6 w-px bg-border-glass" />
-            <button className="flex items-center gap-3 rounded-xl px-2 py-1.5 transition-colors hover:bg-white/5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-xs font-bold text-white">
-                IH
-              </div>
-              <div className="hidden text-left sm:block">
-                <p className="text-sm font-medium text-text-primary">
-                  Ionic User
-                </p>
-                <p className="text-xs text-text-muted">Admin</p>
-              </div>
-            </button>
+            <div className="h-6 w-px bg-white/10" />
+
+            <div className="relative">
+              <button onClick={() => setShowUserMenu(!showUserMenu)}
+                className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-white/5 transition-colors">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 text-xs font-bold text-white">
+                  {isLoading ? "…" : initials}
+                </div>
+                <div className="hidden text-left sm:block">
+                  {isLoading ? (
+                    <div className="h-4 w-24 animate-pulse rounded bg-white/10" />
+                  ) : (
+                    <>
+                      <p className="text-sm font-medium text-white">{displayName}</p>
+                      <p className="text-xs text-slate-400">{roleLabel}</p>
+                    </>
+                  )}
+                </div>
+              </button>
+
+              {showUserMenu && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#1e293b]/95 shadow-xl backdrop-blur-xl">
+                  <div className="border-b border-white/10 px-4 py-3">
+                    <p className="text-sm font-medium text-white">{user?.email ?? "—"}</p>
+                    <p className="text-xs text-slate-400">{roleLabel}</p>
+                  </div>
+                  <div className="p-1">
+                    <Link href="/settings" onClick={() => setShowUserMenu(false)}
+                      className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+                      <Settings className="h-4 w-4" /> Configurações
+                    </Link>
+                    <button onClick={() => { setShowUserMenu(false); signOut(); }}
+                      className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-red-500/10 hover:text-red-400 transition-colors">
+                      <LogOut className="h-4 w-4" /> Sair
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
-        {/* Page content */}
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
     </div>

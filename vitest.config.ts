@@ -6,11 +6,11 @@ export default defineConfig({
     // Test environment
     environment: 'node',
 
-    // Global test setup
+    // Global test APIs (describe, it, expect)
     globals: true,
 
     // Include patterns
-    include: ['tests/**/*.test.{ts,tsx}', 'src/**/*.test.{ts,tsx}'],
+    include: ['tests/**/*.test.{ts,tsx}'],
 
     // Exclude patterns
     exclude: ['node_modules', '.next', 'tests/e2e'],

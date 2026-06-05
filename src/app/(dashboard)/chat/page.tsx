@@ -5,14 +5,14 @@ import { useState, useRef, useEffect } from "react";
 import {
   Send,
   Sparkles,
-  User,
-  Bot,
   Loader2,
-  Wrench,
+  Bot,
   ShieldCheck,
   FileSearch,
   BarChart3,
 } from "lucide-react";
+import { MessageBubble } from "@/components/chat/message-bubble";
+import { SuggestionChips } from "@/components/chat/suggestion-chips";
 
 const SUGGESTION_CHIPS = [
   { text: "Qual nosso score ISO 27001?", icon: ShieldCheck },
@@ -21,7 +21,7 @@ const SUGGESTION_CHIPS = [
 ] as const;
 
 export default function ChatPage() {
-  const { messages, sendMessage, status, setMessages } = useChat();
+  const { messages, sendMessage, status } = useChat();
 
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -79,92 +79,13 @@ export default function ChatPage() {
             </p>
 
             {/* Suggestion chips */}
-            <div className="flex flex-wrap justify-center gap-3">
-              {SUGGESTION_CHIPS.map((chip) => (
-                <button
-                  key={chip.text}
-                  onClick={() => handleSuggestionClick(chip.text)}
-                  className="glass-card flex items-center gap-2 px-4 py-2.5 text-sm text-text-secondary transition-all duration-200 hover:scale-[1.03] hover:border-primary/30 hover:text-text-primary"
-                >
-                  <chip.icon className="h-4 w-4 text-primary" />
-                  {chip.text}
-                </button>
-              ))}
-            </div>
+            <SuggestionChips chips={SUGGESTION_CHIPS} onClick={handleSuggestionClick} />
           </div>
         ) : (
           /* ─── Message List ─── */
           <div className="space-y-6 py-6">
             {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex gap-3 ${
-                  message.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                {/* Assistant avatar */}
-                {message.role === "assistant" && (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
-                    <Bot className="h-4 w-4 text-white" />
-                  </div>
-                )}
-
-                {/* Bubble */}
-                <div
-                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed ${
-                    message.role === "user"
-                      ? "bg-primary text-white"
-                      : "glass-card text-text-primary"
-                  }`}
-                >
-                  {message.parts.map((part, i) => {
-                    if (part.type === "text") {
-                      return (
-                        <span key={i} className="whitespace-pre-wrap">
-                          {part.text}
-                        </span>
-                      );
-                    }
-                    // Tool invocations (dynamic-tool or tool-*)
-                    if (
-                      part.type === "dynamic-tool" ||
-                      part.type.startsWith("tool-")
-                    ) {
-                      const toolPart = part as { toolName?: string; toolCallId: string; state: string };
-                      return (
-                        <div
-                          key={i}
-                          className="mb-2 flex items-center gap-2 rounded-lg bg-white/5 px-3 py-1.5 text-xs text-text-muted"
-                        >
-                          <Wrench
-                            className={`h-3 w-3 text-primary ${
-                              toolPart.state !== "output-available"
-                                ? "animate-spin"
-                                : ""
-                            }`}
-                          />
-                          <span>
-                            {toolPart.state === "output-available"
-                              ? "Used"
-                              : "Calling"}{" "}
-                            <code className="rounded bg-white/10 px-1 font-mono">
-                              {toolPart.toolName ?? part.type.replace("tool-", "")}
-                            </code>
-                          </span>
-                        </div>
-                      );
-                    }
-                    return null;
-                  })}
-                </div>
-
-                {/* User avatar */}
-                {message.role === "user" && (
-                  <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-bg-card">
-                    <User className="h-4 w-4 text-text-secondary" />
-                  </div>
-                )}
-              </div>
+              <MessageBubble key={message.id} message={message} />
             ))}
 
             {/* Loading indicator */}
@@ -220,3 +141,4 @@ export default function ChatPage() {
     </div>
   );
 }
+

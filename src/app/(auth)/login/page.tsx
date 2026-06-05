@@ -1,23 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { signIn } from "@/lib/supabase/auth-actions";
 
-export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+function LoginContent() {
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirectTo") ?? "/";
+  const callbackError = searchParams.get("error");
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setIsLoading(true);
-    // TODO: integrate with auth backend
-    setTimeout(() => setIsLoading(false), 1500);
+    setError(null);
+    const formData = new FormData(e.currentTarget);
+    formData.set("redirectTo", redirectTo);
+    startTransition(async () => {
+      const result = await signIn(formData);
+      if (result?.error) setError(result.error);
+    });
   }
 
   return (
     <div className="glass-card p-8">
-      {/* Logo */}
       <div className="mb-8 text-center">
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
           <span className="text-2xl font-bold text-white">iH</span>
@@ -25,105 +32,83 @@ export default function LoginPage() {
         <h1 className="text-2xl font-bold tracking-tight">
           <span className="gradient-text">ihOS</span>
         </h1>
-        <p className="mt-1 text-sm text-text-secondary">
-          Ionic Health Operating System
-        </p>
+        <p className="mt-1 text-sm text-text-secondary">Ionic Health Operating System</p>
       </div>
 
+      {(error || callbackError) && (
+        <div className="mb-5 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
+          {error ?? "Erro na autenticação. Tente novamente."}
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="space-y-5">
-        {/* Email */}
         <div className="space-y-2">
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-text-secondary"
-          >
-            Email
-          </label>
+          <label htmlFor="email" className="block text-sm font-medium text-text-secondary">Email</label>
           <input
             id="email"
+            name="email"
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             required
+            autoComplete="email"
             placeholder="voce@ionichealth.com"
-            className="w-full rounded-xl border border-border-glass bg-white/5 px-4 py-3 text-sm text-text-primary outline-none transition-all duration-200 placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-text-primary outline-none transition-all placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
         </div>
-
-        {/* Password */}
         <div className="space-y-2">
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-text-secondary"
-          >
-            Senha
-          </label>
+          <label htmlFor="password" className="block text-sm font-medium text-text-secondary">Senha</label>
           <input
             id="password"
+            name="password"
             type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
             required
+            autoComplete="current-password"
             placeholder="••••••••"
-            className="w-full rounded-xl border border-border-glass bg-white/5 px-4 py-3 text-sm text-text-primary outline-none transition-all duration-200 placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-text-primary outline-none transition-all placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
         </div>
-
-        {/* Forgot password */}
         <div className="flex justify-end">
-          <button
-            type="button"
-            className="text-xs text-text-muted transition-colors hover:text-primary"
-          >
+          <button type="button" className="text-xs text-text-muted hover:text-primary transition-colors">
             Esqueceu a senha?
           </button>
         </div>
-
-        {/* Submit */}
         <button
           type="submit"
-          disabled={isLoading}
-          className="relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary to-accent py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all duration-300 hover:shadow-xl hover:shadow-primary/30 hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+          disabled={isPending}
+          className="relative w-full overflow-hidden rounded-xl bg-gradient-to-r from-primary to-accent py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:brightness-110 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          {isLoading ? (
+          {isPending ? (
             <span className="flex items-center justify-center gap-2">
-              <svg
-                className="h-4 w-4 animate-spin"
-                viewBox="0 0 24 24"
-                fill="none"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                />
+              <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
               Entrando…
             </span>
-          ) : (
-            "Entrar"
-          )}
+          ) : "Entrar"}
         </button>
       </form>
 
-      {/* Sign up link */}
       <p className="mt-6 text-center text-sm text-text-muted">
         Não tem conta?{" "}
-        <Link
-          href="/signup"
-          className="font-medium text-primary transition-colors hover:text-primary-hover"
-        >
-          Criar conta
-        </Link>
+        <Link href="/signup" className="font-medium text-primary hover:text-primary-hover">Criar conta</Link>
       </p>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="glass-card flex items-center justify-center p-12 min-w-[320px]">
+          <div className="flex flex-col items-center gap-3">
+            <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <span className="text-sm text-text-muted">Carregando…</span>
+          </div>
+        </div>
+      }
+    >
+      <LoginContent />
+    </Suspense>
   );
 }
