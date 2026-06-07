@@ -1,49 +1,84 @@
 "use client";
 
-import { useState } from "react";
-import { FileDown, Calendar, Search, Sparkles } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { FileDown, Calendar, Search, Sparkles, Loader2, FileSpreadsheet } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 
-const MOCK_REPORTS = [
-  {
-    id: 1,
-    title: "Relatório de Gap Analysis TX-RAMP L2",
-    framework: "TX-RAMP Level 2",
-    createdAt: "2026-06-03T18:24:00Z",
-    type: "Gap Analysis",
-    status: "ready" as const,
-  },
-  {
-    id: 2,
-    title: "Relatório Anual de Auditoria ISO 27001",
-    framework: "ISO/IEC 27001:2022",
-    createdAt: "2026-05-28T11:05:00Z",
-    type: "Audit Report",
-    status: "ready" as const,
-  },
-  {
-    id: 3,
-    title: "Declaração de Aplicabilidade (SoA) - SOC 2",
-    framework: "SOC 2 Type II",
-    createdAt: "2026-05-15T15:30:00Z",
-    type: "Statement of Applicability",
-    status: "ready" as const,
-  },
-  {
-    id: 4,
-    title: "Relatório Executivo de Conformidade Geral",
-    framework: "Múltiplos Frameworks",
-    createdAt: "2026-06-04T20:00:00Z",
-    type: "Executive Summary",
-    status: "generating" as const,
-  },
-];
+interface Report {
+  id: string;
+  title: string;
+  framework: string;
+  createdAt: string;
+  type: string;
+  status: "ready" | "generating";
+}
 
 export default function ReportsPage() {
+  const [reports, setReports] = useState<Report[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [search, setSearch] = useState("");
 
-  const filtered = MOCK_REPORTS.filter((rep) =>
+  const fetchReports = useCallback(async () => {
+    try {
+      const res = await fetch("/api/compliance/report?list=true");
+      if (res.ok) {
+        const json = await res.json();
+        if (json.success) {
+          setReports(json.data);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching reports:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
+
+  // Set up realtime sync for intelligence_snapshots table
+  useRealtimeSync("intelligence_snapshots", () => {
+    fetchReports();
+  });
+
+  const handleGenerateReport = async () => {
+    setGenerating(true);
+    try {
+      const res = await fetch("/api/compliance/report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          frameworkCode: "ISO-27001",
+          title: `Relatório de Gap Analysis ISO-27001 - ${new Date().toLocaleDateString("pt-BR")}`,
+        }),
+      });
+
+      if (res.ok) {
+        await fetchReports();
+      }
+    } catch (error) {
+      console.error("Error generating report:", error);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleDownloadExcel = (id: string) => {
+    window.open(`/api/compliance/report/${id}/export`, "_blank");
+  };
+
+  const handlePrintPDF = (id: string) => {
+    window.open(`/reports/${id}/print`, "_blank");
+  };
+
+  const filtered = reports.filter((rep) =>
     rep.title.toLowerCase().includes(search.toLowerCase()) ||
     rep.framework.toLowerCase().includes(search.toLowerCase())
   );
@@ -53,6 +88,8 @@ export default function ReportsPage() {
       day: "2-digit",
       month: "2-digit",
       year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
   }
 
@@ -61,15 +98,20 @@ export default function ReportsPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
             Relatórios de Conformidade
           </h1>
           <p className="mt-1 text-text-secondary">
             Gere, visualize e baixe relatórios detalhados gerados pela inteligência GRC.
           </p>
         </div>
-        <Button variant="primary" icon={<Sparkles className="h-4 w-4" />}>
-          Gerar Novo Relatório
+        <Button
+          variant="primary"
+          onClick={handleGenerateReport}
+          disabled={generating}
+          icon={generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+        >
+          {generating ? "Gerando..." : "Gerar Novo Relatório"}
         </Button>
       </div>
 
@@ -93,40 +135,59 @@ export default function ReportsPage() {
         </div>
 
         {/* List items */}
-        <div className="divide-y divide-white/5">
-          {filtered.map((rep) => (
-            <div key={rep.id} className="flex flex-col py-4 gap-3 md:flex-row md:items-center md:justify-between hover:bg-white/[0.01] px-2 rounded-lg transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5">
-                  <Calendar className="h-5 w-5 text-text-muted" />
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-12 space-y-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-text-muted">Carregando relatórios...</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-white/5">
+            {filtered.map((rep) => (
+              <div key={rep.id} className="flex flex-col py-4 gap-3 md:flex-row md:items-center md:justify-between hover:bg-white/[0.01] px-2 rounded-lg transition-colors">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/5">
+                    <Calendar className="h-5 w-5 text-text-muted" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <h3 className="font-medium text-text-primary text-sm">{rep.title}</h3>
+                    <p className="text-xs text-text-muted">
+                      {rep.framework} • {rep.type}
+                    </p>
+                  </div>
                 </div>
-                <div className="space-y-0.5">
-                  <h3 className="font-medium text-text-primary text-sm">{rep.title}</h3>
-                  <p className="text-xs text-text-muted">
-                    {rep.framework} • {rep.type}
-                  </p>
+                <div className="flex flex-wrap items-center gap-3 self-end md:self-auto">
+                  <span className="text-xs text-text-muted">Geração: {formatDate(rep.createdAt)}</span>
+                  <Badge variant={rep.status === "ready" ? "success" : "warning"} dot>
+                    {rep.status === "ready" ? "Disponível" : "Gerando..."}
+                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleDownloadExcel(rep.id)}
+                      disabled={rep.status !== "ready"}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border-glass bg-white/5 px-3 py-1.5 text-xs text-text-secondary transition-all hover:bg-white/10 hover:border-primary/40 disabled:opacity-40"
+                      aria-label="Download Excel"
+                    >
+                      <FileSpreadsheet className="h-3.5 w-3.5 text-emerald-500" />
+                      Excel
+                    </button>
+                    <button
+                      onClick={() => handlePrintPDF(rep.id)}
+                      disabled={rep.status !== "ready"}
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border-glass bg-white/5 px-3 py-1.5 text-xs text-text-secondary transition-all hover:bg-white/10 hover:border-primary/40 disabled:opacity-40"
+                      aria-label="Download PDF"
+                    >
+                      <FileDown className="h-3.5 w-3.5 text-primary" />
+                      PDF
+                    </button>
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-4 self-end md:self-auto">
-                <span className="text-xs text-text-muted">Geração: {formatDate(rep.createdAt)}</span>
-                <Badge variant={rep.status === "ready" ? "success" : "warning"} dot>
-                  {rep.status === "ready" ? "Disponível" : "Gerando..."}
-                </Badge>
-                <button
-                  disabled={rep.status !== "ready"}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-border-glass bg-white/5 px-3 py-1.5 text-xs text-text-secondary transition-all hover:bg-white/10 hover:border-primary/40 disabled:opacity-40"
-                  aria-label="Download do relatório"
-                >
-                  <FileDown className="h-3.5 w-3.5" />
-                  Baixar PDF
-                </button>
-              </div>
-            </div>
-          ))}
-          {filtered.length === 0 && (
-            <p className="text-center py-6 text-sm text-text-muted">Nenhum relatório encontrado.</p>
-          )}
-        </div>
+            ))}
+            {filtered.length === 0 && (
+              <p className="text-center py-6 text-sm text-text-muted">Nenhum relatório encontrado.</p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

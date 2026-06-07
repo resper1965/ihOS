@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Bell, Check, CheckCheck, AlertTriangle, TrendingUp, Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import type { AgentNotification } from "@/lib/supabase/types";
+import { useRealtimeSync } from "@/hooks/use-realtime-sync";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -77,6 +78,11 @@ export function NotificationsDropdown() {
   useEffect(() => {
     fetchNotifications();
   }, [fetchNotifications]);
+
+  // Set up realtime sync
+  useRealtimeSync("agent_notifications", () => {
+    fetchNotifications();
+  });
 
   // Close on click outside
   useEffect(() => {

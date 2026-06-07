@@ -9,6 +9,7 @@ import { ComplianceScorecard } from "@/components/dashboard/compliance-scorecard
 import { EvidenceSummary } from "@/components/dashboard/evidence-summary";
 import { GapTable } from "@/components/dashboard/gap-table";
 import { RoiPriority } from "@/components/dashboard/roi-priority";
+import { RealtimeRefresher } from "@/components/dashboard/realtime-refresher";
 import {
   getFrameworkScores,
   getEvaluationSummary,
@@ -142,6 +143,8 @@ export default async function CompliancePage() {
       <section>
         <RoiPriority items={roiPath} />
       </section>
+
+      <RealtimeRefresher />
     </div>
   );
 }

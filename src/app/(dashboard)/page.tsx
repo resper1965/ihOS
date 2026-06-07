@@ -8,6 +8,7 @@ import { StatsCard } from "@/components/dashboard/stats-card";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { GoalsWidget } from "@/components/dashboard/goals-widget";
 import { createClient } from "@/lib/supabase/server";
+import { RealtimeRefresher } from "@/components/dashboard/realtime-refresher";
 
 export const dynamic = "force-dynamic";
 
@@ -214,6 +215,8 @@ export default async function DashboardPage() {
         <ActivityFeed activities={activities} />
         <GoalsWidget />
       </div>
+
+      <RealtimeRefresher />
     </div>
   );
 }
