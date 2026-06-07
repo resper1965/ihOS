@@ -111,8 +111,8 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
-  // ── Rate Limiting (applied to API routes and auth endpoints) ──────────
-  if (isApiPath(pathname) || pathname === "/login" || pathname === "/signup") {
+  // ── Rate Limiting (applied to API routes and auth POST submissions) ──
+  if (isApiPath(pathname) || ((pathname === "/login" || pathname === "/signup") && request.method === "POST")) {
     const ip =
       request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
       request.headers.get("x-real-ip") ??
