@@ -19,18 +19,22 @@
   "dependencies": {
     "@ai-sdk/openai": "^3.0.67",
     "@ai-sdk/react": "^3.0.198",
+    "@sentry/nextjs": "^10.56.0",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
     "ai": "^6.0.196",
     "lucide-react": "^1.17.0",
     "next": "16.2.7",
+    "pdf-parse": "^2.4.5",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "xlsx": "^0.18.5",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/pdf-parse": "^1.1.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitest/coverage-v8": "^4.1.8",

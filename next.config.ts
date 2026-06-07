@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
   // Otimização de imagens com Supabase Storage
@@ -42,4 +43,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: "bekaa-tecnologia-ltda",
+  project: "ihos",
+  silent: true,
+});

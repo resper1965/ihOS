@@ -7,7 +7,7 @@ interface ActivityItem {
 }
 
 interface ActivityFeedProps {
-  activities: readonly ActivityItem[];
+  activities: readonly ActivityItem[] | ActivityItem[];
 }
 
 export function ActivityFeed({ activities }: ActivityFeedProps) {

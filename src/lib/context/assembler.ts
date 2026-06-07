@@ -1,11 +1,14 @@
 // src/lib/context/assembler.ts
 // Assembles the full context for each chat request:
-// agent profile + conversation history + RAG chunks → system prompt
+// agent profile + conversation history + RAG chunks + agentic triggers/briefing → system prompt
 
 import type { AgentProfile, AssembledContext, RAGChunk } from '@/lib/agents/types';
 import { routeToAgent } from '@/lib/agents/intent-router';
 import { getMessages } from '@/lib/chat/persistence';
 import { searchDocuments } from '@/lib/chat/rag-search';
+import { createClient as createServerClient } from '@/lib/supabase/server';
+const createClient = createServerClient as any;
+import { getAllOrgStates } from '@/lib/agents/org-state';
 
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_RAG_CHUNKS = 5;
@@ -62,7 +65,14 @@ async function fetchRAGChunks(query: string, framework?: string): Promise<RAGChu
 // Build augmented system prompt
 // ---------------------------------------------------------------------------
 
-function buildSystemPrompt(profile: AgentProfile, ragChunks: RAGChunk[]): string {
+function buildSystemPrompt(
+  profile: AgentProfile,
+  ragChunks: RAGChunk[],
+  briefingContext = '',
+  learningContext = '',
+  orgStateContext = '',
+  autonomyContext = ''
+): string {
   const parts: string[] = [profile.systemPrompt];
 
   if (ragChunks.length > 0) {
@@ -79,6 +89,22 @@ function buildSystemPrompt(profile: AgentProfile, ragChunks: RAGChunk[]): string
         `\n${chunk.content}\n`
       );
     }
+  }
+
+  if (briefingContext) {
+    parts.push(briefingContext);
+  }
+
+  if (learningContext) {
+    parts.push(learningContext);
+  }
+
+  if (orgStateContext) {
+    parts.push(orgStateContext);
+  }
+
+  if (autonomyContext) {
+    parts.push(autonomyContext);
   }
 
   parts.push(`\n\n## Session Metadata\n- Current time: ${new Date().toISOString()}`);
@@ -108,7 +134,105 @@ export async function assembleContext(
   );
   const ragChunks = await fetchRAGChunks(userMessage, frameworkHint);
 
-  const systemPrompt = buildSystemPrompt(selectedProfile, ragChunks);
+  // Agentic evolution contexts
+  let briefingContext = '';
+  let learningContext = '';
+  let orgStateContext = '';
+  let autonomyContext = '';
+
+  const userId = options?.userId;
+  if (userId) {
+    try {
+      const supabase = await createClient();
+
+      // 1. Briefing Loop: Detect new session or inactivity > 1 hour
+      const rawMessages = await getMessages(conversationId, 1);
+      const isNewSession = rawMessages.length === 0;
+      let isInactive = false;
+      if (!isNewSession && rawMessages[0].created_at) {
+        const lastMessageTime = new Date(rawMessages[0].created_at).getTime();
+        const oneHourAgo = Date.now() - 60 * 60 * 1000;
+        isInactive = lastMessageTime < oneHourAgo;
+      }
+
+      if (isNewSession || isInactive) {
+        const { data: notifications } = await supabase
+          .from('agent_notifications')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('read', false)
+          .order('created_at', { ascending: false });
+
+        if (notifications && notifications.length > 0) {
+          briefingContext = `\n\n## [PROACTIVE BRIEFING CONTEXT]\nVocê tem as seguintes notificações de conformidade não lidas sobre a organização. Informe o usuário amigavelmente no início de suas respostas:\n`;
+          notifications.forEach((n: any) => {
+            briefingContext += `- [${n.type.toUpperCase()}] ${n.title}: ${n.content}\n`;
+          });
+          briefingContext += `\nInstrução: Trate esses pontos de conformidade como proativos. Ajude o usuário a resolvê-los.\n`;
+
+          // Mark them as read
+          const notifIds = notifications.map((n: any) => n.id);
+          await supabase
+            .from('agent_notifications')
+            .update({ read: true })
+            .in('id', notifIds);
+        }
+      }
+
+      // 2. Learning Loop: Fetch user feedback corrections
+      const { data: corrections } = await supabase
+        .from('agent_learning_corrections')
+        .select('user_correction, agent_misaligned_response')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (corrections && corrections.length > 0) {
+        learningContext = `\n\n## [INSTRUCTIONS FROM USER CORRECTIONS]\nEvite repetir os seguintes desalinhamentos detectados em interações anteriores com o usuário:\n`;
+        corrections.forEach((c: any) => {
+          learningContext += `- Correção do Usuário: "${c.user_correction}" (Evite responder como: "${c.agent_misaligned_response}")\n`;
+        });
+      }
+
+      // 3. Org State: Fetch active organizational maturity/state vars
+      const orgStates = await getAllOrgStates(userId);
+      if (orgStates && orgStates.length > 0) {
+        orgStateContext = `\n\n## [ORGANIZATIONAL STATE]\nConsidere as seguintes informações de contexto organizacional ativo em suas análises:\n`;
+        orgStates.forEach((os) => {
+          orgStateContext += `- ${os.state_key}: ${JSON.stringify(os.state_value)}\n`;
+        });
+      }
+
+      // 4. Autonomy Boundaries: Fetch active autonomy parameters for the user
+      const { data: boundaries } = await supabase
+        .from('agent_autonomy_boundaries')
+        .select('action_type, zone')
+        .eq('user_id', userId);
+
+      if (boundaries && boundaries.length > 0) {
+        autonomyContext = `\n\n## [AUTONOMY BOUNDARIES]\nVocê opera sob as seguintes regras estritas de autonomia de segurança. Respeite as restrições abaixo e peça autorização no chat ANTES de disparar ações YELLOW:\n`;
+        boundaries.forEach((b: any) => {
+          const zoneExplanation = b.zone === 'green'
+            ? 'GREEN (Execução totalmente autônoma autorizada).'
+            : b.zone === 'yellow'
+            ? 'YELLOW (Requer aprovação do usuário. Você DEVE perguntar ao usuário antes de chamar esta ferramenta e configurar confirmed=true apenas com consentimento explícito).'
+            : 'RED (PROIBIDO. Não execute sob nenhuma circunstância e responda explicando a restrição).';
+          autonomyContext += `- Ação "${b.action_type}": ${zoneExplanation}\n`;
+        });
+      }
+    } catch (err) {
+      console.warn('[Context] Failed to load agentic evolution parameters:', err instanceof Error ? err.message : err);
+    }
+  }
+
+  const systemPrompt = buildSystemPrompt(
+    selectedProfile,
+    ragChunks,
+    briefingContext,
+    learningContext,
+    orgStateContext,
+    autonomyContext
+  );
 
   return {
     profile: selectedProfile,

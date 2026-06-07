@@ -1,5 +1,6 @@
 // src/lib/chat/rag-search.ts
 import { createClient } from '@/lib/supabase/server';
+import { generateEmbedding } from './embeddings';
 
 export interface SearchDocumentResult {
   id: number;
@@ -26,13 +27,22 @@ export async function searchDocuments(
   const { framework = null, limit = 5, threshold = 0.7 } = options;
 
   try {
+    // Generate a real semantic embedding for the search query
+    let queryEmbedding: number[];
+    try {
+      queryEmbedding = await generateEmbedding(query);
+    } catch (embeddingErr) {
+      console.error(
+        '[RAG] Embedding generation failed:',
+        embeddingErr instanceof Error ? embeddingErr.message : embeddingErr,
+      );
+      return [];
+    }
+
     const supabase = (await createClient()) as any;
 
-    // Note: In production, we'd generate an embedding first via OpenAI.
-    // For now, this calls the match_documents RPC which expects a vector.
-    // When embeddings aren't available, return empty results.
     const { data, error } = await supabase.rpc('match_documents', {
-      query_embedding: new Array(1536).fill(0), // placeholder embedding
+      query_embedding: queryEmbedding,
       match_threshold: threshold,
       match_count: limit,
       filter_framework: framework,

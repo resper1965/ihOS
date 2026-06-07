@@ -10,9 +10,15 @@ import {
   ShieldCheck,
   FileSearch,
   BarChart3,
+  Paperclip,
+  X,
+  FileSpreadsheet,
 } from "lucide-react";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { SuggestionChips } from "@/components/chat/suggestion-chips";
+import { QuestionnaireReview } from "@/components/chat/questionnaire-review";
+import { useQuestionnaire } from "@/hooks/useQuestionnaire";
+import { Progress } from "@/components/ui/progress";
 
 const SUGGESTION_CHIPS = [
   { text: "Qual nosso score ISO 27001?", icon: ShieldCheck },
@@ -20,12 +26,17 @@ const SUGGESTION_CHIPS = [
   { text: "Resumo executivo", icon: BarChart3 },
 ] as const;
 
+const ACCEPTED_FILE_TYPES = ".xlsx,.csv,.pdf";
+
 export default function ChatPage() {
   const { messages, sendMessage, status } = useChat();
 
   const [input, setInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const questionnaire = useQuestionnaire();
 
   const isLoading = status === "submitted" || status === "streaming";
 
@@ -57,6 +68,43 @@ export default function ChatPage() {
       handleSubmit(e);
     }
   }
+
+  // ── File upload handlers ───────────────────────────────────────────────
+
+  function handleFileButtonClick() {
+    fileInputRef.current?.click();
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    questionnaire.uploadFile(file);
+    // Reset the input so the same file can be re-selected
+    e.target.value = "";
+  }
+
+  function handleRemoveFile() {
+    questionnaire.reset();
+  }
+
+  // ── Derived state ──────────────────────────────────────────────────────
+
+  const isQuestionnaireActive = questionnaire.state !== "idle";
+  const showReviewModal = questionnaire.state === "reviewing";
+  const isQuestionnaireProcessing =
+    questionnaire.state === "uploading" ||
+    questionnaire.state === "parsing" ||
+    questionnaire.state === "generating" ||
+    questionnaire.state === "promoting" ||
+    questionnaire.state === "downloading";
+
+  const processingLabels: Record<string, string> = {
+    uploading: "Enviando arquivo…",
+    parsing: "Analisando questões…",
+    generating: "Gerando respostas com IA…",
+    promoting: "Salvando na base de conhecimento…",
+    downloading: "Preparando download…",
+  };
 
   const isEmpty = messages.length === 0;
 
@@ -106,12 +154,108 @@ export default function ChatPage() {
         )}
       </div>
 
+      {/* ─── Processing Progress Overlay ─── */}
+      {isQuestionnaireProcessing && (
+        <div className="mx-2 mb-3">
+          <div className="glass-card flex items-center gap-3 px-4 py-3">
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary to-accent">
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="mb-1 text-sm text-text-secondary">
+                {processingLabels[questionnaire.state] ?? "Processando…"}
+              </p>
+              <Progress
+                value={questionnaire.progress}
+                size="sm"
+                showPercentage={false}
+              />
+            </div>
+            <span className="shrink-0 text-xs font-medium tabular-nums text-text-muted">
+              {Math.round(questionnaire.progress)}%
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Error Banner ─── */}
+      {questionnaire.state === "error" && (
+        <div className="mx-2 mb-3">
+          <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-950/20 px-4 py-3">
+            <span className="text-sm text-red-400">{questionnaire.error}</span>
+            <button
+              onClick={handleRemoveFile}
+              className="ml-auto shrink-0 rounded-lg p-1 text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── Complete Banner ─── */}
+      {questionnaire.state === "complete" && (
+        <div className="mx-2 mb-3">
+          <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-4 py-3">
+            <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
+            <span className="text-sm text-emerald-400">
+              Questionário exportado com sucesso!
+            </span>
+            <button
+              onClick={handleRemoveFile}
+              className="ml-auto shrink-0 rounded-lg p-1 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ─── Input Area ─── */}
       <div className="shrink-0 border-t border-border-glass pb-4 pt-4">
+        {/* File badge */}
+        {isQuestionnaireActive && questionnaire.fileName && questionnaire.state !== "error" && questionnaire.state !== "complete" && (
+          <div className="mb-2 flex items-center gap-2 px-3">
+            <div className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs text-primary">
+              <FileSpreadsheet className="h-3 w-3" />
+              <span className="max-w-[200px] truncate">{questionnaire.fileName}</span>
+              {!isQuestionnaireProcessing && (
+                <button
+                  onClick={handleRemoveFile}
+                  className="ml-1 rounded p-0.5 hover:bg-primary/20 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         <form
           onSubmit={handleSubmit}
           className="glass-card flex items-end gap-3 p-3"
         >
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept={ACCEPTED_FILE_TYPES}
+            onChange={handleFileChange}
+            className="hidden"
+            aria-label="Upload de questionário"
+          />
+
+          {/* Paperclip button */}
+          <button
+            type="button"
+            onClick={handleFileButtonClick}
+            disabled={isQuestionnaireProcessing}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-text-muted transition-all duration-200 hover:bg-white/5 hover:text-primary active:scale-95 disabled:opacity-40"
+            title="Enviar questionário (.xlsx, .csv, .pdf)"
+          >
+            <Paperclip className="h-4 w-4" />
+          </button>
+
           <textarea
             ref={inputRef}
             value={input}
@@ -138,7 +282,37 @@ export default function ChatPage() {
           ihOS AI pode cometer erros. Verifique informações importantes.
         </p>
       </div>
+
+      {/* ─── Questionnaire Review Modal ─── */}
+      {showReviewModal && (
+        <QuestionnaireReview
+          items={questionnaire.answers}
+          onUpdateAnswer={questionnaire.updateAnswer}
+          onSetStatus={questionnaire.setStatus}
+          onApproveAll={questionnaire.approveAll}
+          onPromoteAndDownload={questionnaire.promoteAndDownload}
+          onClose={questionnaire.reset}
+          isProcessing={false}
+          progress={questionnaire.progress}
+          fileName={questionnaire.fileName}
+        />
+      )}
+
+      {/* ─── Promote/Download Processing Modal ─── */}
+      {(questionnaire.state === "promoting" || questionnaire.state === "downloading") && (
+        <QuestionnaireReview
+          items={questionnaire.answers}
+          onUpdateAnswer={questionnaire.updateAnswer}
+          onSetStatus={questionnaire.setStatus}
+          onApproveAll={questionnaire.approveAll}
+          onPromoteAndDownload={questionnaire.promoteAndDownload}
+          onClose={questionnaire.reset}
+          isProcessing={true}
+          progress={questionnaire.progress}
+          processingLabel={processingLabels[questionnaire.state]}
+          fileName={questionnaire.fileName}
+        />
+      )}
     </div>
   );
 }
-

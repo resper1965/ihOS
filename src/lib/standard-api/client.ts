@@ -84,22 +84,32 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
   const timeoutId = setTimeout(() => controller.abort(), config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
 
   try {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.apiKey}`,
+      Accept: "application/json",
+    };
+
+    if (config.tenantId) {
+      headers["x-standard-tenant-id"] = config.tenantId;
+    }
+
+    console.log('[GRC API Client] URL:', url);
+    console.log('[GRC API Client] Headers:', { ...headers, Authorization: 'Bearer [REDACTED]' });
+    console.log('[GRC API Client] Payload:', JSON.stringify(payload));
+
     const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${config.apiKey}`,
-        Accept: "application/json",
-      },
+      headers,
       body: JSON.stringify(payload),
       signal: controller.signal,
     });
 
     clearTimeout(timeoutId);
 
-    const json = (await response.json()) as StandardApiResponse<TRes>;
+    const json = (await response.json()) as any;
 
-    if (!response.ok || !json.success) {
+    if (!response.ok) {
       const error: StandardApiError = json.error ?? {
         code: `HTTP_${response.status}`,
         message: response.statusText || "Unknown error",
@@ -107,7 +117,7 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
       throw new StandardApiClientError(error.message, error.code, response.status, error.details);
     }
 
-    return json.data;
+    return json.data !== undefined ? json.data : json;
   } catch (err) {
     clearTimeout(timeoutId);
 
@@ -136,61 +146,61 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
  * Calculate compliance score for a given framework.
  */
 export async function complianceScore(request: ComplianceScoreRequest): Promise<ComplianceScoreData> {
-  return post<ComplianceScoreRequest, ComplianceScoreData>("/compliance-score", request);
+  return post<ComplianceScoreRequest, ComplianceScoreData>("/intelligence/compliance-score", request);
 }
 
 /**
  * Analyze cross-coverage between two frameworks.
  */
 export async function crossCoverage(request: CrossCoverageRequest): Promise<CrossCoverageData> {
-  return post<CrossCoverageRequest, CrossCoverageData>("/cross-coverage", request);
+  return post<CrossCoverageRequest, CrossCoverageData>("/intelligence/cross-coverage", request);
 }
 
 /**
  * Calculate optimal ROI path for framework compliance.
  */
 export async function roiPath(request: RoiPathRequest): Promise<RoiPathData> {
-  return post<RoiPathRequest, RoiPathData>("/roi-path", request);
+  return post<RoiPathRequest, RoiPathData>("/intelligence/roi-path", request);
 }
 
 /**
  * Analyze the blast radius of a control failure.
  */
 export async function blastRadius(request: BlastRadiusRequest): Promise<BlastRadiusData> {
-  return post<BlastRadiusRequest, BlastRadiusData>("/blast-radius", request);
+  return post<BlastRadiusRequest, BlastRadiusData>("/intelligence/blast-radius", request);
 }
 
 /**
  * Evaluate evidence sufficiency for a control.
  */
 export async function evaluateEvidence(request: EvaluateEvidenceRequest): Promise<EvaluateEvidenceData> {
-  return post<EvaluateEvidenceRequest, EvaluateEvidenceData>("/evaluate-evidence", request);
+  return post<EvaluateEvidenceRequest, EvaluateEvidenceData>("/gap/evaluate-evidence", request);
 }
 
 /**
  * Translate risk into language appropriate for a target audience.
  */
 export async function translateRisk(request: TranslateRiskRequest): Promise<TranslateRiskData> {
-  return post<TranslateRiskRequest, TranslateRiskData>("/translate-risk", request);
+  return post<TranslateRiskRequest, TranslateRiskData>("/executive/translate-risk", request);
 }
 
 /**
  * Triage a security incident and determine compliance impact.
  */
 export async function triageIncident(request: TriageIncidentRequest): Promise<TriageIncidentData> {
-  return post<TriageIncidentRequest, TriageIncidentData>("/triage-incident", request);
+  return post<TriageIncidentRequest, TriageIncidentData>("/soc/triage-incident", request);
 }
 
 /**
  * Scan a vendor contract for compliance risks.
  */
 export async function scanVendorContract(request: ScanVendorContractRequest): Promise<ScanVendorContractData> {
-  return post<ScanVendorContractRequest, ScanVendorContractData>("/scan-vendor-contract", request);
+  return post<ScanVendorContractRequest, ScanVendorContractData>("/privacy/scan-vendor-contract", request);
 }
 
 /**
  * Multi-agent advisory council for complex compliance questions.
  */
 export async function council(request: CouncilRequest): Promise<CouncilData> {
-  return post<CouncilRequest, CouncilData>("/council", request);
+  return post<CouncilRequest, CouncilData>("/intelligence/council", request);
 }

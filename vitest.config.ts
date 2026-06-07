@@ -9,6 +9,9 @@ export default defineConfig({
     // Global test APIs (describe, it, expect)
     globals: true,
 
+    // Setup files — run before each test suite
+    setupFiles: ['./tests/setup.ts'],
+
     // Include patterns
     include: ['tests/**/*.test.{ts,tsx}'],
 

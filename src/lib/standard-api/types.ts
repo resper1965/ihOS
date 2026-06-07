@@ -22,20 +22,28 @@ export interface StandardApiResponse<T> {
 // ---------------------------------------------------------------------------
 
 export interface ComplianceScoreRequest {
-  framework_code: string; // e.g. "ISO-27001", "SOC-2", "NIST-800-53"
+  framework_code?: string; // legacy / cron compat
+  regulation_id?: string; // real API
+  scf_controls_implemented?: string[]; // real API
   tenant_id?: string;
 }
 
 export interface ComplianceScoreData {
-  framework_code: string;
-  overall_score: number; // 0–100
-  control_scores: Array<{
+  framework_code?: string;
+  regulation_id?: string;
+  score?: number; // real API
+  overall_score?: number; // legacy compat
+  scf_controls_implemented_count?: number;
+  total_required_controls?: number;
+  missing_controls?: any[];
+  control_scores?: Array<{
     control_id: string;
     control_name: string;
     score: number;
     status: string;
   }>;
-  assessed_at: string;
+  assessed_at?: string;
+  message?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -45,23 +53,27 @@ export interface ComplianceScoreData {
 export interface CrossCoverageRequest {
   source_framework: string;
   target_framework: string;
+  scf_controls_implemented?: string[]; // real API
   tenant_id?: string;
 }
 
 export interface CrossCoverageData {
   source_framework: string;
   target_framework: string;
-  coverage_percentage: number;
+  overlap_percentage?: number; // real API
+  coverage_percentage?: number; // legacy compat
   mapped_controls: Array<{
     source_control_id: string;
     target_control_ids: string[];
-    coverage_status: "full" | "partial" | "none";
+    coverage_status?: "full" | "partial" | "none";
+    relationship?: string;
   }>;
   gaps: Array<{
     target_control_id: string;
-    target_control_name: string;
-    gap_description: string;
+    target_control_name?: string;
+    gap_description?: string;
   }>;
+  interpretation?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -69,14 +81,27 @@ export interface CrossCoverageData {
 // ---------------------------------------------------------------------------
 
 export interface RoiPathRequest {
-  target_frameworks: string[];
+  target_frameworks?: string[]; // legacy
+  target_framework?: string; // real API
+  scf_controls_implemented?: string[]; // real API
+  top_n?: number; // real API
   current_score?: number;
   budget_constraint?: number;
   tenant_id?: string;
 }
 
 export interface RoiPathData {
-  recommended_path: Array<{
+  target_framework?: string;
+  top_n_requested?: number;
+  total_missing?: number;
+  roi_path?: Array<{
+    control_id: string;
+    roi_score: number;
+    mitigations_count?: number;
+    key_mitigations?: string[];
+  }>;
+  summary?: string;
+  recommended_path?: Array<{
     step: number;
     action: string;
     controls_covered: string[];
@@ -84,8 +109,8 @@ export interface RoiPathData {
     impact_score: number;
     frameworks_benefited: string[];
   }>;
-  total_estimated_hours: number;
-  projected_final_score: number;
+  total_estimated_hours?: number;
+  projected_final_score?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -94,19 +119,24 @@ export interface RoiPathData {
 
 export interface BlastRadiusRequest {
   control_id: string;
-  framework_code: string;
+  framework_code?: string;
   tenant_id?: string;
 }
 
 export interface BlastRadiusData {
   control_id: string;
-  affected_frameworks: Array<{
+  affected_frameworks?: Array<{
     framework_code: string;
     affected_controls: string[];
-    risk_level: "critical" | "high" | "medium" | "low";
+    risk_level?: "critical" | "high" | "medium" | "low";
   }>;
-  total_affected_controls: number;
-  risk_summary: string;
+  total_affected_controls?: number;
+  risk_summary?: string;
+  linked_entities?: {
+    risks?: any[];
+    regulations?: any[];
+    frameworks?: any[];
+  };
 }
 
 // ---------------------------------------------------------------------------

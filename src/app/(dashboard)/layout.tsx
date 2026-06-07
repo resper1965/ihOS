@@ -6,11 +6,12 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   MessageSquare,
+  Target,
   ClipboardCheck,
   FileText,
   BarChart3,
+  ShieldCheck,
   ChevronLeft,
-  Bell,
   Menu,
   Search,
   Settings,
@@ -18,10 +19,13 @@ import {
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { signOut } from "@/lib/supabase/auth-actions";
+import { NotificationsDropdown } from "@/components/dashboard/notifications-dropdown";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
+  { label: "Compliance", href: "/compliance", icon: ShieldCheck },
   { label: "Chat", href: "/chat", icon: MessageSquare },
+  { label: "Metas", href: "/goals", icon: Target },
   { label: "Avaliações", href: "/assessments", icon: ClipboardCheck },
   { label: "Documentos", href: "/documents", icon: FileText },
   { label: "Relatórios", href: "/reports", icon: BarChart3 },
@@ -112,10 +116,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <div className="flex items-center gap-3">
-            <button className="relative rounded-xl p-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors">
-              <Bell className="h-5 w-5" />
-              <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-400" />
-            </button>
+            <NotificationsDropdown />
             <div className="h-6 w-px bg-white/10" />
 
             <div className="relative">

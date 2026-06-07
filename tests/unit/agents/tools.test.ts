@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   complianceScore,
   crossCoverage,
@@ -8,13 +8,15 @@ import {
   getAssessmentStatus,
   agentTools,
 } from '@/lib/agents/tools/index';
+import * as standardApi from '@/lib/standard-api/client';
+import { searchDocuments as ragSearch } from '@/lib/chat/rag-search';
 
 // ---------------------------------------------------------------------------
 // agentTools map
 // ---------------------------------------------------------------------------
 describe('agentTools map', () => {
-  it('contains exactly 6 tools', () => {
-    expect(Object.keys(agentTools)).toHaveLength(6);
+  it('contains exactly 13 tools', () => {
+    expect(Object.keys(agentTools)).toHaveLength(13);
   });
 
   it('has all expected tool names', () => {
@@ -107,6 +109,10 @@ describe('crossCoverage execute', () => {
 // blastRadius
 // ---------------------------------------------------------------------------
 describe('blastRadius execute', () => {
+  beforeEach(() => {
+    (standardApi.blastRadius as any).mockRejectedValue(new Error('Force mock fallback'));
+  });
+
   it('returns blast radius shape', async () => {
     const result = (await blastRadius.execute!(
       { controlId: 'CC6.1', framework: 'soc2' },
@@ -127,6 +133,10 @@ describe('blastRadius execute', () => {
 // searchDocuments
 // ---------------------------------------------------------------------------
 describe('searchDocuments execute', () => {
+  beforeEach(() => {
+    (ragSearch as any).mockRejectedValue(new Error('Force mock fallback'));
+  });
+
   it('returns array of search results', async () => {
     const result = (await searchDocuments.execute!(
       { query: 'access control policy', limit: 5 },

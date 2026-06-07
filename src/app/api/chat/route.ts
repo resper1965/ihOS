@@ -2,7 +2,7 @@
 // Next.js API route for the ihOS AI chat system
 // Uses Vercel AI SDK streamText with tool calling + Supabase persistence
 
-import { streamText } from 'ai';
+import { streamText, stepCountIs } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import { assembleContext } from '@/lib/context/assembler';
 import { agentTools } from '@/lib/agents/tools';
@@ -53,6 +53,8 @@ export async function POST(req: Request) {
       }
 
       await saveMessage(conversationId, 'user', lastUserMessage.content);
+    } else {
+      if (!conversationId) conversationId = crypto.randomUUID();
     }
   } catch (err) {
     console.error('[Chat] Persistence error (non-blocking):', err);
@@ -70,6 +72,7 @@ export async function POST(req: Request) {
     system: context.systemPrompt,
     messages,
     tools: agentTools,
+    stopWhen: stepCountIs(10),
 
     onStepFinish: async ({ toolCalls }) => {
       if (toolCalls && toolCalls.length > 0) {
@@ -96,7 +99,7 @@ export async function POST(req: Request) {
     },
   });
 
-  return result.toTextStreamResponse({
+  return result.toUIMessageStreamResponse({
     headers: {
       'X-Agent-Profile': context.profile.id,
       'X-Conversation-Id': conversationId,

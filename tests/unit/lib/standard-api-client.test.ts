@@ -1,4 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+vi.unmock('@/lib/standard-api/client');
+
 import { StandardApiClientError } from '@/lib/standard-api/client';
 
 // ---------------------------------------------------------------------------
@@ -112,7 +115,7 @@ describe('API client with mocked fetch', () => {
     expect(fetch).toHaveBeenCalledOnce();
 
     const [url, options] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toBe('https://api.test.com/v1/compliance-score');
+    expect(url).toBe('https://api.test.com/v1/intelligence/compliance-score');
     expect(options.method).toBe('POST');
     expect(options.headers['Authorization']).toBe('Bearer test-api-key');
     expect(options.headers['Content-Type']).toBe('application/json');
@@ -251,7 +254,7 @@ describe('API client with mocked fetch', () => {
     await client.complianceScore({ framework_code: 'soc2' });
 
     const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    expect(url).toBe('https://api.test.com/v1/compliance-score');
+    expect(url).toBe('https://api.test.com/v1/intelligence/compliance-score');
   });
 });
 
