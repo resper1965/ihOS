@@ -109,7 +109,7 @@ export default function ChatPage() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="mx-auto flex h-full max-w-4xl flex-col">
+    <div className="w-full flex h-full flex-col">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto">
         {isEmpty ? (

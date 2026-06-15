@@ -1,6 +1,6 @@
 export default function ComplianceLoading() {
   return (
-    <div className="mx-auto max-w-7xl space-y-8">
+    <div className="w-full space-y-8">
       {/* Header skeleton */}
       <div className="flex items-center gap-3">
         <div className="h-10 w-10 animate-shimmer rounded-xl" />

@@ -1,6 +1,6 @@
 export default function DashboardLoading() {
   return (
-    <div className="mx-auto max-w-7xl space-y-8">
+    <div className="w-full space-y-8">
       {/* Header skeleton */}
       <div className="space-y-2">
         <div className="h-8 w-64 animate-shimmer rounded-xl" />

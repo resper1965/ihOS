@@ -1,6 +1,6 @@
 export default function ChatLoading() {
   return (
-    <div className="mx-auto flex h-full max-w-4xl flex-col">
+    <div className="w-full flex h-full flex-col">
       {/* Messages skeleton */}
       <div className="flex-1 space-y-6 overflow-y-auto py-6">
         {/* Assistant message skeleton */}

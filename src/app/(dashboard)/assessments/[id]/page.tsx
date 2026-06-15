@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, use } from "react";
+import { useState, useEffect, use } from "react";
 import {
   ArrowLeft,
   ShieldCheck,
@@ -17,7 +17,23 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 
+/* ------------------------------------------------------------------ */
+/*  Framework display-name map                                        */
+/* ------------------------------------------------------------------ */
+const FRAMEWORK_NAMES: Record<string, string> = {
+  "iso27001": "ISO/IEC 27001:2022",
+  "BR-LGPD": "LGPD",
+  "HI-2013": "HIPAA",
+  "TX-LEVEL-2": "TX-RAMP Level 2",
+  "EU-GDPR": "EU GDPR",
+  "soc-2": "SOC 2 Type II",
+};
+
+/* ------------------------------------------------------------------ */
+/*  Mock fallback – used when no DB rows are found                    */
+/* ------------------------------------------------------------------ */
 const MOCK_FRAMEWORK_DATA: Record<string, {
   name: string;
   score: number;
@@ -101,18 +117,209 @@ const MOCK_FRAMEWORK_DATA: Record<string, {
   },
 };
 
+/* ------------------------------------------------------------------ */
+/*  Types                                                             */
+/* ------------------------------------------------------------------ */
+type ControlStatus = "compliant" | "non-compliant" | "partial" | "unreviewed";
+
+interface ControlItem {
+  code: string;
+  name: string;
+  description: string;
+  status: ControlStatus;
+  evidence?: string;
+}
+
+interface FrameworkData {
+  name: string;
+  score: number;
+  progress: number;
+  controls: ControlItem[];
+}
+
+/* ------------------------------------------------------------------ */
+/*  Skeleton loader                                                   */
+/* ------------------------------------------------------------------ */
+function LoadingSkeleton() {
+  return (
+    <div className="w-full space-y-8 animate-pulse">
+      {/* Back link placeholder */}
+      <div className="h-4 w-48 rounded bg-white/5" />
+
+      {/* Header */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-2">
+          <div className="h-8 w-72 rounded-lg bg-white/5" />
+          <div className="h-4 w-96 rounded bg-white/5" />
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-40 rounded-xl bg-white/5" />
+          <div className="h-10 w-40 rounded-xl bg-white/5" />
+        </div>
+      </div>
+
+      {/* Metric Cards */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="glass-card p-6 space-y-4">
+            <div className="h-4 w-32 rounded bg-white/5" />
+            <div className="h-10 w-24 rounded bg-white/5" />
+            <div className="h-3 w-full rounded bg-white/5" />
+          </div>
+        ))}
+      </div>
+
+      {/* Controls Section */}
+      <div className="glass-card p-6 space-y-6">
+        <div className="flex justify-between">
+          <div className="h-6 w-40 rounded bg-white/5" />
+          <div className="h-10 w-56 rounded-xl bg-white/5" />
+        </div>
+        <div className="divide-y divide-white/5">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="flex items-start gap-3 py-4">
+              <div className="h-5 w-5 rounded-full bg-white/5 shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-5 w-14 rounded bg-white/5" />
+                  <div className="h-4 w-56 rounded bg-white/5" />
+                </div>
+                <div className="h-3 w-full max-w-lg rounded bg-white/5" />
+              </div>
+              <div className="h-6 w-20 rounded-full bg-white/5 shrink-0" />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Page component                                                    */
+/* ------------------------------------------------------------------ */
 export default function AssessmentDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const data = MOCK_FRAMEWORK_DATA[id] || {
-    name: "Framework de Compliance",
-    score: 0,
-    progress: 0,
-    controls: [],
-  };
 
+  const [data, setData] = useState<FrameworkData | null>(null);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
 
-  const filteredControls = data.controls.filter((c) =>
+  useEffect(() => {
+    async function fetchAssessment() {
+      try {
+        const supabase = createClient();
+
+        // 1. Fetch the assessment row
+        const { data: assessment, error: assessmentError } = await supabase
+          .from("compliance_assessments")
+          .select("*")
+          .eq("id", id)
+          .single();
+
+        if (assessmentError || !assessment) {
+          // Fallback to mock data
+          const fallback = MOCK_FRAMEWORK_DATA[id] || {
+            name: "Framework de Compliance",
+            score: 0,
+            progress: 0,
+            controls: [],
+          };
+          setData(fallback);
+          setLoading(false);
+          return;
+        }
+
+        // 2. Fetch evidence evaluations for this assessment
+        const { data: evaluations, error: evalsError } = await supabase
+          .from("evidence_evaluations")
+          .select("*")
+          .eq("assessment_id", id);
+
+        if (evalsError || !evaluations || evaluations.length === 0) {
+          // Assessment exists but no evaluations – use mock fallback
+          const fallback = MOCK_FRAMEWORK_DATA[id] || {
+            name: FRAMEWORK_NAMES[assessment.framework_code] || assessment.framework_code,
+            score: 0,
+            progress: 0,
+            controls: [],
+          };
+          setData(fallback);
+          setLoading(false);
+          return;
+        }
+
+        // 3. Map evaluations to control items
+        const controls: ControlItem[] = evaluations.map((ev) => {
+          // Build status from is_compliant / confidence_score
+          let status: ControlStatus;
+          if (ev.is_compliant) {
+            status = "compliant";
+          } else if (ev.confidence_score > 50) {
+            status = "partial";
+          } else {
+            status = "non-compliant";
+          }
+
+          // Build description from domain_code + missing_elements
+          const missingArr = Array.isArray(ev.missing_elements) ? ev.missing_elements : [];
+          const description =
+            missingArr.length > 0
+              ? `[${ev.domain_code}] ${missingArr.join("; ")}`
+              : `Controle avaliado no domínio ${ev.domain_code}.`;
+
+          return {
+            code: ev.control_code,
+            name: ev.control_name,
+            description,
+            status,
+            evidence: "Avaliado pela IA",
+          };
+        });
+
+        // 4. Compute score (avg confidence) & progress (compliant / total * 100)
+        const totalConfidence = evaluations.reduce((sum, ev) => sum + (ev.confidence_score ?? 0), 0);
+        const avgScore = evaluations.length > 0 ? totalConfidence / evaluations.length : 0;
+
+        const compliantCount = controls.filter((c) => c.status === "compliant").length;
+        const progress = controls.length > 0 ? (compliantCount / controls.length) * 100 : 0;
+
+        // 5. Resolve framework display name
+        const frameworkName =
+          FRAMEWORK_NAMES[assessment.framework_code] || assessment.framework_code;
+
+        setData({
+          name: frameworkName,
+          score: Math.round(avgScore * 10) / 10,
+          progress: Math.round(progress * 10) / 10,
+          controls,
+        });
+      } catch {
+        // On any unexpected error, fall back to mock
+        const fallback = MOCK_FRAMEWORK_DATA[id] || {
+          name: "Framework de Compliance",
+          score: 0,
+          progress: 0,
+          controls: [],
+        };
+        setData(fallback);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchAssessment();
+  }, [id]);
+
+  /* ---------- loading state ---------- */
+  if (loading) {
+    return <LoadingSkeleton />;
+  }
+
+  /* ---------- resolved data (guaranteed non-null after loading) ---------- */
+  const resolved = data!;
+
+  const filteredControls = resolved.controls.filter((c) =>
     c.code.toLowerCase().includes(search.toLowerCase()) ||
     c.name.toLowerCase().includes(search.toLowerCase()) ||
     c.description.toLowerCase().includes(search.toLowerCase())
@@ -145,7 +352,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
   }
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8">
+    <div className="w-full space-y-8">
       {/* Back navigation */}
       <Link
         href="/assessments"
@@ -158,7 +365,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
       {/* Header Info */}
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h1 className="text-2xl font-bold sm:text-3xl">{data.name}</h1>
+          <h1 className="text-2xl font-bold sm:text-3xl">{resolved.name}</h1>
           <p className="mt-1 text-text-secondary">
             Visão detalhada de controle, mapeamento e evidências do framework.
           </p>
@@ -177,7 +384,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <Card title="AI Audit Score" icon={<ShieldCheck className="h-5 w-5 text-accent" />}>
           <div className="mt-2">
-            <span className="text-4xl font-extrabold text-text-primary">{data.score}%</span>
+            <span className="text-4xl font-extrabold text-text-primary">{resolved.score}%</span>
             <p className="mt-2 text-xs text-text-muted">
               Score consolidado com base na cobertura de evidências do GRC Engine.
             </p>
@@ -185,9 +392,9 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </Card>
         <Card title="Progresso Geral" icon={<CheckCircle2 className="h-5 w-5 text-primary" />}>
           <div className="mt-2 space-y-4">
-            <Progress value={data.progress} size="md" />
+            <Progress value={resolved.progress} size="md" />
             <p className="text-xs text-text-muted">
-              {data.progress}% dos controles avaliados com evidência anexada.
+              {resolved.progress}% dos controles avaliados com evidência anexada.
             </p>
           </div>
         </Card>

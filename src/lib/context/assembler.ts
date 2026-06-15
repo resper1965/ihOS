@@ -117,7 +117,7 @@ function buildSystemPrompt(
 
 export async function assembleContext(
   conversationId: string,
-  userMessage: string,
+  userMessage: string = '',
   options?: {
     profileOverride?: AgentProfile;
     tenantId?: string;

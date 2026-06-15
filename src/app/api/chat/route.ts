@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     messages,
     conversationId: incomingConversationId,
   }: {
-    messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+    messages: Array<{ role: 'user' | 'assistant' | 'system'; content?: string; parts?: any[] }>;
     conversationId?: string;
   } = body;
 
@@ -33,6 +33,21 @@ export async function POST(req: Request) {
       { status: 400, headers: { 'Content-Type': 'application/json' } }
     );
   }
+
+  // Safe helper to extract text from Vercel AI SDK v4/v6 messages (supports string content or parts array)
+  const getMessageText = (msg: any): string => {
+    if (!msg) return '';
+    if (typeof msg.content === 'string') return msg.content;
+    if (Array.isArray(msg.parts)) {
+      return msg.parts
+        .filter((p: any) => p.type === 'text')
+        .map((p: any) => p.text)
+        .join('\n');
+    }
+    return '';
+  };
+
+  const userMessageText = getMessageText(lastUserMessage);
 
   // Auth & Persistence
   let conversationId = incomingConversationId ?? '';
@@ -46,13 +61,13 @@ export async function POST(req: Request) {
       userId = user.id;
 
       if (!conversationId) {
-        const title = lastUserMessage.content.slice(0, 80) +
-          (lastUserMessage.content.length > 80 ? '…' : '');
+        const title = userMessageText.slice(0, 80) +
+          (userMessageText.length > 80 ? '…' : '');
         const conversation = await createConversation(user.id, title);
         conversationId = conversation.id;
       }
 
-      await saveMessage(conversationId, 'user', lastUserMessage.content);
+      await saveMessage(conversationId, 'user', userMessageText);
     } else {
       if (!conversationId) conversationId = crypto.randomUUID();
     }
@@ -63,14 +78,14 @@ export async function POST(req: Request) {
 
   const context = await assembleContext(
     conversationId,
-    lastUserMessage.content,
+    userMessageText,
     { userId }
   );
 
   const result = streamText({
     model: openai('gpt-4o'),
     system: context.systemPrompt,
-    messages,
+    messages: messages as any,
     tools: agentTools,
     stopWhen: stepCountIs(10),
 

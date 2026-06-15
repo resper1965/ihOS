@@ -9,6 +9,7 @@ import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { GoalsWidget } from "@/components/dashboard/goals-widget";
 import { createClient } from "@/lib/supabase/server";
 import { RealtimeRefresher } from "@/components/dashboard/realtime-refresher";
+import { getFrameworkScores, getEvaluationSummary } from "@/lib/data/compliance-data";
 
 export const dynamic = "force-dynamic";
 
@@ -20,38 +21,53 @@ async function getDashboardStats() {
   try {
     const supabase = await createClient();
 
-    const [frameworksResult, docsResult, assessmentsResult, scoreResult] =
-      await Promise.all([
-        // Distinct framework count from compliance_assessments
-        supabase.from("compliance_assessments").select("framework_code"),
-        // Total documents
-        supabase
-          .from("compliance_documents")
-          .select("id", { count: "exact", head: true }),
-        // Total assessments
-        supabase
-          .from("compliance_assessments")
-          .select("id", { count: "exact", head: true }),
-        // Latest score from intelligence_snapshots
-        supabase
-          .from("intelligence_snapshots")
-          .select("snapshot_data")
-          .eq("snapshot_type", "scorecard")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .single(),
-      ]);
+    const [
+      frameworksResult,
+      docsResult,
+      assessmentsResult,
+      scoreResult,
+      frameworkScores,
+      evaluationSummary,
+    ] = await Promise.all([
+      // Distinct framework count from compliance_assessments
+      supabase.from("compliance_assessments").select("framework_code"),
+      // Total documents
+      supabase
+        .from("compliance_documents")
+        .select("id", { count: "exact", head: true }),
+      // Total assessments
+      supabase
+        .from("compliance_assessments")
+        .select("id", { count: "exact", head: true }),
+      // Latest score from intelligence_snapshots
+      supabase
+        .from("intelligence_snapshots")
+        .select("snapshot_data")
+        .eq("snapshot_type", "scorecard")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single(),
+      // Compliance data layer (Supabase → Standard API → mock)
+      getFrameworkScores(),
+      getEvaluationSummary(),
+    ]);
 
-    // Count distinct frameworks
+    // Count distinct frameworks — prefer Supabase, fall back to compliance-data
     const distinctFrameworks = frameworksResult.data
       ? new Set(frameworksResult.data.map((r) => r.framework_code)).size
       : 0;
+    const frameworkCount =
+      distinctFrameworks > 0
+        ? distinctFrameworks.toString()
+        : frameworkScores.length > 0
+          ? frameworkScores.length.toString()
+          : "0";
 
     const docsCount = docsResult.count ?? 0;
     const assessmentsCount = assessmentsResult.count ?? 0;
 
-    // Extract score
-    let avgScore = "94.2%";
+    // Extract score — prefer Supabase snapshot, fall back to compliance-data avg
+    let avgScore = "—";
     if (scoreResult.data?.snapshot_data) {
       const data = scoreResult.data.snapshot_data as Record<string, any>;
       const score = data.score ?? data.overall_score;
@@ -59,20 +75,23 @@ async function getDashboardStats() {
         avgScore = `${score}%`;
       }
     }
+    if (avgScore === "—" && evaluationSummary.avgConfidence > 0) {
+      avgScore = `${evaluationSummary.avgConfidence}%`;
+    }
 
     return {
-      frameworks: distinctFrameworks > 0 ? distinctFrameworks.toString() : "5",
-      documents: docsCount > 0 ? docsCount.toString() : "187",
-      assessments: assessmentsCount > 0 ? assessmentsCount.toString() : "43",
+      frameworks: frameworkCount,
+      documents: docsCount > 0 ? docsCount.toString() : "0",
+      assessments: assessmentsCount > 0 ? assessmentsCount.toString() : "0",
       score: avgScore,
     };
   } catch (err) {
     console.warn("[dashboard] getDashboardStats error, using fallback:", err);
     return {
-      frameworks: "5",
-      documents: "187",
-      assessments: "43",
-      score: "94.2%",
+      frameworks: "0",
+      documents: "0",
+      assessments: "0",
+      score: "—",
     };
   }
 }
@@ -183,7 +202,7 @@ export default async function DashboardPage() {
   ] as const;
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8">
+    <div className="w-full space-y-8">
       {/* Welcome */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">

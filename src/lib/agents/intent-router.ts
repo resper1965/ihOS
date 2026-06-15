@@ -77,8 +77,8 @@ const KEYWORD_RULES: KeywordRule[] = [
  * 4. The highest-scoring profile wins; ties go to the first match.
  * 5. If no keywords match, default to Compliance agent.
  */
-export function classifyIntent(message: string): IntentClassification {
-  const normalized = message.toLowerCase();
+export function classifyIntent(message: string = ""): IntentClassification {
+  const normalized = (message || "").toLowerCase();
 
   let bestProfileId: AgentProfileId = DEFAULT_PROFILE_ID;
   let bestScore = 0;
@@ -118,7 +118,7 @@ export function classifyIntent(message: string): IntentClassification {
 /**
  * Convenience function: classify intent and return the full AgentProfile.
  */
-export function routeToAgent(message: string): {
+export function routeToAgent(message: string = ""): {
   profile: AgentProfile;
   classification: IntentClassification;
 } {

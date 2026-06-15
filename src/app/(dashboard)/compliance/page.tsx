@@ -72,7 +72,7 @@ export default async function CompliancePage() {
   ];
 
   return (
-    <div className="mx-auto max-w-7xl space-y-8">
+    <div className="w-full space-y-8">
       {/* Page Header */}
       <div>
         <div className="flex items-center gap-3">

@@ -219,7 +219,7 @@ export default function DocumentsPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
-    <div className="mx-auto max-w-7xl space-y-8">
+    <div className="w-full space-y-8">
       {/* Hidden file input */}
       <input
         ref={fileInputRef}

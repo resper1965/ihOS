@@ -1,4 +1,5 @@
 import { Clock } from "lucide-react";
+import Link from "next/link";
 
 interface ActivityItem {
   action: string;
@@ -15,9 +16,9 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
     <div className="glass-card p-6">
       <div className="mb-5 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-text-primary">Atividades Recentes</h2>
-        <button className="text-sm text-primary transition-colors hover:text-primary-hover">
+        <Link href="/compliance" className="text-sm text-primary transition-colors hover:text-primary-hover">
           Ver todas
-        </button>
+        </Link>
       </div>
       <div className="space-y-1">
         {activities.map((item, i) => (
