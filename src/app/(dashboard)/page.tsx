@@ -170,7 +170,6 @@ export default async function DashboardPage() {
     {
       label: "Total Frameworks",
       value: stats.frameworks,
-      change: "+2",
       icon: ShieldCheck,
       color: "text-primary",
       bgColor: "bg-primary/10",
@@ -178,7 +177,6 @@ export default async function DashboardPage() {
     {
       label: "Documentos Analisados",
       value: stats.documents,
-      change: "+24",
       icon: FileText,
       color: "text-accent",
       bgColor: "bg-accent/10",
@@ -186,7 +184,6 @@ export default async function DashboardPage() {
     {
       label: "Avaliações Ativas",
       value: stats.assessments,
-      change: "+5",
       icon: ClipboardCheck,
       color: "text-warning",
       bgColor: "bg-warning/10",
@@ -194,7 +191,6 @@ export default async function DashboardPage() {
     {
       label: "Score de Compliance",
       value: stats.score,
-      change: "+2.1%",
       icon: TrendingUp,
       color: "text-accent",
       bgColor: "bg-accent/10",
@@ -221,7 +217,6 @@ export default async function DashboardPage() {
             key={stat.label}
             label={stat.label}
             value={stat.value}
-            change={stat.change}
             icon={stat.icon}
             color={stat.color}
             bgColor={stat.bgColor}
