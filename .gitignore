@@ -56,3 +56,7 @@ next-env.d.ts
 coverage/
 test-results/
 playwright-report/
+scripts/test_both_anon_keys.js
+scripts/test_supabase_auth.js
+query_evals.js
+scratch/

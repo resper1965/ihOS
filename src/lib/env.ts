@@ -25,9 +25,14 @@ const serverEnvSchema = z.object({
   OPENAI_API_KEY: z
     .string()
     .refine(
-      (val) => val.startsWith('sk-'),
-      'OPENAI_API_KEY must start with "sk-"'
+      (val) => val.startsWith('sk-') || val.startsWith('vck_'),
+      'OPENAI_API_KEY must start with "sk-" or "vck_"'
     ),
+
+  OPENAI_BASE_URL: z
+    .string()
+    .url('OPENAI_BASE_URL must be a valid URL')
+    .optional(),
 
   // ── Standard GRC API ──────────────────────────────────────────────────
   STANDARD_GRC_API_URL: z

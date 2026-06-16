@@ -57,6 +57,10 @@ export type ComplianceDocument = {
   file_format: string | null;
   file_size_bytes: number | null;
   total_chunks: number | null; // default 0
+  product_version_id: string | null; // UUID - FK to product_versions(id)
+  version: string;
+  status: 'draft' | 'published' | 'superseded' | 'expired';
+  expires_at: string | null; // TIMESTAMPTZ as ISO string
   created_at: string | null;
   updated_at: string | null;
 }
@@ -108,6 +112,7 @@ export type EvidenceEvaluation = {
   auditor_notes: string | null;
   evidence_sources: any[] | null; // JSONB
   assessment_id: string | null; // UUID — FK to compliance_assessments(id)
+  needs_review: boolean;
   evaluated_at: string | null;
   created_at: string | null;
   updated_at: string | null;
@@ -123,6 +128,16 @@ export type IntelligenceSnapshot = {
   created_at: string | null;
 }
 
+export type ProductVersion = {
+  id: string; // UUID
+  product_name: string;
+  version_code: string;
+  status: 'active' | 'deprecated' | 'supported';
+  technical_specs: any; // JSONB
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 export type ScfFrameworkMapping = {
   id: number; // BIGINT auto-increment
   framework_code: string; // e.g. "ISO-27001", "SOC-2"
@@ -134,6 +149,7 @@ export type ScfFrameworkMapping = {
 export type ComplianceAssessment = {
   id: string; // UUID
   framework_code: string;
+  product_version_id: string | null; // UUID - FK to product_versions(id)
   observation_start_date: string | null;
   observation_end_date: string | null;
   created_at: string | null;
@@ -260,6 +276,12 @@ export type IntelligenceSnapshotInsert = Omit<IntelligenceSnapshot, "id" | "crea
   created_at?: string | null;
 };
 
+export type ProductVersionInsert = Omit<ProductVersion, "id" | "created_at" | "updated_at"> & {
+  id?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 export type ScfFrameworkMappingInsert = Omit<ScfFrameworkMapping, "id" | "synced_at"> & {
   id?: number;
   synced_at?: string | null;
@@ -322,6 +344,7 @@ export type NistControlUpdate = Partial<Omit<NistControl, "id">>;
 export type ScfControlUpdate = Partial<Omit<ScfControl, "control_code">>;
 export type EvidenceEvaluationUpdate = Partial<Omit<EvidenceEvaluation, "id">>;
 export type IntelligenceSnapshotUpdate = Partial<Omit<IntelligenceSnapshot, "id">>;
+export type ProductVersionUpdate = Partial<Omit<ProductVersion, "id">>;
 export type ScfFrameworkMappingUpdate = Partial<Omit<ScfFrameworkMapping, "id">>;
 export type ComplianceAssessmentUpdate = Partial<Omit<ComplianceAssessment, "id">>;
 export type PoamItemUpdate = Partial<Omit<PoamItem, "id">>;
@@ -391,6 +414,12 @@ export type Database = {
         Row: IntelligenceSnapshot;
         Insert: IntelligenceSnapshotInsert;
         Update: IntelligenceSnapshotUpdate;
+        Relationships: [];
+      };
+      product_versions: {
+        Row: ProductVersion;
+        Insert: ProductVersionInsert;
+        Update: ProductVersionUpdate;
         Relationships: [];
       };
       scf_framework_mappings: {

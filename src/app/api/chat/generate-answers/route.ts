@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { embed, generateText } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { openai } from '@/lib/chat/openai';
 import { createClient } from '@/lib/supabase/server';
 import type {
   ExtractedQuestion,
@@ -23,6 +23,7 @@ const RAG_MATCH_THRESHOLD = 0.65;
 async function processQuestion(
   question: ExtractedQuestion,
   supabase: Awaited<ReturnType<typeof createClient>>,
+  productVersionId?: string,
 ): Promise<GeneratedAnswer> {
   // 1. Generate embedding for the question text
   const { embedding } = await embed({
@@ -38,6 +39,7 @@ async function processQuestion(
       match_threshold: RAG_MATCH_THRESHOLD,
       match_count: RAG_MATCH_COUNT,
       filter_framework: null,
+      filter_version_id: productVersionId || null,
     },
   );
 
@@ -108,9 +110,10 @@ ${ragContext}`,
 async function processBatch(
   questions: ExtractedQuestion[],
   supabase: Awaited<ReturnType<typeof createClient>>,
+  productVersionId?: string,
 ): Promise<GeneratedAnswer[]> {
   const results = await Promise.allSettled(
-    questions.map((q) => processQuestion(q, supabase)),
+    questions.map((q) => processQuestion(q, supabase, productVersionId)),
   );
 
   return results.map((result, idx) => {
@@ -149,7 +152,10 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { questions } = body as { questions?: ExtractedQuestion[] };
+    const { questions, productVersionId } = body as {
+      questions?: ExtractedQuestion[];
+      productVersionId?: string;
+    };
 
     if (!questions || !Array.isArray(questions) || questions.length === 0) {
       return NextResponse.json(
@@ -167,7 +173,7 @@ export async function POST(req: Request) {
     // Process in batches of BATCH_SIZE
     for (let i = 0; i < questions.length; i += BATCH_SIZE) {
       const batch = questions.slice(i, i + BATCH_SIZE);
-      const batchAnswers = await processBatch(batch, supabase);
+      const batchAnswers = await processBatch(batch, supabase, productVersionId);
       allAnswers.push(...batchAnswers);
     }
 

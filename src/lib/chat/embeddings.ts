@@ -3,7 +3,7 @@
 // via the Vercel AI SDK. All RAG and document ingestion should use these helpers.
 
 import { embed, embedMany } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { openai } from '@/lib/chat/openai';
 
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 const MAX_BATCH_SIZE = 100;

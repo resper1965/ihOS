@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { GET } from '@/app/api/cron/agentic-triggers/route';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -9,7 +9,7 @@ vi.mock('@/lib/supabase/admin', () => {
 
     const getMockData = () => {
       if (table === 'profiles') {
-        return [{ id: 'mock-user-uuid' }];
+        return [{ id: 'mock-user-uuid', role: 'admin' }];
       }
       if (table === 'agent_goals') {
         return [{ id: 'mock-goal-uuid', title: 'Remediar MFA', framework_code: 'ISO-27001' }];
@@ -45,6 +45,16 @@ vi.mock('@/lib/supabase/admin', () => {
       if (table === 'agent_org_state') {
         return { score: 70.0 };
       }
+      if (table === 'compliance_documents') {
+        return [
+          {
+            id: 1,
+            filename: 'politica_expirada.pdf',
+            status: 'published',
+            expires_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          }
+        ];
+      }
       return [];
     };
 
@@ -54,6 +64,9 @@ vi.mock('@/lib/supabase/admin', () => {
     builder.in = vi.fn().mockReturnThis();
     builder.limit = vi.fn().mockReturnThis();
     builder.order = vi.fn().mockReturnThis();
+    builder.not = vi.fn().mockReturnThis();
+    builder.lte = vi.fn().mockReturnThis();
+    builder.update = vi.fn().mockReturnThis();
 
     builder.single = vi.fn().mockImplementation(async () => {
       const data = getMockData();
@@ -84,6 +97,10 @@ vi.mock('@/lib/supabase/admin', () => {
 describe('GRC Agentic Evolution Cron Triggers Route', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    delete process.env.CRON_SECRET;
   });
 
   it('runs successfully when CRON_SECRET is not configured', async () => {
@@ -133,5 +150,22 @@ describe('GRC Agentic Evolution Cron Triggers Route', () => {
     expect(json).toHaveProperty('success', true);
 
     delete process.env.CRON_SECRET;
+  });
+
+  it('detects expired documents and alerts admin', async () => {
+    const req = new Request('http://localhost:3000/api/cron/agentic-triggers', {
+      method: 'GET',
+    });
+
+    const response = await GET(req);
+    expect(response.status).toBe(200);
+
+    const json = await response.json();
+    expect(json.success).toBe(true);
+    
+    // Validate that document_expired alert was generated
+    const expiredAlert = json.alerts_generated.find((a: any) => a.type === 'document_expired');
+    expect(expiredAlert).toBeDefined();
+    expect(expiredAlert.title).toBe('Documento de Conformidade Expirado');
   });
 });

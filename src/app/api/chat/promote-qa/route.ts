@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { embed } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { openai } from '@/lib/chat/openai';
 import { createClient } from '@/lib/supabase/server';
 import type {
   PromotionPayload,

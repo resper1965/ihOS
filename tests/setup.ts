@@ -111,7 +111,11 @@ vi.mock('@ai-sdk/openai', () => {
     modelId: model,
     provider: 'openai-embedding',
   });
-  return { openai: openaiFactory };
+  const createOpenAIFactory = () => openaiFactory;
+  return { 
+    openai: openaiFactory,
+    createOpenAI: createOpenAIFactory 
+  };
 });
 
 // Mock: @/lib/chat/rag-search

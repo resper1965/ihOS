@@ -3,7 +3,7 @@
 // Uses Vercel AI SDK streamText with tool calling + Supabase persistence
 
 import { streamText, stepCountIs } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { openai } from '@/lib/chat/openai';
 import { assembleContext } from '@/lib/context/assembler';
 import { agentTools } from '@/lib/agents/tools';
 import { createClient } from '@/lib/supabase/server';

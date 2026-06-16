@@ -234,6 +234,70 @@ export async function GET(req: Request) {
       }
     }
 
+    // ────────────────────────────────────────────────────────────────────────
+    // Sweep 4 (Reactive Lifecycle): Expired compliance documents
+    // ────────────────────────────────────────────────────────────────────────
+    const { data: expiredDocs, error: expiredDocsError } = await supabase
+      .from('compliance_documents')
+      .select('id, filename, expires_at')
+      .eq('status', 'published')
+      .not('expires_at', 'is', null)
+      .lte('expires_at', now.toISOString());
+
+    if (expiredDocsError) {
+      throw new Error(`Failed to query expired documents: ${expiredDocsError.message}`);
+    }
+
+    if (expiredDocs && expiredDocs.length > 0) {
+      // Fetch admins to notify
+      const { data: admins } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin');
+
+      const adminIds = admins?.map((a: any) => a.id) || [];
+
+      for (const doc of expiredDocs) {
+        // Update document status to 'expired'
+        const { error: updateError } = await supabase
+          .from('compliance_documents')
+          .update({ status: 'expired', updated_at: now.toISOString() })
+          .eq('id', doc.id);
+
+        if (updateError) {
+          console.error(`Failed to update expired status for doc ${doc.id}:`, updateError.message);
+          continue;
+        }
+
+        // Notify admins
+        for (const adminId of adminIds) {
+          const title = 'Documento de Conformidade Expirado';
+          const content = `O documento "${doc.filename}" expirou em ${new Date(doc.expires_at).toLocaleDateString('pt-BR')}. As avaliações de evidência vinculadas foram marcadas para revisão.`;
+
+          // Check if notification already exists
+          const { data: existingNotifs } = await supabase
+            .from('agent_notifications')
+            .select('id')
+            .eq('user_id', adminId)
+            .eq('title', title)
+            .eq('content', content)
+            .eq('read', false)
+            .limit(1);
+
+          if (!existingNotifs || existingNotifs.length === 0) {
+            await supabase.from('agent_notifications').insert({
+              user_id: adminId,
+              title,
+              content,
+              type: 'document_expired',
+              read: false,
+            });
+            alertsGenerated.push({ userId: adminId, type: 'document_expired', title });
+          }
+        }
+      }
+    }
+
     return NextResponse.json({
       success: true,
       timestamp: now.toISOString(),

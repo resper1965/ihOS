@@ -138,6 +138,64 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
   }
 }
 
+async function get<TRes>(endpoint: string): Promise<TRes> {
+  const config = getConfig();
+  const url = `${config.baseUrl}${endpoint}`;
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
+
+  try {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${config.apiKey}`,
+      Accept: "application/json",
+    };
+
+    if (config.tenantId) {
+      headers["x-standard-tenant-id"] = config.tenantId;
+    }
+
+    console.log('[GRC API Client] GET URL:', url);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    const json = (await response.json()) as any;
+
+    if (!response.ok) {
+      const error: StandardApiError = json.error ?? {
+        code: `HTTP_${response.status}`,
+        message: response.statusText || "Unknown error",
+      };
+      throw new StandardApiClientError(error.message, error.code, response.status, error.details);
+    }
+
+    return json.data !== undefined ? json.data : json;
+  } catch (err) {
+    clearTimeout(timeoutId);
+
+    if (err instanceof StandardApiClientError) {
+      throw err;
+    }
+
+    if (err instanceof DOMException && err.name === "AbortError") {
+      throw new StandardApiClientError(
+        `Request to ${endpoint} timed out after ${config.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms`,
+        "TIMEOUT",
+        408,
+      );
+    }
+
+    const message = err instanceof Error ? err.message : "Unknown network error";
+    throw new StandardApiClientError(message, "NETWORK_ERROR", 0);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Public API methods
 // ---------------------------------------------------------------------------
@@ -203,4 +261,32 @@ export async function scanVendorContract(request: ScanVendorContractRequest): Pr
  */
 export async function council(request: CouncilRequest): Promise<CouncilData> {
   return post<CouncilRequest, CouncilData>("/intelligence/council", request);
+}
+
+/**
+ * Fetch the latest SCF version details from the GRC Engine.
+ */
+export async function getLatestScfVersion(): Promise<{ scf_version_id: string; version_label: string }> {
+  return get<{ scf_version_id: string; version_label: string }>("/scf/versions/latest");
+}
+
+/**
+ * Fetch controls for a specific SCF version.
+ */
+export async function getScfControls(
+  versionId: string,
+  page: number = 1,
+  perPage: number = 100
+): Promise<{ data: any[]; total?: number }> {
+  return get<{ data: any[]; total?: number }>(
+    `/scf/versions/${versionId}/controls?page=${page}&per_page=${perPage}`
+  );
+}
+
+/**
+ * Fetch mapped frameworks from GRC Engine.
+ */
+export async function getScfFrameworks(): Promise<any[]> {
+  const result = await get<any[] | { data: any[] }>("/scf/frameworks");
+  return Array.isArray(result) ? result : result.data || [];
 }

@@ -82,6 +82,10 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get('file');
     const category = (formData.get('category') as string) || 'ISMS_CORE';
+    const productVersionId = formData.get('productVersionId') as string | null;
+    const version = (formData.get('version') as string) || '1.0';
+    const status = (formData.get('status') as string) || 'published';
+    const expiresAt = formData.get('expiresAt') as string | null;
 
     if (!file || !(file instanceof File)) {
       return NextResponse.json(
@@ -136,6 +140,10 @@ export async function POST(req: Request) {
         policy_number: null,
         language: 'pt',
         year: new Date().getFullYear(),
+        product_version_id: productVersionId || null,
+        version: version,
+        status: status as 'draft' | 'published' | 'superseded' | 'expired',
+        expires_at: expiresAt || null,
       })
       .select('id')
       .single();

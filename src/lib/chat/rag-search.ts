@@ -16,6 +16,7 @@ export interface SearchDocumentResult {
 
 export interface SearchDocumentsOptions {
   framework?: string;
+  productVersionId?: string;
   limit?: number;
   threshold?: number;
 }
@@ -24,7 +25,7 @@ export async function searchDocuments(
   query: string,
   options: SearchDocumentsOptions = {}
 ): Promise<SearchDocumentResult[]> {
-  const { framework = null, limit = 5, threshold = 0.7 } = options;
+  const { framework = null, productVersionId = null, limit = 5, threshold = 0.7 } = options;
 
   try {
     // Generate a real semantic embedding for the search query
@@ -46,6 +47,7 @@ export async function searchDocuments(
       match_threshold: threshold,
       match_count: limit,
       filter_framework: framework,
+      filter_version_id: productVersionId,
     });
 
     if (error) {

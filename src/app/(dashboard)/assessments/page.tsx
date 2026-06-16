@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ClipboardCheck, Plus, Search } from "lucide-react";
+import { ClipboardCheck, Plus, Search, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
+import { useVersion } from "@/lib/context/version-context";
 
 // ---------------------------------------------------------------------------
 // Framework display-name map
@@ -96,12 +97,14 @@ interface AssessmentCard {
   status: "active" | "completed";
   controlsCount: number;
   evidenceCount: number;
+  product_version_id?: string | null;
 }
 
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 export default function AssessmentsPage() {
+  const { activeVersion, versions } = useVersion();
   const [search, setSearch] = useState("");
   const [assessments, setAssessments] = useState<AssessmentCard[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,7 +117,7 @@ export default function AssessmentsPage() {
         // 1. Fetch all assessments
         const { data: rows, error } = await supabase
           .from("compliance_assessments")
-          .select("id, framework_code, observation_start_date, observation_end_date, created_at, updated_at");
+          .select("id, framework_code, product_version_id, observation_start_date, observation_end_date, created_at, updated_at");
 
         if (error || !rows || rows.length === 0) {
           // Fallback to mock data
@@ -169,6 +172,7 @@ export default function AssessmentsPage() {
               status: progress >= 100 ? ("completed" as const) : ("active" as const),
               controlsCount: total,
               evidenceCount: compliant,
+              product_version_id: row.product_version_id,
             };
           }),
         );
@@ -176,7 +180,7 @@ export default function AssessmentsPage() {
         setAssessments(cards);
       } catch {
         // On any unexpected error, fall back to mock data
-        setAssessments(MOCK_ASSESSMENTS);
+        setAssessments(MOCK_ASSESSMENTS.map(m => ({ ...m, product_version_id: null })));
       } finally {
         setLoading(false);
       }
@@ -185,11 +189,17 @@ export default function AssessmentsPage() {
     fetchAssessments();
   }, []);
 
-  const filtered = assessments.filter(
-    (a) =>
+  const filtered = assessments.filter((a) => {
+    const matchesSearch = (
       a.name.toLowerCase().includes(search.toLowerCase()) ||
-      a.description.toLowerCase().includes(search.toLowerCase()),
-  );
+      a.description.toLowerCase().includes(search.toLowerCase())
+    );
+    if (activeVersion) {
+      return matchesSearch && a.product_version_id === activeVersion.id;
+    }
+    // Show only global/non-versioned assessments if no active version is selected
+    return matchesSearch && !a.product_version_id;
+  });
 
   return (
     <div className="w-full space-y-8">
@@ -271,9 +281,16 @@ export default function AssessmentsPage() {
                       <ClipboardCheck className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-text-primary group-hover:text-primary transition-colors">
-                        {item.name}
-                      </h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold text-text-primary group-hover:text-primary transition-colors leading-tight">
+                          {item.name}
+                        </h3>
+                        {item.product_version_id && (
+                          <Badge variant="info" className="text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 py-0 px-1 font-mono">
+                            {versions.find(v => v.id === item.product_version_id)?.version_code}
+                          </Badge>
+                        )}
+                      </div>
                       <p className="text-xs text-text-muted mt-0.5">{item.description}</p>
                     </div>
                   </div>

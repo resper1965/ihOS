@@ -128,6 +128,7 @@ interface ControlItem {
   description: string;
   status: ControlStatus;
   evidence?: string;
+  needsReview?: boolean;
 }
 
 interface FrameworkData {
@@ -274,6 +275,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
             description,
             status,
             evidence: "Avaliado pela IA",
+            needsReview: ev.needs_review ?? false,
           };
         });
 
@@ -380,6 +382,18 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         </div>
       </div>
 
+      {resolved.controls.some(c => c.needsReview) && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-400">
+          <AlertCircle className="h-5 w-5 shrink-0" />
+          <div className="flex-1">
+            <p className="font-semibold">Revisão de Evidências Necessária</p>
+            <p className="mt-0.5 text-xs text-text-secondary">
+              Alguns controles desta avaliação dependem de políticas/documentos do ISMS que foram atualizados ou expiraram. Por favor, re-audite os controles destacados.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Metric Cards Summary */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <Card title="AI Audit Score" icon={<ShieldCheck className="h-5 w-5 text-accent" />}>
@@ -452,6 +466,9 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                 </div>
               </div>
               <div className="shrink-0 flex items-center gap-3 self-end md:self-start">
+                {control.needsReview && (
+                  <Badge variant="warning" dot>Revisão Necessária</Badge>
+                )}
                 {getStatusBadge(control.status)}
               </div>
             </div>

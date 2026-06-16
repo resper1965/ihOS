@@ -3,7 +3,7 @@
 
 async function testConnection() {
   const url = 'https://standard-api.bekaa.eu/api/v1/scf/frameworks';
-  const apiKey = process.env.STANDARD_GRC_API_KEY || 'standard_live_767965817f084242aa3e236d69ee99e48a100dfe81f047cca9314eff504b5e37';
+  const apiKey = process.env.STANDARD_GRC_API_KEY || 'standard_live_ac466fee12964728a6da8a6fe759ff667f5a9a959dc64b3ea3f3e03fbd1c9f35';
   
   console.log('=== Retesting Standard GRC API Access ===');
   console.log('URL:', url);
@@ -14,7 +14,7 @@ async function testConnection() {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
-        'x-standard-tenant-id': 'b4410209-e1c1-4b44-8dcf-9e92a7263941',
+        'x-standard-tenant-id': process.env.STANDARD_GRC_TENANT_ID || '00000001-0000-0000-0000-000000000001',
         'Accept': 'application/json'
       }
     });
