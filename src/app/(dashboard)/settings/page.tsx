@@ -10,8 +10,13 @@ import {
   Plug,
   LogOut,
   ExternalLink,
+  Layers,
+  Loader2,
+  Link2,
 } from "lucide-react";
+import Link from "next/link";
 import { useUser } from "@/hooks/use-user";
+import { usePreferences } from "@/hooks/use-preferences";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { signOut } from "@/lib/supabase/auth-actions";
 import { Badge } from "@/components/ui/badge";
@@ -131,15 +136,12 @@ function IntegrationRow({
 
 export default function SettingsPage() {
   const { user, profile, isLoading } = useUser();
-
-  // Visual-only toggle states
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [darkMode] = useState(true);
-  const [complianceAlerts, setComplianceAlerts] = useState(true);
+  const { prefs, setPref, isSaving } = usePreferences();
 
   const email = user?.email ?? "—";
   const initials = getInitials(user?.email);
   const roleLabel = getRoleLabel(profile?.role);
+  const isAdmin = profile?.role === "admin" || profile?.role === "ionic_user";
 
   return (
     <div className="w-full space-y-8">
@@ -191,11 +193,17 @@ export default function SettingsPage() {
 
       {/* Preferences Section */}
       <section className="glass-card p-6">
-        <div className="mb-4 flex items-center gap-2">
-          <Bell className="h-5 w-5 text-blue-400" />
-          <h2 className="text-lg font-semibold text-text-primary">
-            Preferências
-          </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-blue-400" />
+            <h2 className="text-lg font-semibold text-text-primary">Preferências</h2>
+          </div>
+          {isSaving && (
+            <span className="flex items-center gap-1.5 text-xs text-slate-400">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Salvando...
+            </span>
+          )}
         </div>
 
         <div className="divide-y divide-white/5">
@@ -203,14 +211,14 @@ export default function SettingsPage() {
             label="Notificações por email"
             description="Receba alertas e atualizações no seu e-mail"
             icon={Bell}
-            checked={emailNotifications}
-            onChange={setEmailNotifications}
+            checked={prefs.emailNotifications}
+            onChange={(v) => setPref("emailNotifications", v)}
           />
           <ToggleSwitch
             label="Modo escuro"
             description="Tema escuro ativado por padrão"
             icon={Moon}
-            checked={darkMode}
+            checked={prefs.darkMode}
             disabled
             onChange={() => {}}
           />
@@ -218,11 +226,31 @@ export default function SettingsPage() {
             label="Alertas de compliance"
             description="Notificações sobre mudanças em scores e gaps"
             icon={ShieldCheck}
-            checked={complianceAlerts}
-            onChange={setComplianceAlerts}
+            checked={prefs.complianceAlerts}
+            onChange={(v) => setPref("complianceAlerts", v)}
           />
         </div>
       </section>
+
+      {/* Version Management — admin/ionic_user only */}
+      {isAdmin && (
+        <section className="glass-card p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Layers className="h-5 w-5 text-blue-400" />
+            <h2 className="text-lg font-semibold text-text-primary">Gestão de Versões</h2>
+          </div>
+          <p className="mb-4 text-sm text-text-muted">
+            Crie, ative e gerencie versões do nCommand Lite para controle de escopo técnico.
+          </p>
+          <Link
+            href="/settings/versions"
+            className="inline-flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-sm font-medium text-blue-400 transition-all hover:bg-blue-500/20 hover:text-blue-300"
+          >
+            <Link2 className="h-4 w-4" />
+            Gerenciar Versões
+          </Link>
+        </section>
+      )}
 
       {/* Integrations Section */}
       <section className="glass-card p-6">

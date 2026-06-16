@@ -39,8 +39,7 @@ export function useOnboarding(): OnboardingState {
         .single();
 
       // If column doesn't exist or is null, treat as incomplete
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const isComplete = (profile as any)?.onboarding_completed === true;
+      const isComplete = profile?.onboarding_completed === true;
       setCompleted(isComplete);
     } catch {
       // Column may not exist yet — treat as completed to avoid blocking users
@@ -63,7 +62,7 @@ export function useOnboarding(): OnboardingState {
       if (!user) return;
       await supabase
         .from("profiles")
-        .update({ onboarding_completed: true } as any)
+        .update({ onboarding_completed: true })
         .eq("id", user.id);
     } catch {
       // Silent — column may not exist, completed state is already set in memory

@@ -26,6 +26,8 @@ export type Profile = {
   role: UserRole;
   client_org: string | null;
   created_at: string | null; // TIMESTAMPTZ as ISO string
+  onboarding_completed: boolean; // Added Sprint 4 migration
+  preferences: Record<string, unknown>; // JSONB — user preferences
 }
 
 export type Conversation = {
@@ -233,7 +235,10 @@ export type AgentOrgState = {
 
 export type ProfileInsert = Omit<Profile, "created_at"> & {
   created_at?: string | null;
+  onboarding_completed?: boolean;
+  preferences?: Record<string, unknown>;
 };
+
 
 export type ConversationInsert = Omit<Conversation, "id" | "created_at"> & {
   id?: string;
