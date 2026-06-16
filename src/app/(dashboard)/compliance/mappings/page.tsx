@@ -364,6 +364,7 @@ export default function MappingsPage() {
               accept=".csv,.json"
               onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+              aria-label="Selecionar arquivo de mapeamento"
             />
             <FileSpreadsheet className="mx-auto h-10 w-10 text-text-muted" />
             <p className="mt-3 text-sm font-semibold text-text-primary">

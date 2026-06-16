@@ -225,6 +225,7 @@ export default function AssessmentsPage() {
           placeholder="Buscar framework ou descrição..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          aria-label="Buscar framework ou descrição"
           className="w-full rounded-xl border border-border-glass bg-white/5 py-2.5 pl-10 pr-4 text-sm text-text-primary outline-none transition-all duration-300 focus:border-primary/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-primary/20"
         />
       </div>

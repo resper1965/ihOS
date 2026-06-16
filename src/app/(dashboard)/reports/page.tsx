@@ -140,6 +140,7 @@ export default function ReportsPage() {
               placeholder="Buscar relatório..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              aria-label="Buscar relatório"
               className="w-full rounded-xl border border-border-glass bg-white/5 py-2 pl-9 pr-4 text-sm text-text-primary outline-none transition-all duration-300 focus:border-primary/50"
             />
           </div>

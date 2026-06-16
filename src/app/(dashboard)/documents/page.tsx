@@ -292,6 +292,7 @@ export default function DocumentsPage() {
         accept=".pdf,.txt,.md,.csv"
         onChange={handleFileChange}
         className="hidden"
+        aria-label="Selecionar arquivo de evidência"
       />
 
       <PageTitleRegistrar
@@ -363,6 +364,7 @@ export default function DocumentsPage() {
               placeholder="Buscar por nome ou categoria..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              aria-label="Buscar por nome ou categoria"
               className="w-full rounded-xl border border-border-glass bg-white/5 py-2 pl-9 pr-4 text-sm text-text-primary outline-none transition-all duration-300 focus:border-primary/50"
             />
           </div>
@@ -599,8 +601,9 @@ export default function DocumentsPage() {
                 <div className="space-y-4 animate-in fade-in duration-300">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Versão do Documento</label>
+                      <label htmlFor="doc-version" className="text-xs font-bold uppercase tracking-wider text-slate-400">Versão do Documento</label>
                       <input
+                        id="doc-version"
                         type="text"
                         placeholder="Ex: 1.0 ou 2.1"
                         value={docVersion}
@@ -610,8 +613,9 @@ export default function DocumentsPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Estado de Publicação</label>
+                      <label htmlFor="doc-status" className="text-xs font-bold uppercase tracking-wider text-slate-400">Estado de Publicação</label>
                       <select
+                        id="doc-status"
                         value={docStatus}
                         onChange={(e) => setDocStatus(e.target.value as any)}
                         className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-blue-500/50"
@@ -624,12 +628,13 @@ export default function DocumentsPage() {
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Data de Expiração/Revisão Anual</label>
+                    <label htmlFor="doc-expires" className="text-xs font-bold uppercase tracking-wider text-slate-400">Data de Expiração/Revisão Anual</label>
                     <div className="relative">
                       <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                         <Calendar className="h-4 w-4 text-text-muted" />
                       </div>
                       <input
+                        id="doc-expires"
                         type="date"
                         value={expiresAt}
                         onChange={(e) => setExpiresAt(e.target.value)}

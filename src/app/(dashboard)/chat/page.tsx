@@ -273,6 +273,7 @@ export default function ChatPage() {
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Pergunte sobre compliance, frameworks, gaps…"
+            aria-label="Mensagem do chat"
             rows={1}
             className="flex-1 resize-none bg-transparent px-2 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted"
             style={{ maxHeight: "120px" }}

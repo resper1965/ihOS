@@ -438,6 +438,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               placeholder="Filtrar controles..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              aria-label="Filtrar controles"
               className="w-full rounded-xl border border-border-glass bg-white/5 py-2 pl-9 pr-4 text-sm text-text-primary outline-none transition-all duration-300 focus:border-primary/50"
             />
           </div>
