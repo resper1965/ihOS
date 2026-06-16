@@ -17,6 +17,7 @@ import {
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { SuggestionChips } from "@/components/chat/suggestion-chips";
 import { QuestionnaireReview } from "@/components/chat/questionnaire-review";
+import { ConversationList } from "@/components/chat/conversation-list";
 import { useQuestionnaire } from "@/hooks/useQuestionnaire";
 import { Progress } from "@/components/ui/progress";
 
@@ -32,6 +33,7 @@ export default function ChatPage() {
   const { messages, sendMessage, status } = useChat();
 
   const [input, setInput] = useState("");
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -109,7 +111,16 @@ export default function ChatPage() {
   const isEmpty = messages.length === 0;
 
   return (
-    <div className="w-full flex h-full flex-col">
+    <div className="flex h-full w-full overflow-hidden">
+      {/* Conversation sidebar */}
+      <ConversationList
+        activeConversationId={activeConversationId}
+        onSelectConversation={setActiveConversationId}
+        onNewConversation={(id) => setActiveConversationId(id)}
+      />
+
+      {/* Main chat area */}
+      <div className="flex flex-1 flex-col overflow-hidden">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto">
         {isEmpty ? (
@@ -313,6 +324,7 @@ export default function ChatPage() {
           fileName={questionnaire.fileName}
         />
       )}
+      </div>
     </div>
   );
 }

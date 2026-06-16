@@ -7,6 +7,7 @@ import {
   ShieldCheck, Check, ArrowLeft, X 
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -255,18 +256,14 @@ export default function DocumentsPage() {
         className="hidden"
       />
 
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            SGSI / Evidências de Segurança
-          </h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            {activeVersion 
-              ? `Visualizando políticas para nCommand Lite ${activeVersion.version_code} + SGSI Geral` 
-              : "Gerenciamento global de documentos do SGSI (ISMS) da Ionic Health"}
-          </p>
-        </div>
+      <PageTitleRegistrar
+        title="SGSI / Evidências de Segurança"
+        subtitle={activeVersion
+          ? `Visualizando políticas para nCommand Lite ${activeVersion.version_code} + SGSI Geral`
+          : "Gerenciamento global de documentos do SGSI (ISMS) da Ionic Health"}
+        icon={<FileText className="h-4 w-4 text-blue-400" />}
+      />
+      <div className="flex justify-end">
         <div className="flex items-center gap-2">
           <Button
             variant="ghost"

@@ -16,6 +16,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 
@@ -84,8 +85,15 @@ export default function MappingsPage() {
     setSyncResult(null);
     try {
       const res = await fetch("/api/compliance/mappings/sync", {
-        method: "POST"
+        method: "POST",
+        headers: { "Accept": "application/json" },
       });
+
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        throw new Error(`Servidor retornou ${res.status} — rota de sync não encontrada. Verifique o deploy.`);
+      }
+
       const data = await res.json();
       if (data.success) {
         setSyncResult({
@@ -102,7 +110,7 @@ export default function MappingsPage() {
     } catch (err) {
       setSyncResult({
         success: false,
-        message: "Erro de rede ao conectar com o serviço de sincronização."
+        message: err instanceof Error ? err.message : "Erro de rede ao conectar com o serviço de sincronização."
       });
     } finally {
       setSyncing(false);
@@ -122,8 +130,15 @@ export default function MappingsPage() {
 
       const res = await fetch("/api/compliance/mappings/upload", {
         method: "POST",
+        headers: { "Accept": "application/json" },
         body: formData
       });
+
+      const contentType = res.headers.get("content-type") ?? "";
+      if (!contentType.includes("application/json")) {
+        throw new Error(`Servidor retornou ${res.status} — rota de upload não encontrada. Verifique o deploy.`);
+      }
+
       const data = await res.json();
 
       if (data.success) {
@@ -142,7 +157,7 @@ export default function MappingsPage() {
     } catch (err) {
       setUploadResult({
         success: false,
-        message: "Erro de rede ao enviar o arquivo."
+        message: err instanceof Error ? err.message : "Erro de rede ao enviar o arquivo."
       });
     } finally {
       setUploading(false);
@@ -164,26 +179,22 @@ export default function MappingsPage() {
 
   return (
     <div className="w-full space-y-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Mapeamento de <span className="gradient-text">Controles GRC</span>
-          </h1>
-          <p className="mt-1 text-sm text-text-secondary">
-            Gerencie e sincronize o mapeamento entre controles locais da Ionic Health e o Secure Controls Framework (SCF).
-          </p>
-        </div>
+      <PageTitleRegistrar
+        title="Mapeamento GRC / SCF"
+        subtitle="Sincronize e gerencie controles do Secure Controls Framework com seus frameworks de compliance."
+        icon={<Database className="h-4 w-4 text-cyan-400" />}
+      />
+      <div className="flex justify-end">
         <div className="flex flex-wrap gap-3">
-          <Button 
-            variant="secondary" 
+          <Button
+            variant="secondary"
             onClick={() => setIsUploadOpen(true)}
             icon={<Upload className="h-4 w-4" />}
           >
             Importar Mapeamentos
           </Button>
-          <Button 
-            variant="primary" 
+          <Button
+            variant="primary"
             onClick={handleSync}
             disabled={syncing}
             icon={<RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />}

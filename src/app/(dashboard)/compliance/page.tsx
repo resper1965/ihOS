@@ -10,6 +10,7 @@ import { EvidenceSummary } from "@/components/dashboard/evidence-summary";
 import { GapTable } from "@/components/dashboard/gap-table";
 import { RoiPriority } from "@/components/dashboard/roi-priority";
 import { RealtimeRefresher } from "@/components/dashboard/realtime-refresher";
+import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import {
   getFrameworkScores,
   getEvaluationSummary,
@@ -73,23 +74,11 @@ export default async function CompliancePage() {
 
   return (
     <div className="w-full space-y-8">
-      {/* Page Header */}
-      <div>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-emerald-500/20">
-            <ShieldCheck className="h-5 w-5 text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              Compliance{" "}
-              <span className="gradient-text">Intelligence</span>
-            </h1>
-            <p className="mt-0.5 text-sm text-text-secondary">
-              Postura em tempo real em {frameworkScores.length} frameworks · Última sincronização: hoje
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageTitleRegistrar
+        title={<>Compliance <span className="text-emerald-400">Intelligence</span></>}
+        subtitle={`Postura em tempo real em ${frameworkScores.length} frameworks`}
+        icon={<ShieldCheck className="h-4 w-4 text-blue-400" />}
+      />
 
       {/* Quick Stats Row */}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

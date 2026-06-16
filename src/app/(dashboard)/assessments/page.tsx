@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { useEffect, useState } from "react";
 import { ClipboardCheck, Plus, Search, Layers } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -203,16 +204,12 @@ export default function AssessmentsPage() {
 
   return (
     <div className="w-full space-y-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Avaliações de Conformidade
-          </h1>
-          <p className="mt-1 text-text-secondary">
-            Monitore o progresso e o score de conformidade dos frameworks ativos.
-          </p>
-        </div>
+      <PageTitleRegistrar
+        title="Avaliações de Conformidade"
+        subtitle="Monitore o progresso e o score de conformidade dos frameworks ativos."
+        icon={<ClipboardCheck className="h-4 w-4 text-blue-400" />}
+      />
+      <div className="flex justify-end">
         <Button variant="primary" icon={<Plus className="h-4 w-4" />}>
           Nova Avaliação
         </Button>

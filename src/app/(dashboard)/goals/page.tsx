@@ -16,6 +16,7 @@ import {
   ListTodo 
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { useUser } from "@/hooks/use-user";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -304,19 +305,15 @@ export default function GoalsPage() {
 
   return (
     <div className="w-full space-y-8 pb-12">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-            Metas de Remediação
-          </h1>
-          <p className="mt-1 text-text-secondary">
-            Acompanhe projetos e tarefas técnicas recomendados pela inteligência para mitigação de gaps de conformidade.
-          </p>
-        </div>
-        <Button 
-          variant="primary" 
-          icon={<Plus className="h-4 w-4" />} 
+      <PageTitleRegistrar
+        title="Metas de Remediação"
+        subtitle="Acompanhe projetos e tarefas técnicas recomendados pela inteligência para mitigação de gaps de conformidade."
+        icon={<Target className="h-4 w-4 text-amber-400" />}
+      />
+      <div className="flex justify-end">
+        <Button
+          variant="primary"
+          icon={<Plus className="h-4 w-4" />}
           onClick={() => setIsGoalModalOpen(true)}
         >
           Novo Projeto

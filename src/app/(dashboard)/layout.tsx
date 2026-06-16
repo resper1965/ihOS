@@ -13,7 +13,6 @@ import {
   ShieldCheck,
   ChevronLeft,
   Menu,
-  Search,
   Settings,
   LogOut,
   Database,
@@ -23,6 +22,7 @@ import { signOut } from "@/lib/supabase/auth-actions";
 import { NotificationsDropdown } from "@/components/dashboard/notifications-dropdown";
 import { VersionProvider } from "@/lib/context/version-context";
 import { VersionSwitcher } from "@/components/dashboard/version-switcher";
+import { PageTitleProvider, useCurrentPageMeta } from "@/lib/context/page-title-context";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
@@ -51,16 +51,11 @@ function getInitials(email: string | undefined | null): string {
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [showUserMenu, setShowUserMenu] = useState(false);
   const pathname = usePathname();
-  const { user, profile, isLoading } = useUser();
-
-  const displayName = user?.email?.split("@")[0] ?? "Usuário";
-  const initials = getInitials(user?.email);
-  const roleLabel = getRoleLabel(profile?.role);
 
   return (
     <VersionProvider>
+      <PageTitleProvider>
       <div className="flex h-screen overflow-hidden bg-[#0f172a]">
         {/* Sidebar */}
         <aside className={`glass-surface relative flex flex-col transition-all duration-300 ease-in-out ${sidebarOpen ? "w-64" : "w-20"}`}>
@@ -108,68 +103,110 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Main */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-[#0f172a]/80 px-6 backdrop-blur-md">
-            <div className="flex items-center gap-4">
-              <button onClick={() => setSidebarOpen(!sidebarOpen)} className="text-slate-400 hover:text-white lg:hidden">
-                <Menu className="h-5 w-5" />
-              </button>
-              <div className="relative hidden sm:block">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <input type="text" placeholder="Buscar frameworks, documentos…"
-                  aria-label="Buscar frameworks ou documentos"
-                  className="w-72 rounded-xl border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all" />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <VersionSwitcher />
-              <div className="h-6 w-px bg-white/10" />
-              <NotificationsDropdown />
-              <div className="h-6 w-px bg-white/10" />
-
-              <div className="relative">
-                <button onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-white/5 transition-colors">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 text-xs font-bold text-white">
-                    {isLoading ? "…" : initials}
-                  </div>
-                  <div className="hidden text-left sm:block">
-                    {isLoading ? (
-                      <div className="h-4 w-24 animate-pulse rounded bg-white/10" />
-                    ) : (
-                      <>
-                        <p className="text-sm font-medium text-white">{displayName}</p>
-                        <p className="text-xs text-slate-400">{roleLabel}</p>
-                      </>
-                    )}
-                  </div>
-                </button>
-
-                {showUserMenu && (
-                  <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#1e293b]/95 shadow-xl backdrop-blur-xl">
-                    <div className="border-b border-white/10 px-4 py-3">
-                      <p className="text-sm font-medium text-white">{user?.email ?? "—"}</p>
-                      <p className="text-xs text-slate-400">{roleLabel}</p>
-                    </div>
-                    <div className="p-1">
-                      <Link href="/settings" onClick={() => setShowUserMenu(false)}
-                        className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
-                        <Settings className="h-4 w-4" /> Configurações
-                      </Link>
-                      <button onClick={() => { setShowUserMenu(false); signOut(); }}
-                        className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-red-500/10 hover:text-red-400 transition-colors">
-                        <LogOut className="h-4 w-4" /> Sair
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </header>
+          <HeaderWithTitle onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
 
           <main className="flex-1 overflow-y-auto p-6">{children}</main>
         </div>
       </div>
+      </PageTitleProvider>
     </VersionProvider>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Header sub-component — reads page meta from context
+// ─────────────────────────────────────────────────────────────────────────────
+
+function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const { user, profile, isLoading } = useUser();
+  const meta = useCurrentPageMeta();
+
+  const displayName = user?.email?.split("@")[0] ?? "Usuário";
+  const initials = user?.email ? user.email.split("@")[0].slice(0, 2).toUpperCase() : "??";
+  const roleLabel = (() => {
+    switch (profile?.role) {
+      case "admin": return "Administrador";
+      case "ionic_user": return "Usuário Ionic";
+      case "client_user": return "Usuário Cliente";
+      default: return "Usuário";
+    }
+  })();
+
+  return (
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-[#0f172a]/80 px-6 backdrop-blur-md">
+      {/* Left — page title */}
+      <div className="flex items-center gap-4">
+        <button onClick={onMenuClick} className="text-slate-400 hover:text-white lg:hidden">
+          <Menu className="h-5 w-5" />
+        </button>
+
+        {meta ? (
+          <div className="flex items-center gap-3">
+            {meta.icon && (
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/20 to-emerald-500/20">
+                {meta.icon}
+              </div>
+            )}
+            <div>
+              <h1 className="text-sm font-semibold leading-none text-white">
+                {meta.title}
+              </h1>
+              {meta.subtitle && (
+                <p className="mt-0.5 text-xs text-slate-400">{meta.subtitle}</p>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="h-4 w-40 animate-pulse rounded bg-white/5" />
+        )}
+      </div>
+
+      {/* Right — actions */}
+      <div className="flex items-center gap-3">
+        <VersionSwitcher />
+        <div className="h-6 w-px bg-white/10" />
+        <NotificationsDropdown />
+        <div className="h-6 w-px bg-white/10" />
+
+        <div className="relative">
+          <button onClick={() => setShowUserMenu(!showUserMenu)}
+            className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-white/5 transition-colors">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 text-xs font-bold text-white">
+              {isLoading ? "…" : initials}
+            </div>
+            <div className="hidden text-left sm:block">
+              {isLoading ? (
+                <div className="h-4 w-24 animate-pulse rounded bg-white/10" />
+              ) : (
+                <>
+                  <p className="text-sm font-medium text-white">{displayName}</p>
+                  <p className="text-xs text-slate-400">{roleLabel}</p>
+                </>
+              )}
+            </div>
+          </button>
+
+          {showUserMenu && (
+            <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#1e293b]/95 shadow-xl backdrop-blur-xl">
+              <div className="border-b border-white/10 px-4 py-3">
+                <p className="text-sm font-medium text-white">{user?.email ?? "—"}</p>
+                <p className="text-xs text-slate-400">{roleLabel}</p>
+              </div>
+              <div className="p-1">
+                <Link href="/settings" onClick={() => setShowUserMenu(false)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
+                  <Settings className="h-4 w-4" /> Configurações
+                </Link>
+                <button onClick={() => { setShowUserMenu(false); signOut(); }}
+                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-red-500/10 hover:text-red-400 transition-colors">
+                  <LogOut className="h-4 w-4" /> Sair
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </header>
   );
 }

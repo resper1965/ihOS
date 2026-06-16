@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { FileDown, Calendar, Search, Sparkles, Loader2, FileSpreadsheet } from "lucide-react";
+import { FileDown, Calendar, Search, Sparkles, Loader2, FileSpreadsheet, BarChart3 } from "lucide-react";
+import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
@@ -74,8 +75,22 @@ export default function ReportsPage() {
     window.open(`/api/compliance/report/${id}/export`, "_blank");
   };
 
-  const handlePrintPDF = (id: string) => {
-    window.open(`/reports/${id}/print`, "_blank");
+  const handleDownloadPDF = async (id: string, title: string) => {
+    try {
+      const res = await fetch(`/api/reports/${id}/export`, {
+        headers: { Accept: "application/pdf" },
+      });
+      if (!res.ok) throw new Error("Falha ao gerar PDF");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${title.replace(/\s+/g, "-").toLowerCase()}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("[PDF Download]", err);
+    }
   };
 
   const filtered = reports.filter((rep) =>
@@ -95,16 +110,12 @@ export default function ReportsPage() {
 
   return (
     <div className="w-full space-y-8">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl bg-clip-text text-transparent bg-gradient-to-r from-primary to-accent">
-            Relatórios de Conformidade
-          </h1>
-          <p className="mt-1 text-text-secondary">
-            Gere, visualize e baixe relatórios detalhados gerados pela inteligência GRC.
-          </p>
-        </div>
+      <PageTitleRegistrar
+        title="Relatórios de Conformidade"
+        subtitle="Gere, visualize e baixe relatórios detalhados gerados pela inteligência GRC."
+        icon={<BarChart3 className="h-4 w-4 text-blue-400" />}
+      />
+      <div className="flex justify-end">
         <Button
           variant="primary"
           onClick={handleGenerateReport}
@@ -171,7 +182,7 @@ export default function ReportsPage() {
                       Excel
                     </button>
                     <button
-                      onClick={() => handlePrintPDF(rep.id)}
+                      onClick={() => handleDownloadPDF(rep.id, rep.title)}
                       disabled={rep.status !== "ready"}
                       className="inline-flex items-center gap-1.5 rounded-lg border border-border-glass bg-white/5 px-3 py-1.5 text-xs text-text-secondary transition-all hover:bg-white/10 hover:border-primary/40 disabled:opacity-40"
                       aria-label="Download PDF"

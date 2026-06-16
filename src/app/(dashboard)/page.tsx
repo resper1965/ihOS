@@ -3,7 +3,10 @@ import {
   FileText,
   ClipboardCheck,
   TrendingUp,
+  LayoutDashboard,
 } from "lucide-react";
+import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
+import { OnboardingGate } from "@/components/onboarding/onboarding-gate";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { GoalsWidget } from "@/components/dashboard/goals-widget";
@@ -199,16 +202,12 @@ export default async function DashboardPage() {
 
   return (
     <div className="w-full space-y-8">
-      {/* Welcome */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Bem-vindo ao{" "}
-          <span className="gradient-text">ihOS</span>
-        </h1>
-        <p className="mt-1 text-text-secondary">
-          Sua visão consolidada de compliance e governança.
-        </p>
-      </div>
+      <OnboardingGate />
+      <PageTitleRegistrar
+        title={<>Bem-vindo ao <span className="text-emerald-400">ihOS</span></>}
+        subtitle="Sua visão consolidada de compliance e governança."
+        icon={<LayoutDashboard className="h-4 w-4 text-blue-400" />}
+      />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

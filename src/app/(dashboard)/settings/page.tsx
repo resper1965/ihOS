@@ -12,6 +12,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
+import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { signOut } from "@/lib/supabase/auth-actions";
 import { Badge } from "@/components/ui/badge";
 
@@ -142,22 +143,11 @@ export default function SettingsPage() {
 
   return (
     <div className="w-full space-y-8">
-      {/* Page Header */}
-      <div>
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500/20 to-emerald-500/20">
-            <Settings className="h-5 w-5 text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              <span className="gradient-text">Configurações</span>
-            </h1>
-            <p className="mt-0.5 text-sm text-text-secondary">
-              Gerencie suas preferências, perfil e integrações.
-            </p>
-          </div>
-        </div>
-      </div>
+      <PageTitleRegistrar
+        title="Configurações"
+        subtitle="Gerencie preferências e integrações da plataforma."
+        icon={<Settings className="h-4 w-4 text-slate-400" />}
+      />
 
       {/* Profile Section */}
       <section className="glass-card p-6">
