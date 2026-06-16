@@ -66,6 +66,7 @@ export default function DocumentsPage() {
   const [docStatus, setDocStatus] = useState<"draft" | "published" | "superseded" | "expired">("published");
   const [expiresAt, setExpiresAt] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [clarityReport, setClarityReport] = useState<any>(null);
   
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ state: "idle" });
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -116,13 +117,20 @@ export default function DocumentsPage() {
     setExpiresAt("");
     setSelectedFile(null);
     setUploadStatus({ state: "idle" });
+    setClarityReport(null);
   };
 
   // ── Upload handler ─────────────────────────────────────────────────────
-  async function handleUpload() {
+  // ── Upload handler ─────────────────────────────────────────────────────
+  async function handleUpload(force = false) {
     if (!selectedFile) return;
 
-    setUploadStatus({ state: "uploading", fileName: selectedFile.name });
+    setClarityReport(null);
+    setUploadStatus({ 
+      state: "processing", 
+      fileName: selectedFile.name, 
+      message: "Validando qualidade e clareza do documento..." 
+    });
     setWizardStep(3); // Go to final loading step
 
     try {
@@ -140,10 +148,40 @@ export default function DocumentsPage() {
         formData.append("expiresAt", new Date(expiresAt).toISOString());
       }
 
+      if (force) {
+        formData.append("forceIndex", "true");
+      }
+
+      // If not forcing, run validate-clarity first
+      if (!force) {
+        const validateRes = await fetch("/api/documents/validate-clarity", {
+          method: "POST",
+          body: formData,
+        });
+        const validateResult = await validateRes.json();
+        
+        if (!validateRes.ok || !validateResult.success) {
+          setUploadStatus({
+            state: "error",
+            fileName: selectedFile.name,
+            message: validateResult.error || "Falha ao validar clareza do documento.",
+          });
+          return;
+        }
+
+        const report = validateResult.data;
+        if (report.clarityStatus === "UNCLEAR") {
+          setClarityReport(report);
+          setUploadStatus({ state: "idle" }); // Show options to force or cancel
+          return;
+        }
+      }
+
+      // If it passes (or forced), do actual upload
       setUploadStatus({ 
         state: "processing", 
         fileName: selectedFile.name, 
-        message: "Extraindo texto e gerando embeddings pgvector..." 
+        message: "Clarity Gate aprovado. Extraindo texto e gerando embeddings pgvector..." 
       });
 
       const res = await fetch("/api/documents/upload", {
@@ -615,57 +653,92 @@ export default function DocumentsPage() {
                 <div className="space-y-5 animate-in fade-in duration-300">
                   {uploadStatus.state === "idle" ? (
                     <div className="space-y-4">
-                      {/* Configuration Review Table */}
-                      <div className="rounded-xl bg-white/5 border border-white/5 p-4 text-xs space-y-2">
-                        <h4 className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Revisão dos Metadados</h4>
-                        <div className="grid grid-cols-2 gap-2 text-slate-300">
-                          <div><span className="text-text-muted">Categoria:</span> {docCategory}</div>
-                          <div><span className="text-text-muted">Versão:</span> v{docVersion}</div>
-                          <div>
-                            <span className="text-text-muted">Escopo:</span>{" "}
-                            {docScope === "global" ? "Organizacional Global" : "Específico de Versão"}
-                          </div>
-                          {docScope === "version" && (
-                            <div>
-                              <span className="text-text-muted">nCommand Lite:</span>{" "}
-                              {versions.find((v) => v.id === targetVersionId)?.version_code}
+                      {clarityReport ? (
+                        /* Render Clarity Gate report */
+                        <div className="space-y-4 animate-in fade-in duration-200">
+                          <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 flex gap-3">
+                            <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
+                            <div className="text-left">
+                              <h4 className="font-bold text-red-400 text-sm">Alerta do Clarity Gate</h4>
+                              <p className="text-xs text-slate-300 mt-1">
+                                O documento possui problemas de qualidade epistêmica ou alegações não comprovadas. Recomendamos corrigi-los antes de indexar.
+                              </p>
                             </div>
-                          )}
-                          <div>
-                            <span className="text-text-muted">Validade:</span>{" "}
-                            {expiresAt ? formatDate(expiresAt) : "Sem expiração"}
                           </div>
-                          <div>
-                            <span className="text-text-muted">Status RAG:</span>{" "}
-                            {docStatus === "published" ? "Publicado / Ativo" : "Não indexar"}
-                          </div>
-                        </div>
-                      </div>
 
-                      {/* Dropzone */}
-                      <div
-                        onClick={handleFileSelectClick}
-                        className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 hover:border-blue-500/50 rounded-2xl p-8 cursor-pointer transition-all bg-white/[0.01] hover:bg-white/[0.02] text-center"
-                      >
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 mb-3">
-                          <Upload className="h-6 w-6 text-blue-400" />
+                          <div className="max-h-[250px] overflow-y-auto divide-y divide-white/5 space-y-3 pr-2">
+                            {clarityReport.issues.map((issue: any, index: number) => (
+                              <div key={index} className="pt-3 first:pt-0 space-y-1 text-left">
+                                <div className="flex items-center justify-between">
+                                  <Badge variant="danger" className="text-[9px] bg-red-500/10 text-red-400 border border-red-500/20">
+                                    {issue.severity} • {issue.code}
+                                  </Badge>
+                                  <span className="text-[10px] text-slate-500 font-mono">{issue.location}</span>
+                                </div>
+                                <p className="text-xs text-text-primary font-medium">{issue.message}</p>
+                                <p className="text-[11px] text-emerald-400 bg-emerald-500/5 rounded p-1.5 border border-emerald-500/10">
+                                  <strong>Sugestão:</strong> {issue.fix}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
-                        {selectedFile ? (
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-white truncate max-w-[300px]">
-                              {selectedFile.name}
-                            </p>
-                            <p className="text-xs text-text-muted">
-                              {formatFileSize(selectedFile.size)} • Pronto para indexar
-                            </p>
+                      ) : (
+                        /* Normal review & dropzone */
+                        <>
+                          {/* Configuration Review Table */}
+                          <div className="rounded-xl bg-white/5 border border-white/5 p-4 text-xs space-y-2">
+                            <h4 className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Revisão dos Metadados</h4>
+                            <div className="grid grid-cols-2 gap-2 text-slate-300">
+                              <div><span className="text-text-muted">Categoria:</span> {docCategory}</div>
+                              <div><span className="text-text-muted">Versão:</span> v{docVersion}</div>
+                              <div>
+                                <span className="text-text-muted">Escopo:</span>{" "}
+                                {docScope === "global" ? "Organizacional Global" : "Específico de Versão"}
+                              </div>
+                              {docScope === "version" && (
+                                <div>
+                                  <span className="text-text-muted">nCommand Lite:</span>{" "}
+                                  {versions.find((v) => v.id === targetVersionId)?.version_code}
+                                </div>
+                              )}
+                              <div>
+                                <span className="text-text-muted">Validade:</span>{" "}
+                                {expiresAt ? formatDate(expiresAt) : "Sem expiração"}
+                              </div>
+                              <div>
+                                <span className="text-text-muted">Status RAG:</span>{" "}
+                                {docStatus === "published" ? "Publicado / Ativo" : "Não indexar"}
+                              </div>
+                            </div>
                           </div>
-                        ) : (
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-white">Selecionar documento</p>
-                            <p className="text-xs text-text-muted">PDF, TXT, MD, CSV (Max 20MB)</p>
+
+                          {/* Dropzone */}
+                          <div
+                            onClick={handleFileSelectClick}
+                            className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 hover:border-blue-500/50 rounded-2xl p-8 cursor-pointer transition-all bg-white/[0.01] hover:bg-white/[0.02] text-center"
+                          >
+                            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 mb-3">
+                              <Upload className="h-6 w-6 text-blue-400" />
+                            </div>
+                            {selectedFile ? (
+                              <div className="space-y-1">
+                                <p className="text-sm font-semibold text-white truncate max-w-[300px]">
+                                  {selectedFile.name}
+                                </p>
+                                <p className="text-xs text-text-muted">
+                                  {formatFileSize(selectedFile.size)} • Pronto para indexar
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="space-y-1">
+                                <p className="text-sm font-semibold text-white">Selecionar documento</p>
+                                <p className="text-xs text-text-muted">PDF, TXT, MD, CSV (Max 20MB)</p>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
+                        </>
+                      )}
                     </div>
                   ) : (
                     /* In progress animation block */
@@ -750,13 +823,23 @@ export default function DocumentsPage() {
                 )}
 
                 {wizardStep === 3 && uploadStatus.state === "idle" && (
-                  <Button
-                    variant="primary"
-                    onClick={handleUpload}
-                    disabled={!selectedFile}
-                  >
-                    Iniciar Indexação
-                  </Button>
+                  clarityReport ? (
+                    <Button
+                      variant="secondary"
+                      className="border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50"
+                      onClick={() => handleUpload(true)}
+                    >
+                      Forçar Indexação
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      onClick={() => handleUpload(false)}
+                      disabled={!selectedFile}
+                    >
+                      Iniciar Indexação
+                    </Button>
+                  )
                 )}
 
                 {uploadStatus.state === "error" && (
