@@ -138,6 +138,16 @@ async function processBatch(
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required.' },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { questions } = body as { questions?: ExtractedQuestion[] };
 
@@ -149,16 +159,6 @@ export async function POST(req: Request) {
             'Request body must contain a non-empty "questions" array of ExtractedQuestion objects.',
         },
         { status: 400 },
-      );
-    }
-
-    const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { success: false, error: 'Authentication required.' },
-        { status: 401 }
       );
     }
 
