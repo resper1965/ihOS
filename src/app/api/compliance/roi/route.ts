@@ -3,6 +3,7 @@
 
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import { getRoiPath } from "@/lib/data/compliance-data";
 import type { RoiItem } from "@/lib/data/compliance-data";
 
@@ -10,7 +11,12 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
-    const supabase = createAdminClient();
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     // Try the latest roi_path snapshot
     const { data: snapshot, error: snapshotError } = await supabase

@@ -3,6 +3,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import type { EvidenceEvaluation } from "@/lib/supabase/types";
 import { getTopGaps } from "@/lib/data/compliance-data";
 import type { GapItem } from "@/lib/data/compliance-data";
@@ -16,7 +17,12 @@ export async function GET(request: NextRequest) {
     const limit = limitParam ? Math.min(parseInt(limitParam, 10), 100) : 20;
     const domain = searchParams.get("domain");
 
-    const supabase = createAdminClient();
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     // Query non-compliant evaluations ordered by lowest confidence first
     let query = (supabase as any)

@@ -119,6 +119,7 @@ export type IntelligenceSnapshot = {
   framework_code: string | null;
   snapshot_data: any; // JSONB
   metadata: any; // JSONB
+  user_id: string | null; // UUID - FK to auth.users(id)
   created_at: string | null;
 }
 

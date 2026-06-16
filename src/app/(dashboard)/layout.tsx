@@ -111,6 +111,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="relative hidden sm:block">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
               <input type="text" placeholder="Buscar frameworks, documentos…"
+                aria-label="Buscar frameworks ou documentos"
                 className="w-72 rounded-xl border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-blue-500/50 focus:ring-2 focus:ring-blue-500/20 transition-all" />
             </div>
           </div>

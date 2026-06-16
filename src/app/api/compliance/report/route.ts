@@ -21,7 +21,12 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const list = searchParams.get("list") === "true";
 
-    const supabase = createAdminClient();
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     if (list) {
       // Return a list of all pre-generated full_report snapshots
@@ -319,6 +324,7 @@ export async function POST(req: Request) {
         snapshot_type: "full_report",
         framework_code: frameworkCode,
         snapshot_data: reportData,
+        user_id: user.id,
         metadata: {
           title,
           framework: frameworkCode,

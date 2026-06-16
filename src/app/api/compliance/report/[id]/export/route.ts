@@ -3,7 +3,6 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import * as XLSX from "xlsx";
 
 export const dynamic = "force-dynamic";
@@ -23,10 +22,8 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const adminSupabase = createAdminClient();
-
     // 2. Fetch the specific full_report snapshot
-    const { data: snapshot, error: snapshotError } = await adminSupabase
+    const { data: snapshot, error: snapshotError } = await supabase
       .from("intelligence_snapshots")
       .select("*")
       .eq("id", id)

@@ -43,9 +43,9 @@ describe('Compliance Report API Endpoints', () => {
       const { GET } = await import('@/app/api/compliance/report/route');
 
       // Mock database response for snapshots list
-      mockSupabaseAdmin.single.mockResolvedValue({ data: null, error: null });
-      mockSupabaseAdmin.maybeSingle.mockResolvedValue({ data: null, error: null });
-      mockSupabaseAdmin.order.mockResolvedValue({
+      mockSupabaseServer.single.mockResolvedValue({ data: null, error: null });
+      mockSupabaseServer.maybeSingle.mockResolvedValue({ data: null, error: null });
+      mockSupabaseServer.order.mockResolvedValue({
         data: [
           {
             id: 123,
@@ -72,7 +72,7 @@ describe('Compliance Report API Endpoints', () => {
       const { GET } = await import('@/app/api/compliance/report/route');
 
       // Mock database response for a single pre-generated report snapshot
-      mockSupabaseAdmin.maybeSingle.mockResolvedValue({
+      mockSupabaseServer.maybeSingle.mockResolvedValue({
         data: {
           id: 456,
           snapshot_type: 'full_report',
@@ -179,7 +179,7 @@ describe('Compliance Report API Endpoints', () => {
     it('returns 404 when report snapshot is not found', async () => {
       const { GET } = await import('@/app/api/compliance/report/[id]/export/route');
 
-      mockSupabaseAdmin.maybeSingle.mockResolvedValue({ data: null, error: null });
+      mockSupabaseServer.maybeSingle.mockResolvedValue({ data: null, error: null });
 
       const req = new Request('http://localhost/api/compliance/report/999/export');
       const res = await GET(req, { params: Promise.resolve({ id: '999' }) });
@@ -193,7 +193,7 @@ describe('Compliance Report API Endpoints', () => {
       const { GET } = await import('@/app/api/compliance/report/[id]/export/route');
 
       // Mock snapshot query
-      mockSupabaseAdmin.maybeSingle.mockResolvedValue({
+      mockSupabaseServer.maybeSingle.mockResolvedValue({
         data: {
           id: 123,
           snapshot_type: 'full_report',

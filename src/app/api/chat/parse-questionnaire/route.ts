@@ -3,11 +3,22 @@
 
 import { NextResponse } from 'next/server';
 import { parseQuestionnaire } from '@/lib/chat/parser';
+import { createClient } from '@/lib/supabase/server';
 
 export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required.' },
+        { status: 401 }
+      );
+    }
+
     const formData = await req.formData();
     const file = formData.get('file');
 
