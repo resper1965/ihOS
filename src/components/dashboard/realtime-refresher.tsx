@@ -19,5 +19,13 @@ export function RealtimeRefresher() {
     router.refresh();
   });
 
+  useRealtimeSync("compliance_assessments", () => {
+    router.refresh();
+  });
+
+  useRealtimeSync("compliance_documents", () => {
+    router.refresh();
+  });
+
   return null;
 }
