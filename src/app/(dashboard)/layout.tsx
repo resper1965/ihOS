@@ -74,9 +74,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <aside className={`glass-surface relative flex flex-col transition-all duration-300 ease-in-out ${sidebarOpen ? "w-64" : "w-20"}`}>
           <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
             {sidebarOpen ? (
-              <img src="/ionic-health-logo.svg" alt="Ionic Health" className="h-7 w-auto" />
+              <img src="/ionic-health-logo.svg" alt="Ionic Health" className="h-8 w-auto" />
             ) : (
-              <img src="/ionic-icon.svg" alt="Ionic Health" className="h-9 w-9 shrink-0" />
+              <img src="/ionic-icon.svg" alt="Ionic Health" className="h-9 w-9 shrink-0" style={{color: '#4DD9C0'}} />
             )}
           </div>
 
