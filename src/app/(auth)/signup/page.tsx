@@ -24,8 +24,8 @@ export default function SignUpPage() {
   return (
     <div className="glass-card p-8">
       <div className="mb-8 text-center">
-        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-lg shadow-primary/20">
-          <span className="text-2xl font-bold text-white">iH</span>
+        <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center">
+          <img src="/ionic-icon.svg" alt="Ionic Health" className="h-12 w-12" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight">
           <span className="gradient-text">Criar Conta</span>

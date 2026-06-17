@@ -73,10 +73,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         {/* Sidebar */}
         <aside className={`glass-surface relative flex flex-col transition-all duration-300 ease-in-out ${sidebarOpen ? "w-64" : "w-20"}`}>
           <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 shadow-lg shadow-blue-500/20">
-              <span className="text-sm font-bold text-white">iH</span>
-            </div>
-            {sidebarOpen && <span className="gradient-text text-lg font-bold tracking-tight">ihOS</span>}
+            {sidebarOpen ? (
+              <img src="/ionic-health-logo.svg" alt="Ionic Health" className="h-7 w-auto" />
+            ) : (
+              <img src="/ionic-icon.svg" alt="Ionic Health" className="h-9 w-9 shrink-0" />
+            )}
           </div>
 
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 50" fill="none">
+  <!-- "ionichealth" text -->
+  <text x="0" y="40" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="42" fill="#6B7280" letter-spacing="-1">ionichealth</text>
+  <!-- Atom/orbital icon -->
+  <g transform="translate(255, 8)">
+    <ellipse cx="12" cy="12" rx="11" ry="5" stroke="#4DD9C0" stroke-width="2.5" fill="none" transform="rotate(-30 12 12)"/>
+    <ellipse cx="12" cy="12" rx="11" ry="5" stroke="#4DD9C0" stroke-width="2.5" fill="none" transform="rotate(30 12 12)"/>
+    <ellipse cx="12" cy="12" rx="11" ry="5" stroke="#4DD9C0" stroke-width="2.5" fill="none" transform="rotate(90 12 12)"/>
+    <circle cx="12" cy="12" r="2.5" fill="#4DD9C0"/>
+  </g>
+</svg>
