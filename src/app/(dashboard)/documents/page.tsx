@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { FileText, Upload, Sparkles, Layers, RefreshCw } from "lucide-react";
+import { FileText, Upload, Sparkles, Layers, RefreshCw, Globe, Box, Handshake } from "lucide-react";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -13,11 +13,21 @@ import type { ComplianceDocument } from "@/lib/supabase/types";
 import { UploadWizard } from "@/components/documents/UploadWizard";
 import { DocumentTable } from "@/components/documents/DocumentTable";
 
+type DocTab = "all" | "global" | "product" | "b2b";
+
+const TABS: { key: DocTab; label: string; icon: React.ReactNode; description: string }[] = [
+  { key: "all", label: "All Documents", icon: <FileText className="h-3.5 w-3.5" />, description: "Every document in the system" },
+  { key: "global", label: "Global ISMS", icon: <Globe className="h-3.5 w-3.5" />, description: "Organization-wide policies" },
+  { key: "product", label: "nCommand Lite", icon: <Box className="h-3.5 w-3.5" />, description: "Product-specific specs" },
+  { key: "b2b", label: "Sales Channels", icon: <Handshake className="h-3.5 w-3.5" />, description: "GEHC & Direct" },
+];
+
 export default function DocumentsPage() {
   const { versions, activeVersion } = useVersion();
   const [documents, setDocuments] = useState<ComplianceDocument[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<DocTab>("all");
   
   // Wizard state
   const [isWizardOpen, setIsWizardOpen] = useState(false);
@@ -77,7 +87,24 @@ export default function DocumentsPage() {
     }
   };
 
+  // Filter documents by active tab
+  const filteredByTab = documents.filter((doc) => {
+    switch (activeTab) {
+      case "global":
+        return doc.product_version_id === null && doc.category !== "B2B_GEHC" && doc.category !== "B2B_DIRECT";
+      case "product":
+        return doc.product_version_id !== null;
+      case "b2b":
+        return doc.category === "B2B_GEHC" || doc.category === "B2B_DIRECT";
+      default:
+        return true;
+    }
+  });
+
   const totalChunks = documents.reduce((sum, d) => sum + (d.total_chunks ?? 0), 0);
+  const globalCount = documents.filter(d => d.product_version_id === null && d.category !== "B2B_GEHC" && d.category !== "B2B_DIRECT").length;
+  const productCount = documents.filter(d => d.product_version_id !== null).length;
+  const b2bCount = documents.filter(d => d.category === "B2B_GEHC" || d.category === "B2B_DIRECT").length;
 
   return (
     <div className="w-full space-y-8">
@@ -133,9 +160,32 @@ export default function DocumentsPage() {
         </Card>
       </div>
 
+      {/* Tab Navigation */}
+      <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/5 w-fit">
+        {TABS.map((tab) => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              activeTab === tab.key
+                ? "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                : "text-slate-400 hover:text-slate-300 hover:bg-white/5 border border-transparent"
+            }`}
+          >
+            {tab.icon}
+            <span>{tab.label}</span>
+            <span className={`ml-1 text-[10px] font-mono px-1 py-0.5 rounded ${
+              activeTab === tab.key ? "bg-blue-500/20 text-blue-300" : "bg-white/5 text-slate-500"
+            }`}>
+              {tab.key === "all" ? documents.length : tab.key === "global" ? globalCount : tab.key === "product" ? productCount : b2bCount}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* Extracted Document Table Component */}
       <DocumentTable 
-        documents={documents}
+        documents={filteredByTab}
         loading={loading}
         versions={versions}
         activeVersion={activeVersion}

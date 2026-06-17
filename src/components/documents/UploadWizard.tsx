@@ -21,7 +21,7 @@ interface UploadWizardProps {
 
 export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersion }: UploadWizardProps) {
   const [wizardStep, setWizardStep] = useState(1);
-  const [docCategory, setDocCategory] = useState<"ISMS_CORE" | "B2B_GEHC" | "OPERATIONAL">("ISMS_CORE");
+  const [docCategory, setDocCategory] = useState<"ISMS_CORE" | "B2B_GEHC" | "B2B_DIRECT" | "OPERATIONAL">("ISMS_CORE");
   const [docScope, setDocScope] = useState<"global" | "version">("global");
   const [targetVersionId, setTargetVersionId] = useState<string>("");
   const [docVersion, setDocVersion] = useState("1.0");
@@ -236,9 +236,10 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   onChange={(e) => setDocCategory(e.target.value as any)}
                   className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-blue-500/50"
                 >
-                  <option value="ISMS_CORE" className="bg-[#1e293b]">ISMS Core (Políticas de Organização)</option>
-                  <option value="B2B_GEHC" className="bg-[#1e293b]">B2B Overlay (Auditorias de Clientes - ex: GEHC)</option>
-                  <option value="OPERATIONAL" className="bg-[#1e293b]">Operational (Procedimentos Técnicos Diários)</option>
+                  <option value="ISMS_CORE" className="bg-[#1e293b]">ISMS Core (Organization Policies)</option>
+                  <option value="B2B_GEHC" className="bg-[#1e293b]">B2B Channel — GEHC (Privacy: GEHC as Data Controller)</option>
+                  <option value="B2B_DIRECT" className="bg-[#1e293b]">B2B Channel — Direct Sales (Privacy: Ionic as Data Controller)</option>
+                  <option value="OPERATIONAL" className="bg-[#1e293b]">Operational (Daily Technical Procedures)</option>
                 </select>
               </div>
 

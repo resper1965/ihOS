@@ -32,24 +32,43 @@ export function VersionProvider({ children }: { children: React.ReactNode }) {
         const fetchedVersions = data || [];
         setVersions(fetchedVersions);
 
-        // Load active version from localStorage
+        // 1. Check localStorage for user override
         const storedVersionId = localStorage.getItem("ihos_active_version_id");
         if (storedVersionId) {
           const matched = fetchedVersions.find((v) => v.id === storedVersionId);
           if (matched) {
             setActiveVersionState(matched);
+            setIsLoading(false);
+            return;
           } else if (storedVersionId === "global") {
             setActiveVersionState(null);
-          } else {
-            // Default to latest active version if available
-            const active = fetchedVersions.find((v) => v.status === "active") || fetchedVersions[0] || null;
-            setActiveVersionState(active);
+            setIsLoading(false);
+            return;
           }
-        } else {
-          // Default to active version
-          const active = fetchedVersions.find((v) => v.status === "active") || fetchedVersions[0] || null;
-          setActiveVersionState(active);
         }
+
+        // 2. Fetch server-side default from agent_org_state
+        const { data: defaultState } = await supabase
+          .from("agent_org_state")
+          .select("state_value")
+          .eq("state_key", "default_product_version_id")
+          .limit(1)
+          .single();
+
+        if (defaultState?.state_value) {
+          const defaultVersion = fetchedVersions.find(
+            (v) => v.id === defaultState.state_value
+          );
+          if (defaultVersion) {
+            setActiveVersionState(defaultVersion);
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        // 3. Fallback: first active version
+        const active = fetchedVersions.find((v) => v.status === "active") || fetchedVersions[0] || null;
+        setActiveVersionState(active);
       } catch (err) {
         console.error("[VersionContext] Error fetching versions:", err);
       } finally {

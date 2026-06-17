@@ -11,7 +11,7 @@ export type UserStatus = "pending" | "approved" | "rejected";
 
 export type MessageRole = "user" | "assistant" | "system" | "tool";
 
-export type DocumentCategory = "ISMS_CORE" | "B2B_GEHC" | "OPERATIONAL";
+export type DocumentCategory = "ISMS_CORE" | "B2B_GEHC" | "B2B_DIRECT" | "OPERATIONAL";
 
 export type PoamStatus = "open" | "in_progress" | "closed" | "risk_accepted";
 

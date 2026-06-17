@@ -128,7 +128,7 @@ export async function POST(req: Request) {
         doc_type: fileType,
         file_format: fileType,
         file_size_bytes: file.size,
-        category: category as 'ISMS_CORE' | 'B2B_GEHC' | 'OPERATIONAL',
+        category: category as 'ISMS_CORE' | 'B2B_GEHC' | 'B2B_DIRECT' | 'OPERATIONAL',
         title: file.name,
         total_chunks: 0,
         policy_number: null,
