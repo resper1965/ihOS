@@ -1,13 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 50" fill="none">
-  <!-- "ionichealth" wordmark -->
-  <text x="0" y="40" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="42" fill="#9CA3AF" letter-spacing="-1.5">ionichealth</text>
-  <!-- Atom symbol -->
+  <text x="0" y="40" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="42" fill="#58595b" letter-spacing="-1.5">ionichealth</text>
   <g transform="translate(267, 2) scale(0.22)">
     <ellipse cx="100" cy="100" rx="90" ry="42" 
-      stroke="#4DD9C0" stroke-width="18" fill="none"
+      stroke="#53c4cd" stroke-width="18" fill="none"
       transform="rotate(-25 100 100)" stroke-linecap="round"/>
     <ellipse cx="100" cy="100" rx="90" ry="42" 
-      stroke="#4DD9C0" stroke-width="18" fill="none"
+      stroke="#53c4cd" stroke-width="18" fill="none"
       transform="rotate(65 100 100)" stroke-linecap="round"/>
   </g>
 </svg>
