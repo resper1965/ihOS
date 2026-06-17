@@ -42,7 +42,8 @@ export async function searchDocuments(
 
     const supabase = (await createClient()) as any;
 
-    const { data, error } = await supabase.rpc('match_documents', {
+    const { data, error } = await supabase.rpc('match_documents_hybrid', {
+      query_text: query,
       query_embedding: queryEmbedding,
       match_threshold: threshold,
       match_count: limit,

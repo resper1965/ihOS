@@ -51,7 +51,11 @@ const serverEnvSchema = z.object({
   CRON_SECRET: z
     .string()
     .min(32, 'CRON_SECRET must be at least 32 characters')
-    .optional(),
+    .optional()
+    .refine((val) => {
+      if (process.env.NODE_ENV === 'production') return !!val;
+      return true;
+    }, 'CRON_SECRET is required in production environment'),
 
   // ── Node ──────────────────────────────────────────────────────────────
   NODE_ENV: z

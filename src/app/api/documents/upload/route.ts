@@ -97,12 +97,34 @@ export async function POST(req: Request) {
       }
     }
 
+    // ── 4c. Upload file to Supabase Storage ──────────────────────────────
+    const fileBytes = await file.arrayBuffer();
+    const buffer = Buffer.from(fileBytes);
+    
+    const uniqueFilename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
+    const storagePath = `${category}/${uniqueFilename}`;
+
+    const { error: storageError } = await supabase.storage
+      .from('compliance_documents')
+      .upload(storagePath, buffer, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: true,
+      });
+
+    if (storageError) {
+      console.error('[upload] Storage error:', storageError.message);
+      return NextResponse.json(
+        { success: false, error: 'Failed to upload document to storage.' },
+        { status: 500 },
+      );
+    }
+
     // ── 5. Insert document record (status: processing) ──────────────────
     const { data: docRecord, error: insertError } = await supabase
       .from('compliance_documents')
       .insert({
         filename: file.name,
-        filepath: `uploads/${file.name}`,
+        filepath: storagePath,
         doc_type: fileType,
         file_format: fileType,
         file_size_bytes: file.size,

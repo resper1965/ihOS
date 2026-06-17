@@ -1,5 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { Ratelimit } from "@upstash/ratelimit";
+import { Redis } from "@upstash/redis";
 
 /**
  * Next.js middleware — runs on every matched request.
@@ -36,68 +38,45 @@ function isStaticAsset(pathname: string): boolean {
   );
 }
 
-// ── Rate Limiting (in-memory, compatible with Vercel Edge) ──────────────────
+// ── Rate Limiting (Upstash Redis, Vercel Edge compatible) ──────────────────
 
-interface RateLimitEntry {
-  count: number;
-  resetAt: number;
-}
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL || "";
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || "";
+const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
 
-const rateLimitMap = new Map<string, RateLimitEntry>();
-
-interface RateLimitConfig {
-  maxRequests: number;
-  windowMs: number;
-}
-
-const RATE_LIMITS: { pattern: string; config: RateLimitConfig }[] = [
+const RATE_LIMITS = [
   // Strictest first — order matters (first match wins)
-  { pattern: "/api/chat/generate-answers", config: { maxRequests: 5, windowMs: 60_000 } },
-  { pattern: "/api/chat/promote-qa", config: { maxRequests: 10, windowMs: 60_000 } },
-  { pattern: "/api/chat/", config: { maxRequests: 20, windowMs: 60_000 } },
-  { pattern: "/api/documents/upload", config: { maxRequests: 10, windowMs: 60_000 } },
-  { pattern: "/login", config: { maxRequests: 5, windowMs: 900_000 } }, // 5 per 15min
-  { pattern: "/signup", config: { maxRequests: 5, windowMs: 900_000 } },
-  { pattern: "/api/", config: { maxRequests: 100, windowMs: 60_000 } },
+  { pattern: "/api/chat/generate-answers", limiter: redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, "60 s"), prefix: "ihos:rl" }) : null },
+  { pattern: "/api/chat/promote-qa", limiter: redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, "60 s"), prefix: "ihos:rl" }) : null },
+  { pattern: "/api/chat/", limiter: redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(20, "60 s"), prefix: "ihos:rl" }) : null },
+  { pattern: "/api/documents/upload", limiter: redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(10, "60 s"), prefix: "ihos:rl" }) : null },
+  { pattern: "/login", limiter: redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, "15 m"), prefix: "ihos:rl" }) : null },
+  { pattern: "/signup", limiter: redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5, "15 m"), prefix: "ihos:rl" }) : null },
+  { pattern: "/api/", limiter: redis ? new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(100, "60 s"), prefix: "ihos:rl" }) : null },
 ];
 
-function getRateLimitConfig(pathname: string): RateLimitConfig | null {
-  for (const { pattern, config } of RATE_LIMITS) {
-    if (pathname.startsWith(pattern)) return config;
-  }
-  return null;
-}
-
-function checkRateLimit(
+async function checkRateLimit(
   ip: string,
   pathname: string
-): { allowed: boolean; retryAfterMs?: number } {
-  const config = getRateLimitConfig(pathname);
-  if (!config) return { allowed: true };
+): Promise<{ allowed: boolean; retryAfterMs?: number }> {
+  for (const { pattern, limiter } of RATE_LIMITS) {
+    if (pathname.startsWith(pattern)) {
+      if (!limiter) return { allowed: true }; // Allow all if redis is missing
 
-  const key = `${ip}:${pathname.split("/").slice(0, 4).join("/")}`;
-  const now = Date.now();
-
-  // Cleanup expired entries periodically (every ~100 requests)
-  if (rateLimitMap.size > 1000) {
-    for (const [k, v] of rateLimitMap) {
-      if (v.resetAt <= now) rateLimitMap.delete(k);
+      const key = `${ip}:${pattern}`;
+      try {
+        const { success, reset } = await limiter.limit(key);
+        if (!success) {
+          return { allowed: false, retryAfterMs: Math.max(0, reset - Date.now()) };
+        }
+      } catch (error) {
+        // Fallback to allow if Redis fails
+        console.error("Rate limit Redis error:", error);
+        return { allowed: true };
+      }
+      return { allowed: true };
     }
   }
-
-  const entry = rateLimitMap.get(key);
-
-  if (!entry || entry.resetAt <= now) {
-    // New window
-    rateLimitMap.set(key, { count: 1, resetAt: now + config.windowMs });
-    return { allowed: true };
-  }
-
-  if (entry.count >= config.maxRequests) {
-    return { allowed: false, retryAfterMs: entry.resetAt - now };
-  }
-
-  entry.count++;
   return { allowed: true };
 }
 
@@ -118,7 +97,7 @@ export async function middleware(request: NextRequest) {
       request.headers.get("x-real-ip") ??
       "unknown";
 
-    const { allowed, retryAfterMs } = checkRateLimit(ip, pathname);
+    const { allowed, retryAfterMs } = await checkRateLimit(ip, pathname);
 
     if (!allowed) {
       const retryAfterSeconds = Math.ceil((retryAfterMs ?? 60_000) / 1000);
