@@ -43,9 +43,9 @@ function StatusBadge({ status }: { status: GapItem["status"] }) {
       label: "Medium",
     },
     low: {
-      bg: "bg-blue-500/15 border-blue-500/25",
-      text: "text-blue-400",
-      dot: "bg-blue-400",
+      bg: "bg-primary/15 border-primary/25",
+      text: "text-primary",
+      dot: "bg-primary",
       label: "Low",
     },
   }[status];
@@ -74,7 +74,7 @@ function StatusBadge({ status }: { status: GapItem["status"] }) {
 function ConfidenceBar({ value }: { value: number }) {
   const color =
     value >= 70
-      ? "from-emerald-500 to-emerald-400"
+      ? "from-accent to-accent"
       : value >= 40
         ? "from-amber-500 to-amber-400"
         : "from-red-500 to-red-400";
@@ -269,7 +269,7 @@ export function GapTable({ gaps }: GapTableProps) {
                       }`}
                     >
                       <span className="w-[140px] shrink-0 px-6 py-3.5 text-left">
-                        <span className="font-mono text-sm font-semibold text-blue-400">
+                        <span className="font-mono text-sm font-semibold text-primary">
                           {gap.code}
                         </span>
                       </span>

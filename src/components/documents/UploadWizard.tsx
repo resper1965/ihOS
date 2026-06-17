@@ -194,8 +194,8 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-              <ShieldCheck className="h-4 w-4 text-blue-400" />
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+              <ShieldCheck className="h-4 w-4 text-primary" />
             </div>
             <div>
               <h3 className="font-bold text-white text-base">ISMS Guideline Indexing</h3>
@@ -213,14 +213,14 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
         {/* Steps Indicator */}
         <div className="flex items-center justify-center border-b border-white/5 px-6 py-3 bg-white/[0.01]">
           <div className="flex items-center gap-2 text-xs">
-            <span className={`flex h-5 w-5 items-center justify-center rounded-full font-bold ${wizardStep >= 1 ? "bg-blue-500 text-white" : "bg-white/5 text-slate-500"}`}>1</span>
-            <span className={wizardStep >= 1 ? "text-blue-400 font-semibold" : "text-slate-500"}>Scope</span>
-            <div className={`h-px w-8 bg-white/10 ${wizardStep >= 2 ? "bg-blue-500/40" : ""}`} />
-            <span className={`flex h-5 w-5 items-center justify-center rounded-full font-bold ${wizardStep >= 2 ? "bg-blue-500 text-white" : "bg-white/5 text-slate-500"}`}>2</span>
-            <span className={wizardStep >= 2 ? "text-blue-400 font-semibold" : "text-slate-500"}>Expiration</span>
-            <div className={`h-px w-8 bg-white/10 ${wizardStep >= 3 ? "bg-blue-500/40" : ""}`} />
-            <span className={`flex h-5 w-5 items-center justify-center rounded-full font-bold ${wizardStep >= 3 ? "bg-blue-500 text-white" : "bg-white/5 text-slate-500"}`}>3</span>
-            <span className={wizardStep >= 3 ? "text-blue-400 font-semibold" : "text-slate-500"}>Upload</span>
+            <span className={`flex h-5 w-5 items-center justify-center rounded-full font-bold ${wizardStep >= 1 ? "bg-primary text-white" : "bg-white/5 text-slate-500"}`}>1</span>
+            <span className={wizardStep >= 1 ? "text-primary font-semibold" : "text-slate-500"}>Scope</span>
+            <div className={`h-px w-8 bg-white/10 ${wizardStep >= 2 ? "bg-primary/40" : ""}`} />
+            <span className={`flex h-5 w-5 items-center justify-center rounded-full font-bold ${wizardStep >= 2 ? "bg-primary text-white" : "bg-white/5 text-slate-500"}`}>2</span>
+            <span className={wizardStep >= 2 ? "text-primary font-semibold" : "text-slate-500"}>Expiration</span>
+            <div className={`h-px w-8 bg-white/10 ${wizardStep >= 3 ? "bg-primary/40" : ""}`} />
+            <span className={`flex h-5 w-5 items-center justify-center rounded-full font-bold ${wizardStep >= 3 ? "bg-primary text-white" : "bg-white/5 text-slate-500"}`}>3</span>
+            <span className={wizardStep >= 3 ? "text-primary font-semibold" : "text-slate-500"}>Upload</span>
           </div>
         </div>
 
@@ -234,7 +234,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                 <select
                   value={docCategory}
                   onChange={(e) => setDocCategory(e.target.value as any)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-blue-500/50"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50"
                 >
                   <option value="ISMS_CORE" className="bg-[#1e293b]">ISMS Core (Organization Policies)</option>
                   <option value="B2B_GEHC" className="bg-[#1e293b]">B2B Channel — GEHC (Privacy: GEHC as Data Controller)</option>
@@ -251,11 +251,11 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     onClick={() => setDocScope("global")}
                     className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all ${
                       docScope === "global"
-                        ? "bg-blue-500/10 border-blue-500 text-white"
+                        ? "bg-primary/10 border-primary text-white"
                         : "bg-white/5 border-white/5 text-slate-400 hover:border-white/10"
                     }`}
                   >
-                    <ShieldCheck className="h-5 w-5 text-blue-400" />
+                    <ShieldCheck className="h-5 w-5 text-primary" />
                     <span className="font-semibold text-xs">Global ISMS</span>
                     <span className="text-[9px] text-text-muted">Applies to the entire organization</span>
                   </button>
@@ -265,11 +265,11 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     onClick={() => setDocScope("version")}
                     className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border text-center transition-all ${
                       docScope === "version"
-                        ? "bg-blue-500/10 border-blue-500 text-white"
+                        ? "bg-primary/10 border-primary text-white"
                         : "bg-white/5 border-white/5 text-slate-400 hover:border-white/10"
                     }`}
                   >
-                    <Layers className="h-5 w-5 text-blue-400" />
+                    <Layers className="h-5 w-5 text-primary" />
                     <span className="font-semibold text-xs">Technical Specification</span>
                     <span className="text-[9px] text-text-muted">Restricted to product version</span>
                   </button>
@@ -282,7 +282,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   <select
                     value={targetVersionId}
                     onChange={(e) => setTargetVersionId(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-blue-500/50"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50"
                   >
                     {versions.map((v) => (
                       <option key={v.id} value={v.id} className="bg-[#1e293b]">
@@ -290,7 +290,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                       </option>
                     ))}
                   </select>
-                  <div className="rounded-xl bg-blue-500/5 border border-blue-500/10 p-3 text-xs text-blue-400 flex gap-2">
+                  <div className="rounded-xl bg-primary/5 border border-primary/10 p-3 text-xs text-primary flex gap-2">
                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                     <p>
                       <strong>Attention:</strong> Specific documents are isolated in RAG. Chat AI will use this data only to audit the selected version.
@@ -313,7 +313,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     placeholder="Ex: 1.0 or 2.1"
                     value={docVersion}
                     onChange={(e) => setDocVersion(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-blue-500/50 font-mono"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 font-mono"
                   />
                 </div>
 
@@ -323,7 +323,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     id="doc-status"
                     value={docStatus}
                     onChange={(e) => setDocStatus(e.target.value as any)}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-blue-500/50"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50"
                   >
                     <option value="published" className="bg-[#1e293b]">Active (Published to RAG)</option>
                     <option value="draft" className="bg-[#1e293b]">Draft (Does not index in RAG)</option>
@@ -343,7 +343,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     type="date"
                     value={expiresAt}
                     onChange={(e) => setExpiresAt(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white outline-none focus:border-blue-500/50"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white outline-none focus:border-primary/50"
                   />
                 </div>
                 <p className="text-[10px] text-text-muted mt-1">The system will send automatic alerts to the dashboard on the set date.</p>
@@ -397,10 +397,10 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                       {/* Dropzone */}
                       <div
                         onClick={handleFileSelectClick}
-                        className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 hover:border-blue-500/50 rounded-2xl p-8 cursor-pointer transition-all bg-white/[0.01] hover:bg-white/[0.02] text-center"
+                        className="flex flex-col items-center justify-center border-2 border-dashed border-white/10 hover:border-primary/50 rounded-2xl p-8 cursor-pointer transition-all bg-white/[0.01] hover:bg-white/[0.02] text-center"
                       >
-                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 mb-3">
-                          <Upload className="h-6 w-6 text-blue-400" />
+                        <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mb-3">
+                          <Upload className="h-6 w-6 text-primary" />
                         </div>
                         {selectedFile ? (
                           <div className="space-y-1">

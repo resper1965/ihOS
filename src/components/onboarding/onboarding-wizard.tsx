@@ -24,8 +24,8 @@ const STEPS = [
     title: "Bem-vindo ao ihOS",
     subtitle: "Inteligência de compliance para a Ionic Health",
     icon: Sparkles,
-    iconColor: "text-blue-400",
-    iconBg: "from-blue-500/20 to-emerald-500/20",
+    iconColor: "text-primary",
+    iconBg: "from-primary/20 to-accent/20",
     description:
       "O ihOS é o sistema central de governança, risco e compliance da Ionic Health. Em poucos passos você estará monitorando frameworks como LGPD, ISO 27001, TX-RAMP e muito mais.",
     action: null,
@@ -36,7 +36,7 @@ const STEPS = [
     subtitle: "Passo 1 de 4",
     icon: ShieldCheck,
     iconColor: "text-emerald-400",
-    iconBg: "from-emerald-500/20 to-cyan-500/20",
+    iconBg: "from-accent/20 to-cyan-500/20",
     description:
       "Acesse a página de Compliance para visualizar o scorecard dos frameworks disponíveis. O sistema já monitora LGPD, HIPAA, ISO 27001, TX-RAMP e EU GDPR automaticamente.",
     action: { label: "Ver Compliance", href: "/compliance" },
@@ -47,7 +47,7 @@ const STEPS = [
     subtitle: "Passo 2 de 4",
     icon: FileText,
     iconColor: "text-cyan-400",
-    iconBg: "from-cyan-500/20 to-blue-500/20",
+    iconBg: "from-primary/20 to-primary/20",
     description:
       "Envie políticas, procedimentos e evidências do SGSI. O sistema vai indexar automaticamente e tornar esses documentos disponíveis para consulta via IA e avaliações de conformidade.",
     action: { label: "Ir para Documentos", href: "/documents" },
@@ -120,7 +120,7 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
         {/* Progress bar */}
         <div className="h-1 w-full bg-white/5">
           <div
-            className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-500"
+            className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -152,7 +152,7 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
                 onClick={() => setStep(i)}
                 className={`h-2 rounded-full transition-all duration-300 ${
                   i === step
-                    ? "w-6 bg-blue-400"
+                    ? "w-6 bg-primary"
                     : i < step
                     ? "w-2 bg-emerald-500"
                     : "w-2 bg-white/10"
@@ -177,7 +177,7 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
             {current.action && (
               <Link
                 href={current.action.href}
-                className="flex items-center gap-2 rounded-xl border border-blue-500/30 bg-blue-500/10 px-4 py-2.5 text-sm text-blue-400 hover:bg-blue-500/20 hover:text-blue-300 transition-all"
+                className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm text-primary hover:bg-primary/20 hover:text-blue-300 transition-all"
                 onClick={onDismiss}
               >
                 {current.action.label}
@@ -188,7 +188,7 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
             <button
               onClick={isLast ? handleComplete : () => setStep((s) => s + 1)}
               disabled={completing}
-              className="ml-auto flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-emerald-500 px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-blue-500/20 hover:from-blue-400 hover:to-emerald-400 transition-all disabled:opacity-60"
+              className="ml-auto flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-primary/20 hover:from-primary hover:to-accent transition-all disabled:opacity-60"
             >
               {completing ? (
                 "Concluindo..."

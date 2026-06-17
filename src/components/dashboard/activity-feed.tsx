@@ -20,7 +20,7 @@ interface ActivityFeedProps {
 
 const ICON_MAP = {
   assessment: { icon: ClipboardCheck, color: "text-amber-400", bgColor: "bg-amber-400/10" },
-  analysis: { icon: Search, color: "text-blue-400", bgColor: "bg-blue-400/10" },
+  analysis: { icon: Search, color: "text-primary", bgColor: "bg-primary/10" },
   document: { icon: FileText, color: "text-emerald-400", bgColor: "bg-emerald-400/10" },
   review: { icon: Eye, color: "text-indigo-400", bgColor: "bg-indigo-400/10" },
   score: { icon: ShieldCheck, color: "text-purple-400", bgColor: "bg-purple-400/10" },

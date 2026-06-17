@@ -132,7 +132,7 @@ function DomainBarChart({ domains }: { domains: DomainBreakdown[] }) {
               <div
                 className={`h-full rounded-full transition-all duration-700 ease-out ${
                   d.rate >= 50
-                    ? "bg-gradient-to-r from-emerald-600 to-emerald-400"
+                    ? "bg-gradient-to-r from-emerald-600 to-accent"
                     : d.rate >= 30
                       ? "bg-gradient-to-r from-amber-600 to-amber-400"
                       : "bg-gradient-to-r from-red-600 to-red-400"
@@ -184,7 +184,7 @@ export function EvidenceSummary({ evaluation, domains }: EvidenceSummaryProps) {
             <StatPill
               label="Total Evaluated"
               value={evaluation.total}
-              color="bg-blue-400"
+              color="bg-primary"
             />
             <div className="mt-1 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
               <p className="text-xs text-text-muted">Avg. Confidence</p>

@@ -15,13 +15,13 @@ interface RoiPriorityProps {
 function getRoiColor(roi: number): string {
   if (roi >= 3) return "text-emerald-400";
   if (roi >= 1) return "text-amber-400";
-  return "text-blue-400";
+  return "text-primary";
 }
 
 function getRoiBarColor(roi: number): string {
-  if (roi >= 3) return "from-emerald-600 to-emerald-400";
+  if (roi >= 3) return "from-emerald-600 to-accent";
   if (roi >= 1) return "from-amber-600 to-amber-400";
-  return "from-blue-600 to-blue-400";
+  return "from-primary to-primary";
 }
 
 export function RoiPriority({ items }: RoiPriorityProps) {
@@ -32,7 +32,7 @@ export function RoiPriority({ items }: RoiPriorityProps) {
     <div className="glass-card overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-3 border-b border-white/5 px-6 py-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500/20 to-blue-500/20">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent/20 to-primary/20">
           <TrendingUp className="h-5 w-5 text-emerald-400" />
         </div>
         <div>
@@ -64,7 +64,7 @@ export function RoiPriority({ items }: RoiPriorityProps) {
               <div
                 className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-bold tabular-nums transition-all duration-300 ${
                   idx < 3
-                    ? "bg-gradient-to-br from-emerald-500/20 to-emerald-600/10 text-emerald-400"
+                    ? "bg-gradient-to-br from-accent/20 to-emerald-600/10 text-emerald-400"
                     : "bg-white/5 text-text-muted"
                 }`}
               >
@@ -74,7 +74,7 @@ export function RoiPriority({ items }: RoiPriorityProps) {
               {/* Info */}
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm font-semibold text-blue-400">
+                  <span className="font-mono text-sm font-semibold text-primary">
                     {item.code}
                   </span>
                   <span className="text-sm text-text-secondary truncate">

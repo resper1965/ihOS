@@ -29,7 +29,7 @@ function notificationIcon(type: AgentNotification["type"]) {
     case "score_change":
       return <TrendingUp className="h-4 w-4 text-emerald-400" />;
     case "task_deadline":
-      return <Clock className="h-4 w-4 text-blue-400" />;
+      return <Clock className="h-4 w-4 text-primary" />;
     default:
       return <Bell className="h-4 w-4 text-slate-400" />;
   }

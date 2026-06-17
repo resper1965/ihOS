@@ -86,9 +86,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               return (
                 <Link key={item.href} href={item.href}
                   className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                    isActive ? "bg-blue-500/10 text-blue-400 shadow-sm shadow-blue-500/5" : "text-slate-400 hover:bg-white/5 hover:text-white"
+                    isActive ? "bg-primary/10 text-primary shadow-sm shadow-primary/5" : "text-slate-400 hover:bg-white/5 hover:text-white"
                   }`}>
-                  <item.icon className={`h-5 w-5 shrink-0 ${isActive ? "text-blue-400" : "text-slate-500 group-hover:text-slate-400"}`} />
+                  <item.icon className={`h-5 w-5 shrink-0 ${isActive ? "text-primary" : "text-slate-500 group-hover:text-slate-400"}`} />
                   {sidebarOpen && <span>{item.label}</span>}
                 </Link>
               );
@@ -97,9 +97,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {profile?.role === "admin" && (
                 <Link href="/admin/users"
                   className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                    pathname.startsWith("/admin/users") ? "bg-blue-500/10 text-blue-400 shadow-sm shadow-blue-500/5" : "text-slate-400 hover:bg-white/5 hover:text-white"
+                    pathname.startsWith("/admin/users") ? "bg-primary/10 text-primary shadow-sm shadow-primary/5" : "text-slate-400 hover:bg-white/5 hover:text-white"
                   }`}>
-                  <Users className={`h-5 w-5 shrink-0 ${pathname.startsWith("/admin/users") ? "text-blue-400" : "text-slate-500 group-hover:text-slate-400"}`} />
+                  <Users className={`h-5 w-5 shrink-0 ${pathname.startsWith("/admin/users") ? "text-primary" : "text-slate-500 group-hover:text-slate-400"}`} />
                   {sidebarOpen && <span>User Management</span>}
                 </Link>
             )}
@@ -168,7 +168,7 @@ function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
         {meta ? (
           <div className="flex items-center gap-3">
             {meta.icon && (
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500/20 to-emerald-500/20">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-accent/20">
                 {meta.icon}
               </div>
             )}
@@ -196,7 +196,7 @@ function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
         <div className="relative">
           <button onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-white/5 transition-colors">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-emerald-500 text-xs font-bold text-white">
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-xs font-bold text-white">
               {isLoading ? "…" : initials}
             </div>
             <div className="hidden text-left sm:block">

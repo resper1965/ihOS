@@ -27,9 +27,9 @@ const variantStyles: Record<BadgeVariant, { bg: string; text: string; dot: strin
     dot: "bg-red-400",
   },
   info: {
-    bg: "bg-blue-500/10 border-blue-500/20",
-    text: "text-blue-400",
-    dot: "bg-blue-400",
+    bg: "bg-primary/10 border-primary/20",
+    text: "text-primary",
+    dot: "bg-primary",
   },
   neutral: {
     bg: "bg-slate-500/10 border-slate-500/20",
