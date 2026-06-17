@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -16,6 +16,7 @@ import {
   Settings,
   LogOut,
   Database,
+  Users,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { signOut } from "@/lib/supabase/auth-actions";
@@ -27,20 +28,20 @@ import { PageTitleProvider, useCurrentPageMeta } from "@/lib/context/page-title-
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Compliance", href: "/compliance", icon: ShieldCheck },
-  { label: "Mapeamento GRC", href: "/compliance/mappings", icon: Database },
+  { label: "GRC Mapping", href: "/compliance/mappings", icon: Database },
   { label: "Chat", href: "/chat", icon: MessageSquare },
-  { label: "Metas", href: "/goals", icon: Target },
-  { label: "Avaliações", href: "/assessments", icon: ClipboardCheck },
-  { label: "Documentos", href: "/documents", icon: FileText },
-  { label: "Relatórios", href: "/reports", icon: BarChart3 },
+  { label: "Goals", href: "/goals", icon: Target },
+  { label: "Assessments", href: "/assessments", icon: ClipboardCheck },
+  { label: "Documents", href: "/documents", icon: FileText },
+  { label: "Reports", href: "/reports", icon: BarChart3 },
 ] as const;
 
 function getRoleLabel(role: string | undefined | null): string {
   switch (role) {
-    case "admin": return "Administrador";
-    case "ionic_user": return "Usuário Ionic";
-    case "client_user": return "Usuário Cliente";
-    default: return "Usuário";
+    case "admin": return "Administrator";
+    case "ionic_user": return "Ionic User";
+    case "client_user": return "Client User";
+    default: return "User";
   }
 }
 
@@ -52,6 +53,18 @@ function getInitials(email: string | undefined | null): string {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const pathname = usePathname();
+  const router = useRouter();
+  const { profile, isLoading } = useUser();
+
+  useEffect(() => {
+    if (!isLoading && profile && profile.status === "pending") {
+      router.replace("/pending-approval");
+    }
+  }, [profile, isLoading, router]);
+
+  if (profile?.status === "pending") {
+    return null; // Prevents flashing the dashboard
+  }
 
   return (
     <VersionProvider>
@@ -79,18 +92,28 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 </Link>
               );
             })}
+            
+            {profile?.role === "admin" && (
+                <Link href="/admin/users"
+                  className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
+                    pathname.startsWith("/admin/users") ? "bg-blue-500/10 text-blue-400 shadow-sm shadow-blue-500/5" : "text-slate-400 hover:bg-white/5 hover:text-white"
+                  }`}>
+                  <Users className={`h-5 w-5 shrink-0 ${pathname.startsWith("/admin/users") ? "text-blue-400" : "text-slate-500 group-hover:text-slate-400"}`} />
+                  {sidebarOpen && <span>User Management</span>}
+                </Link>
+            )}
           </nav>
 
           <div className="space-y-1 border-t border-white/10 p-3">
             <Link href="/settings"
               className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-white/5 hover:text-white transition-all">
               <Settings className="h-5 w-5 shrink-0 text-slate-500" />
-              {sidebarOpen && <span>Configurações</span>}
+              {sidebarOpen && <span>Settings</span>}
             </Link>
             <button onClick={() => signOut()}
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 hover:bg-red-500/10 hover:text-red-400 transition-all">
               <LogOut className="h-5 w-5 shrink-0 text-slate-500" />
-              {sidebarOpen && <span>Sair</span>}
+              {sidebarOpen && <span>Sign Out</span>}
             </button>
           </div>
 
@@ -196,11 +219,11 @@ function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
               <div className="p-1">
                 <Link href="/settings" onClick={() => setShowUserMenu(false)}
                   className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors">
-                  <Settings className="h-4 w-4" /> Configurações
+                  <Settings className="h-4 w-4" /> Settings
                 </Link>
                 <button onClick={() => { setShowUserMenu(false); signOut(); }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-red-500/10 hover:text-red-400 transition-colors">
-                  <LogOut className="h-4 w-4" /> Sair
+                  <LogOut className="h-4 w-4" /> Sign Out
                 </button>
               </div>
             </div>

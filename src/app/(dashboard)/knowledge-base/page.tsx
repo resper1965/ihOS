@@ -34,34 +34,34 @@ export default async function KnowledgeBasePage() {
     <div className="w-full space-y-8">
       <PageTitleRegistrar
         title="Knowledge Base Health"
-        subtitle="Métricas de indexação e cobertura ISO-27001 do RAG"
+        subtitle="RAG indexing metrics and ISO-27001 coverage"
         icon={<Database className="h-4 w-4 text-emerald-400" />}
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card title="Documentos Ingeridos" icon={<Database className="h-5 w-5 text-blue-400" />}>
+        <Card title="Ingested Documents" icon={<Database className="h-5 w-5 text-blue-400" />}>
           <div className="mt-2">
             <span className="text-3xl font-bold text-text-primary">{totalDocs || 0}</span>
           </div>
         </Card>
 
-        <Card title="Chunks Vetorizados" icon={<Activity className="h-5 w-5 text-purple-400" />}>
+        <Card title="Vectorized Chunks" icon={<Activity className="h-5 w-5 text-purple-400" />}>
           <div className="mt-2">
             <span className="text-3xl font-bold text-text-primary">{totalChunks || 0}</span>
           </div>
         </Card>
 
-        <Card title="Falhas de Indexação" icon={<AlertTriangle className="h-5 w-5 text-red-400" />}>
+        <Card title="Indexing Failures" icon={<AlertTriangle className="h-5 w-5 text-red-400" />}>
           <div className="mt-2">
             <span className="text-3xl font-bold text-text-primary">{missingIndexDocs || 0}</span>
-            <p className="text-xs text-text-muted mt-1">Docs sem chunks processados.</p>
+            <p className="text-xs text-text-muted mt-1">Docs with no processed chunks.</p>
           </div>
         </Card>
 
-        <Card title="Cobertura ISO-27001" icon={<CheckCircle2 className="h-5 w-5 text-emerald-400" />}>
+        <Card title="ISO-27001 Coverage" icon={<CheckCircle2 className="h-5 w-5 text-emerald-400" />}>
           <div className="mt-2">
             <span className="text-3xl font-bold text-text-primary">{isoPercentage}%</span>
-            <p className="text-xs text-text-muted mt-1">Chunks com controles ISO ({isoCoverageCount}).</p>
+            <p className="text-xs text-text-muted mt-1">Chunks mapped to ISO controls ({isoCoverageCount}).</p>
           </div>
         </Card>
       </div>

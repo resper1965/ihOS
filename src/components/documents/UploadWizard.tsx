@@ -87,7 +87,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
     setUploadStatus({ 
       state: "processing", 
       fileName: selectedFile.name, 
-      message: "Validando qualidade e clareza do documento..." 
+      message: "Validating document quality and clarity..." 
     });
     setWizardStep(3);
 
@@ -122,7 +122,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
           setUploadStatus({
             state: "error",
             fileName: selectedFile.name,
-            message: validateResult.error || "Falha ao validar clareza do documento.",
+            message: validateResult.error || "Failed to validate document clarity.",
           });
           return;
         }
@@ -139,7 +139,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
       setUploadStatus({ 
         state: "processing", 
         fileName: selectedFile.name, 
-        message: "Clarity Gate aprovado. Extraindo texto e gerando embeddings pgvector..." 
+        message: "Clarity Gate approved. Extracting text and generating pgvector embeddings..." 
       });
 
       const res = await fetch("/api/documents/upload", {
@@ -153,7 +153,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
         setUploadStatus({
           state: "error",
           fileName: selectedFile.name,
-          message: result.error || "Falha no upload do arquivo.",
+          message: result.error || "Failed to upload file.",
         });
         return;
       }
@@ -161,7 +161,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
       setUploadStatus({
         state: "done",
         fileName: selectedFile.name,
-        message: `${result.data.chunkCount} chunks indexados com sucesso no banco RAG!`,
+        message: `${result.data.chunkCount} chunks successfully indexed in RAG database!`,
       });
 
       onSuccess();
@@ -173,7 +173,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
       setUploadStatus({
         state: "error",
         fileName: selectedFile.name,
-        message: err instanceof Error ? err.message : "Erro inesperado no upload.",
+        message: err instanceof Error ? err.message : "Unexpected error during upload.",
       });
     }
   };
@@ -188,7 +188,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
         accept=".pdf,.txt,.md,.csv"
         onChange={handleFileChange}
         className="hidden"
-        aria-label="Selecionar arquivo de evidência"
+        aria-label="Select evidence file"
       />
       <div className="glass-card w-full max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-[#1e293b] shadow-2xl flex flex-col max-h-[90vh]">
         {/* Modal Header */}
@@ -198,8 +198,8 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
               <ShieldCheck className="h-4 w-4 text-blue-400" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-base">Indexação de Diretriz do SGSI</h3>
-              <p className="text-[10px] text-text-muted">Safety Gate: Metadados obrigatórios para evitar erros de RAG.</p>
+              <h3 className="font-bold text-white text-base">ISMS Guideline Indexing</h3>
+              <p className="text-[10px] text-text-muted">Safety Gate: Required metadata to prevent RAG errors.</p>
             </div>
           </div>
           <button 
@@ -214,10 +214,10 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
         <div className="flex items-center justify-center border-b border-white/5 px-6 py-3 bg-white/[0.01]">
           <div className="flex items-center gap-2 text-xs">
             <span className={`flex h-5 w-5 items-center justify-center rounded-full font-bold ${wizardStep >= 1 ? "bg-blue-500 text-white" : "bg-white/5 text-slate-500"}`}>1</span>
-            <span className={wizardStep >= 1 ? "text-blue-400 font-semibold" : "text-slate-500"}>Escopo</span>
+            <span className={wizardStep >= 1 ? "text-blue-400 font-semibold" : "text-slate-500"}>Scope</span>
             <div className={`h-px w-8 bg-white/10 ${wizardStep >= 2 ? "bg-blue-500/40" : ""}`} />
             <span className={`flex h-5 w-5 items-center justify-center rounded-full font-bold ${wizardStep >= 2 ? "bg-blue-500 text-white" : "bg-white/5 text-slate-500"}`}>2</span>
-            <span className={wizardStep >= 2 ? "text-blue-400 font-semibold" : "text-slate-500"}>Validade</span>
+            <span className={wizardStep >= 2 ? "text-blue-400 font-semibold" : "text-slate-500"}>Expiration</span>
             <div className={`h-px w-8 bg-white/10 ${wizardStep >= 3 ? "bg-blue-500/40" : ""}`} />
             <span className={`flex h-5 w-5 items-center justify-center rounded-full font-bold ${wizardStep >= 3 ? "bg-blue-500 text-white" : "bg-white/5 text-slate-500"}`}>3</span>
             <span className={wizardStep >= 3 ? "text-blue-400 font-semibold" : "text-slate-500"}>Upload</span>
@@ -230,7 +230,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
           {wizardStep === 1 && (
             <div className="space-y-4 animate-in fade-in duration-300">
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Classificação do Documento</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Document Classification</label>
                 <select
                   value={docCategory}
                   onChange={(e) => setDocCategory(e.target.value as any)}
@@ -243,7 +243,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
               </div>
 
               <div className="space-y-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Escopo de Aplicação</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Application Scope</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
@@ -255,8 +255,8 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     }`}
                   >
                     <ShieldCheck className="h-5 w-5 text-blue-400" />
-                    <span className="font-semibold text-xs">SGSI Geral</span>
-                    <span className="text-[9px] text-text-muted">Aplica-se a toda organização</span>
+                    <span className="font-semibold text-xs">Global ISMS</span>
+                    <span className="text-[9px] text-text-muted">Applies to the entire organization</span>
                   </button>
 
                   <button
@@ -269,15 +269,15 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     }`}
                   >
                     <Layers className="h-5 w-5 text-blue-400" />
-                    <span className="font-semibold text-xs">Especificação Técnica</span>
-                    <span className="text-[9px] text-text-muted">Restrito à versão do produto</span>
+                    <span className="font-semibold text-xs">Technical Specification</span>
+                    <span className="text-[9px] text-text-muted">Restricted to product version</span>
                   </button>
                 </div>
               </div>
 
               {docScope === "version" && (
                 <div className="space-y-1.5 pt-1 animate-in slide-in-from-top-2 duration-200">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Versão Alvo (nCommand Lite)</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Target Version (nCommand Lite)</label>
                   <select
                     value={targetVersionId}
                     onChange={(e) => setTargetVersionId(e.target.value)}
@@ -292,7 +292,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   <div className="rounded-xl bg-blue-500/5 border border-blue-500/10 p-3 text-xs text-blue-400 flex gap-2">
                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                     <p>
-                      <strong>Atenção:</strong> Documentos específicos são isolados no RAG. O chat de IA usará estes dados apenas para auditar a versão selecionada.
+                      <strong>Attention:</strong> Specific documents are isolated in RAG. Chat AI will use this data only to audit the selected version.
                     </p>
                   </div>
                 </div>
@@ -305,11 +305,11 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
             <div className="space-y-4 animate-in fade-in duration-300">
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label htmlFor="doc-version" className="text-xs font-bold uppercase tracking-wider text-slate-400">Versão do Documento</label>
+                  <label htmlFor="doc-version" className="text-xs font-bold uppercase tracking-wider text-slate-400">Document Version</label>
                   <input
                     id="doc-version"
                     type="text"
-                    placeholder="Ex: 1.0 ou 2.1"
+                    placeholder="Ex: 1.0 or 2.1"
                     value={docVersion}
                     onChange={(e) => setDocVersion(e.target.value)}
                     className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-blue-500/50 font-mono"
@@ -317,22 +317,22 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                 </div>
 
                 <div className="space-y-1.5">
-                  <label htmlFor="doc-status" className="text-xs font-bold uppercase tracking-wider text-slate-400">Estado de Publicação</label>
+                  <label htmlFor="doc-status" className="text-xs font-bold uppercase tracking-wider text-slate-400">Publication Status</label>
                   <select
                     id="doc-status"
                     value={docStatus}
                     onChange={(e) => setDocStatus(e.target.value as any)}
                     className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-blue-500/50"
                   >
-                    <option value="published" className="bg-[#1e293b]">Ativo (Publicado no RAG)</option>
-                    <option value="draft" className="bg-[#1e293b]">Rascunho (Não indexa no RAG)</option>
-                    <option value="superseded" className="bg-[#1e293b]">Substituído (Histórico)</option>
+                    <option value="published" className="bg-[#1e293b]">Active (Published to RAG)</option>
+                    <option value="draft" className="bg-[#1e293b]">Draft (Does not index in RAG)</option>
+                    <option value="superseded" className="bg-[#1e293b]">Superseded (Historical)</option>
                   </select>
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label htmlFor="doc-expires" className="text-xs font-bold uppercase tracking-wider text-slate-400">Data de Expiração/Revisão Anual</label>
+                <label htmlFor="doc-expires" className="text-xs font-bold uppercase tracking-wider text-slate-400">Expiration/Annual Review Date</label>
                 <div className="relative">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                     <Calendar className="h-4 w-4 text-text-muted" />
@@ -345,13 +345,13 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white outline-none focus:border-blue-500/50"
                   />
                 </div>
-                <p className="text-[10px] text-text-muted mt-1">O sistema enviará alertas automáticos no dashboard na data definida.</p>
+                <p className="text-[10px] text-text-muted mt-1">The system will send automatic alerts to the dashboard on the set date.</p>
               </div>
 
               <div className="rounded-xl bg-amber-500/5 border border-amber-500/10 p-3 text-xs text-amber-400 flex gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
                 <p>
-                  <strong>Nota de Ciclo de Vida:</strong> Se você estiver atualizando uma política antiga, certifique-se de marcar a anterior como <strong>Substituída (Superseded)</strong> na listagem para que a IA não leia diretrizes em conflito.
+                  <strong>Lifecycle Note:</strong> If you are updating an old policy, be sure to mark the previous one as <strong>Superseded</strong> in the listing so that AI does not read conflicting guidelines.
                 </p>
               </div>
             </div>
@@ -368,13 +368,13 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     <>
                       {/* Configuration Review Table */}
                       <div className="rounded-xl bg-white/5 border border-white/5 p-4 text-xs space-y-2">
-                        <h4 className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Revisão dos Metadados</h4>
+                        <h4 className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Metadata Review</h4>
                         <div className="grid grid-cols-2 gap-2 text-slate-300">
-                          <div><span className="text-text-muted">Categoria:</span> {docCategory}</div>
-                          <div><span className="text-text-muted">Versão:</span> v{docVersion}</div>
+                          <div><span className="text-text-muted">Category:</span> {docCategory}</div>
+                          <div><span className="text-text-muted">Version:</span> v{docVersion}</div>
                           <div>
-                            <span className="text-text-muted">Escopo:</span>{" "}
-                            {docScope === "global" ? "Organizacional Global" : "Específico de Versão"}
+                            <span className="text-text-muted">Scope:</span>{" "}
+                            {docScope === "global" ? "Global Organizational" : "Version Specific"}
                           </div>
                           {docScope === "version" && (
                             <div>
@@ -383,12 +383,12 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                             </div>
                           )}
                           <div>
-                            <span className="text-text-muted">Validade:</span>{" "}
-                            {expiresAt ? formatDate(expiresAt) : "Sem expiração"}
+                            <span className="text-text-muted">Expiration:</span>{" "}
+                            {expiresAt ? formatDate(expiresAt) : "No expiration"}
                           </div>
                           <div>
-                            <span className="text-text-muted">Status RAG:</span>{" "}
-                            {docStatus === "published" ? "Publicado / Ativo" : "Não indexar"}
+                            <span className="text-text-muted">RAG Status:</span>{" "}
+                            {docStatus === "published" ? "Published / Active" : "Do not index"}
                           </div>
                         </div>
                       </div>
@@ -412,7 +412,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                           </div>
                         ) : (
                           <div className="space-y-1">
-                            <p className="text-sm font-semibold text-white">Selecionar documento</p>
+                            <p className="text-sm font-semibold text-white">Select document</p>
                             <p className="text-xs text-text-muted">PDF, TXT, MD, CSV (Max 20MB)</p>
                           </div>
                         )}
@@ -427,8 +427,8 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     <>
                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-white">Enviando arquivo...</p>
-                        <p className="text-xs text-text-muted">Gravando metadados no Supabase Storage.</p>
+                        <p className="text-sm font-semibold text-white">Uploading file...</p>
+                        <p className="text-xs text-text-muted">Writing metadata to Supabase Storage.</p>
                       </div>
                     </>
                   )}
@@ -436,7 +436,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     <>
                       <Loader2 className="h-10 w-10 animate-spin text-amber-400" />
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-white">Processando documento...</p>
+                        <p className="text-sm font-semibold text-white">Processing document...</p>
                         <p className="text-xs text-amber-400">{uploadStatus.message}</p>
                       </div>
                     </>
@@ -447,7 +447,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                         <Check className="h-6 w-6 text-emerald-400" />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-white">Indexação Concluída!</p>
+                        <p className="text-sm font-semibold text-white">Indexing Complete!</p>
                         <p className="text-xs text-emerald-400">{uploadStatus.message}</p>
                       </div>
                     </>
@@ -458,7 +458,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                         <AlertCircle className="h-6 w-6 text-red-400" />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-red-400">Falha na Indexação</p>
+                        <p className="text-sm font-semibold text-red-400">Indexing Failed</p>
                         <p className="text-xs text-text-muted">{uploadStatus.message}</p>
                       </div>
                     </>
@@ -469,7 +469,6 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
           )}
         </div>
 
-        {/* Modal Footer */}
         <div className="border-t border-white/10 px-6 py-4 flex items-center justify-between bg-white/[0.01]">
           <div>
             {wizardStep > 1 && uploadStatus.state === "idle" && (
@@ -479,7 +478,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                 icon={<ArrowLeft className="h-4 w-4" />}
                 onClick={() => setWizardStep((prev) => prev - 1)}
               >
-                Voltar
+                Back
               </Button>
             )}
           </div>
@@ -490,7 +489,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
               onClick={handleClose}
               disabled={uploadStatus.state === "uploading" || uploadStatus.state === "processing"}
             >
-              Cancelar
+              Cancel
             </Button>
             
             {wizardStep < 3 && (
@@ -498,7 +497,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                 variant="primary"
                 onClick={() => setWizardStep((prev) => prev + 1)}
               >
-                Avançar
+                Next
               </Button>
             )}
 
@@ -509,7 +508,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   className="border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50"
                   onClick={() => handleUpload(true)}
                 >
-                  Forçar Indexação
+                  Force Indexing
                 </Button>
               ) : (
                 <Button
@@ -517,7 +516,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   onClick={() => handleUpload(false)}
                   disabled={!selectedFile}
                 >
-                  Iniciar Indexação
+                  Start Indexing
                 </Button>
               )
             )}
@@ -527,7 +526,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                 variant="primary"
                 onClick={() => setUploadStatus({ state: "idle" })}
               >
-                Tentar Novamente
+                Try Again
               </Button>
             )}
           </div>

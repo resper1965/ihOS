@@ -24,13 +24,13 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
       const res = await fetch(`/api/documents/${docId}/reindex`, { method: "POST" });
       if (!res.ok) {
         const errorData = await res.json();
-        throw new Error(errorData.error || "Falha ao reindexar");
+        throw new Error(errorData.error || "Failed to re-index");
       }
-      alert("Documento reindexado com sucesso!");
+      alert("Document re-indexed successfully!");
       if (onRefresh) onRefresh();
     } catch (err: any) {
       console.error("[reindex]", err);
-      alert(`Erro: ${err.message}`);
+      alert(`Error: ${err.message}`);
     } finally {
       setReindexingId(null);
     }
@@ -45,8 +45,8 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return "—";
-    return new Date(dateStr).toLocaleDateString("pt-BR", {
-      day: "2-digit", month: "2-digit", year: "numeric",
+    return new Date(dateStr).toLocaleDateString("en-US", {
+      month: "short", day: "2-digit", year: "numeric",
     });
   };
 
@@ -73,17 +73,17 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
   return (
     <div className="glass-card p-6 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-semibold text-text-primary">Diretrizes e Arquivos do SGSI</h2>
+        <h2 className="text-lg font-semibold text-text-primary">ISMS Guidelines and Files</h2>
         <div className="relative w-full max-w-xs">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
             <Search className="h-4 w-4 text-text-muted" />
           </div>
           <input
             type="text"
-            placeholder="Buscar por nome ou categoria..."
+            placeholder="Search by name or category..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Buscar por nome ou categoria"
+            aria-label="Search by name or category"
             className="w-full rounded-xl border border-border-glass bg-white/5 py-2 pl-9 pr-4 text-sm text-text-primary outline-none transition-all duration-300 focus:border-primary/50"
           />
         </div>
@@ -92,7 +92,7 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
       {loading && documents.length === 0 && (
         <div className="flex items-center justify-center py-12 gap-3">
           <Loader2 className="h-5 w-5 animate-spin text-primary" />
-          <span className="text-sm text-text-muted">Carregando documentos...</span>
+          <span className="text-sm text-text-muted">Loading documents...</span>
         </div>
       )}
 
@@ -125,12 +125,12 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
                         </Badge>
                       ) : (
                         <Badge variant="neutral" className="text-[10px] bg-white/5 text-slate-300">
-                          Organizacional / Global
+                          Organizational / Global
                         </Badge>
                       )}
                     </div>
                     <p className="text-xs text-text-muted">
-                      {formatFileSize(doc.file_size_bytes)} • Indexado RAG: {doc.total_chunks ?? 0} chunks • Criado em {formatDate(doc.created_at)}
+                      {formatFileSize(doc.file_size_bytes)} • RAG Indexed: {doc.total_chunks ?? 0} chunks • Created at {formatDate(doc.created_at)}
                     </p>
                   </div>
                 </div>
@@ -138,29 +138,29 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
                 <div className="flex items-center gap-3 self-end md:self-auto flex-wrap">
                   {doc.status === "published" && (
                     <Badge variant="success" className="text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      Ativo / Publicado
+                      Active / Published
                     </Badge>
                   )}
                   {doc.status === "draft" && (
                     <Badge variant="neutral" className="text-[10px] font-medium">
-                      Rascunho
+                      Draft
                     </Badge>
                   )}
                   {doc.status === "superseded" && (
                     <Badge variant="warning" className="text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                      Substituído
+                      Superseded
                     </Badge>
                   )}
                   {(doc.status === "expired" || isExpiredDoc) ? (
                     <Badge variant="danger" className="text-[10px] font-medium bg-red-500/10 text-red-400 border border-red-500/20 animate-pulse">
-                      Expirado / Vencido
+                      Expired
                     </Badge>
                   ) : null}
 
                   {doc.expires_at && (
                     <span className={`text-xs flex items-center gap-1 font-medium ${isExpiredDoc ? "text-red-400" : "text-slate-400"}`}>
                       <Calendar className="h-3.5 w-3.5" />
-                      venc: {formatDate(doc.expires_at)}
+                      exp: {formatDate(doc.expires_at)}
                     </span>
                   )}
 
@@ -174,8 +174,8 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
                     onClick={() => handleReindex(doc.id)}
                     disabled={reindexingId === doc.id || deletingId === doc.id}
                     className="rounded-lg p-1.5 text-slate-500 hover:bg-blue-500/10 hover:text-blue-400 transition-colors disabled:opacity-40"
-                    title="Re-indexar (Gerar Embeddings)"
-                    aria-label="Re-indexar documento"
+                    title="Re-index (Generate Embeddings)"
+                    aria-label="Re-index document"
                   >
                     {reindexingId === doc.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -188,8 +188,8 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
                     onClick={() => onDelete(doc.id)}
                     disabled={deletingId === doc.id || reindexingId === doc.id}
                     className="rounded-lg p-1.5 text-slate-500 hover:bg-red-500/10 hover:text-red-400 transition-colors disabled:opacity-40"
-                    title="Deletar documento"
-                    aria-label="Deletar documento"
+                    title="Delete document"
+                    aria-label="Delete document"
                   >
                     {deletingId === doc.id ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -203,7 +203,7 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
           })}
           {!loading && filtered.length === 0 && (
             <div className="text-center py-12 text-sm text-text-secondary">
-              Nenhum documento encontrado para o escopo ou busca atual.
+              No documents found for the current scope or search.
             </div>
           )}
         </div>

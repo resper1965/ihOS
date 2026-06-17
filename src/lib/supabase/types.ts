@@ -7,6 +7,8 @@
 
 export type UserRole = "admin" | "ionic_user" | "client_user";
 
+export type UserStatus = "pending" | "approved" | "rejected";
+
 export type MessageRole = "user" | "assistant" | "system" | "tool";
 
 export type DocumentCategory = "ISMS_CORE" | "B2B_GEHC" | "OPERATIONAL";
@@ -24,6 +26,7 @@ export type SnapshotType = "scorecard" | "roi_path" | "domain_breakdown" | "full
 export type Profile = {
   id: string; // UUID — FK to auth.users(id)
   role: UserRole;
+  status: UserStatus;
   client_org: string | null;
   created_at: string | null; // TIMESTAMPTZ as ISO string
   onboarding_completed: boolean; // Added Sprint 4 migration

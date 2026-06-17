@@ -53,7 +53,7 @@ export default function DocumentsPage() {
   const handleDelete = async (docId: number) => {
     if (deletingId) return;
 
-    const confirmDelete = window.confirm("Deseja realmente deletar este documento e todos os seus chunks vetoriais do RAG?");
+    const confirmDelete = window.confirm("Are you sure you want to delete this document and all its vector chunks from the RAG?");
     if (!confirmDelete) return;
 
     setDeletingId(docId);
@@ -65,13 +65,13 @@ export default function DocumentsPage() {
 
       if (error) {
         console.error("[documents] Delete error:", error.message);
-        alert("Falha ao deletar documento.");
+        alert("Failed to delete document.");
       } else {
         setDocuments((prev) => prev.filter((d) => d.id !== docId));
       }
     } catch (err) {
       console.error("[documents] Delete failed:", err);
-      alert("Erro inesperado ao deletar.");
+      alert("Unexpected error while deleting.");
     } finally {
       setDeletingId(null);
     }
@@ -82,10 +82,10 @@ export default function DocumentsPage() {
   return (
     <div className="w-full space-y-8">
       <PageTitleRegistrar
-        title="SGSI / Evidências de Segurança"
+        title="ISMS / Security Evidence"
         subtitle={activeVersion
-          ? `Visualizando políticas para nCommand Lite ${activeVersion.version_code} + SGSI Geral`
-          : "Gerenciamento global de documentos do SGSI (ISMS) da Ionic Health"}
+          ? `Viewing policies for nCommand Lite ${activeVersion.version_code} + ISMS Global`
+          : "Global document management for Ionic Health ISMS"}
         icon={<FileText className="h-4 w-4 text-blue-400" />}
       />
       <div className="flex justify-end">
@@ -97,38 +97,38 @@ export default function DocumentsPage() {
             onClick={fetchDocuments}
             loading={loading}
           >
-            Atualizar
+            Refresh
           </Button>
           <Button
             variant="primary"
             icon={<Upload className="h-4 w-4" />}
             onClick={() => setIsWizardOpen(true)}
           >
-            Novo Documento (Wizard)
+            Upload Document
           </Button>
         </div>
       </div>
 
       {/* Stats Summary */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card title="Documentos do SGSI" icon={<FileText className="h-5 w-5 text-blue-400" />}>
+        <Card title="ISMS Documents" icon={<FileText className="h-5 w-5 text-blue-400" />}>
           <div className="mt-2">
             <span className="text-3xl font-bold text-text-primary">{documents.length}</span>
-            <p className="text-xs text-text-muted mt-1">Total de diretrizes e especificações.</p>
+            <p className="text-xs text-text-muted mt-1">Total guidelines and specifications.</p>
           </div>
         </Card>
-        <Card title="Índice RAG (pgvector)" icon={<Sparkles className="h-5 w-5 text-emerald-400" />}>
+        <Card title="RAG Index (pgvector)" icon={<Sparkles className="h-5 w-5 text-emerald-400" />}>
           <div className="mt-2">
             <span className="text-3xl font-bold text-text-primary">{totalChunks}</span>
-            <p className="text-xs text-text-muted mt-1">Parágrafos indexados para IA do chat.</p>
+            <p className="text-xs text-text-muted mt-1">Indexed paragraphs for chat AI.</p>
           </div>
         </Card>
-        <Card title="Escopo Ativo" icon={<Layers className="h-5 w-5 text-purple-400" />}>
+        <Card title="Active Scope" icon={<Layers className="h-5 w-5 text-purple-400" />}>
           <div className="mt-2">
             <span className="text-sm font-semibold text-text-primary block truncate">
-              {activeVersion ? `nCommand Lite ${activeVersion.version_code}` : "SGSI Geral (Global)"}
+              {activeVersion ? `nCommand Lite ${activeVersion.version_code}` : "Global ISMS"}
             </span>
-            <p className="text-xs text-text-muted mt-1">Filtrando documentos aplicáveis.</p>
+            <p className="text-xs text-text-muted mt-1">Filtering applicable documents.</p>
           </div>
         </Card>
       </div>
