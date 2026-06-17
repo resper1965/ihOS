@@ -39,7 +39,7 @@ export default async function KnowledgeBasePage() {
       />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card title="Ingested Documents" icon={<Database className="h-5 w-5 text-blue-400" />}>
+        <Card title="Ingested Documents" icon={<Database className="h-5 w-5 text-primary" />}>
           <div className="mt-2">
             <span className="text-3xl font-bold text-text-primary">{totalDocs || 0}</span>
           </div>

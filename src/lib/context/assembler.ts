@@ -37,10 +37,11 @@ async function fetchConversationHistory(conversationId: string) {
 // Fetch RAG chunks via pgvector
 // ---------------------------------------------------------------------------
 
-async function fetchRAGChunks(query: string, framework?: string): Promise<RAGChunk[]> {
+async function fetchRAGChunks(query: string, framework?: string, productVersionId?: string): Promise<RAGChunk[]> {
   try {
     const results = await searchDocuments(query, {
       framework,
+      productVersionId,
       limit: MAX_RAG_CHUNKS,
       threshold: RAG_SIMILARITY_THRESHOLD,
     });
@@ -122,6 +123,7 @@ export async function assembleContext(
     profileOverride?: AgentProfile;
     tenantId?: string;
     userId?: string;
+    productVersionId?: string;
   }
 ): Promise<AssembledContext> {
   const { profile, classification } = routeToAgent(userMessage);
@@ -132,7 +134,7 @@ export async function assembleContext(
   const frameworkHint = classification.matchedKeywords.find((kw) =>
     ['soc2', 'iso27001', 'lgpd', 'gdpr', 'nist-csf', 'pci-dss', 'hipaa'].includes(kw)
   );
-  const ragChunks = await fetchRAGChunks(userMessage, frameworkHint);
+  const ragChunks = await fetchRAGChunks(userMessage, frameworkHint, options?.productVersionId);
 
   // Agentic evolution contexts
   let briefingContext = '';

@@ -19,6 +19,7 @@ import { SuggestionChips } from "@/components/chat/suggestion-chips";
 import { QuestionnaireReview } from "@/components/chat/questionnaire-review";
 import { ConversationList } from "@/components/chat/conversation-list";
 import { useQuestionnaire } from "@/hooks/useQuestionnaire";
+import { useVersion } from "@/lib/context/version-context";
 import { Progress } from "@/components/ui/progress";
 
 const SUGGESTION_CHIPS = [
@@ -30,6 +31,7 @@ const SUGGESTION_CHIPS = [
 const ACCEPTED_FILE_TYPES = ".xlsx,.csv,.pdf";
 
 export default function ChatPage() {
+  const { activeVersion } = useVersion();
   const { messages, sendMessage, status } = useChat();
 
   const [input, setInput] = useState("");
@@ -56,12 +58,12 @@ export default function ChatPage() {
     e.preventDefault();
     const trimmed = input.trim();
     if (!trimmed || isLoading) return;
-    sendMessage({ text: trimmed });
+    sendMessage({ text: trimmed }, { body: { productVersionId: activeVersion?.id ?? null } });
     setInput("");
   }
 
   function handleSuggestionClick(text: string) {
-    sendMessage({ text });
+    sendMessage({ text }, { body: { productVersionId: activeVersion?.id ?? null } });
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {

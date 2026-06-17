@@ -48,7 +48,7 @@ body {
 }
 .glass-card:hover {
   border-color: var(--color-border-glass-hover);
-  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.08);
+  box-shadow: 0 8px 32px rgba(83, 196, 205, 0.08);
 }
 
 .glass-surface {
@@ -81,7 +81,7 @@ body {
 }
 .glow { animation: glow-pulse 2s ease-in-out infinite; }
 
-::selection { background: rgba(59, 130, 246, 0.3); color: white; }
+::selection { background: rgba(83, 196, 205, 0.3); color: white; }
 *:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 2px; border-radius: 0.375rem; }
 input, textarea { caret-color: var(--color-primary); }
 input::placeholder, textarea::placeholder { color: var(--color-text-muted); }

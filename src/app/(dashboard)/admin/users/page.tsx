@@ -47,7 +47,7 @@ export default async function AdminUsersPage() {
       <PageTitleRegistrar 
         title="User Management" 
         subtitle="Manage access and approvals for the platform" 
-        icon={<Users className="h-4 w-4 text-blue-400" />} 
+        icon={<Users className="h-4 w-4 text-primary" />} 
       />
       <div className="space-y-6">
         <UserTable users={usersWithProfiles} />

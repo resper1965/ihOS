@@ -18,7 +18,7 @@ export default function PendingApprovalPage() {
           
           <div className="mb-8 rounded-xl bg-white/5 p-4 text-left">
             <div className="flex items-start gap-3">
-              <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-blue-400" />
+              <ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
               <p className="text-xs text-slate-300">
                 Please contact <strong className="text-white">resper@ionic.health</strong> to request access to the ihOS platform.
               </p>

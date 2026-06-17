@@ -76,16 +76,16 @@ function NewVersionForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="mt-4 rounded-xl border border-blue-500/20 bg-blue-500/5 p-5"
+      className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-5"
     >
-      <h3 className="mb-4 text-sm font-semibold text-blue-400">Nova Versão</h3>
+      <h3 className="mb-4 text-sm font-semibold text-primary">Nova Versão</h3>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label className="mb-1.5 block text-xs text-text-muted">Produto</label>
           <input
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-blue-500/40 focus:outline-none"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-primary/40 focus:outline-none"
             placeholder="nCommand Lite"
             required
           />
@@ -95,7 +95,7 @@ function NewVersionForm({
           <input
             value={versionCode}
             onChange={(e) => setVersionCode(e.target.value)}
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-blue-500/40 focus:outline-none"
+            className="w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-primary/40 focus:outline-none"
             placeholder="v2.3.0"
             required
           />
@@ -113,7 +113,7 @@ function NewVersionForm({
         <button
           type="submit"
           disabled={isSubmitting || !versionCode.trim()}
-          className="flex items-center gap-2 rounded-xl bg-blue-500 px-4 py-2 text-sm font-medium text-white hover:bg-blue-400 transition-colors disabled:opacity-50"
+          className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary transition-colors disabled:opacity-50"
         >
           {isSubmitting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -174,13 +174,13 @@ function VersionRow({
     <div className="flex items-center justify-between gap-4 py-4 border-b border-white/5 last:border-0">
       {/* Info */}
       <div className="flex items-center gap-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-500/10">
-          <Layers className="h-5 w-5 text-blue-400" />
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10">
+          <Layers className="h-5 w-5 text-primary" />
         </div>
         <div>
           <p className="text-sm font-semibold text-text-primary">
             {version.product_name}{" "}
-            <span className="font-mono text-blue-400">{version.version_code}</span>
+            <span className="font-mono text-primary">{version.version_code}</span>
           </p>
           <p className="text-xs text-text-muted">
             Criada em{" "}
@@ -221,7 +221,7 @@ function VersionRow({
               {version.status !== "supported" && (
                 <button
                   onClick={() => patch({ status: "supported" })}
-                  className="w-full px-4 py-2.5 text-left text-xs text-blue-400 hover:bg-white/5 transition-colors"
+                  className="w-full px-4 py-2.5 text-left text-xs text-primary hover:bg-white/5 transition-colors"
                 >
                   🔵 Marcar como Suportada
                 </button>
@@ -293,7 +293,7 @@ export default function VersionsPage() {
       <PageTitleRegistrar
         title="Gestão de Versões"
         subtitle="Controle de escopo técnico do nCommand Lite"
-        icon={<Layers className="h-4 w-4 text-blue-400" />}
+        icon={<Layers className="h-4 w-4 text-primary" />}
       />
 
       {/* Active version highlight */}
@@ -323,7 +323,7 @@ export default function VersionsPage() {
           </div>
           <button
             onClick={() => setShowForm((s) => !s)}
-            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-blue-500 to-emerald-500 px-4 py-2 text-sm font-medium text-white shadow-lg shadow-blue-500/20 hover:brightness-110 transition-all"
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-medium text-white shadow-lg shadow-primary/20 hover:brightness-110 transition-all"
           >
             <Plus className="h-4 w-4" />
             Nova Versão

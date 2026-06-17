@@ -225,7 +225,7 @@ export default function MappingsPage() {
       {/* Stats row */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
         <div className="glass-card flex items-center gap-4 p-5">
-          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-500/10 text-blue-400">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
             <Database className="h-6 w-6" />
           </div>
           <div>

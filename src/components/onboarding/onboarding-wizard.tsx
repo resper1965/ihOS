@@ -177,7 +177,7 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
             {current.action && (
               <Link
                 href={current.action.href}
-                className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm text-primary hover:bg-primary/20 hover:text-blue-300 transition-all"
+                className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm text-primary hover:bg-primary/20 hover:text-primary transition-all"
                 onClick={onDismiss}
               >
                 {current.action.label}

@@ -46,8 +46,8 @@ export default async function CompliancePage() {
       label: "Frameworks Monitorados",
       value: frameworkScores.length.toString(),
       icon: ShieldCheck,
-      color: "text-blue-400",
-      bgColor: "bg-blue-500/10",
+      color: "text-primary",
+      bgColor: "bg-primary/10",
     },
     {
       label: "Evidências Avaliadas",
@@ -77,7 +77,7 @@ export default async function CompliancePage() {
       <PageTitleRegistrar
         title={<>Compliance <span className="text-emerald-400">Intelligence</span></>}
         subtitle={`Postura em tempo real em ${frameworkScores.length} frameworks`}
-        icon={<ShieldCheck className="h-4 w-4 text-blue-400" />}
+        icon={<ShieldCheck className="h-4 w-4 text-primary" />}
       />
 
       {/* Quick Stats Row */}
@@ -85,7 +85,7 @@ export default async function CompliancePage() {
         {quickStats.map((stat) => (
           <div
             key={stat.label}
-            className="glass-card group flex items-center gap-4 p-4 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-blue-500/5"
+            className="glass-card group flex items-center gap-4 p-4 transition-all duration-300 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/5"
           >
             <div
               className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${stat.bgColor}`}
@@ -108,7 +108,7 @@ export default async function CompliancePage() {
           <h2 className="text-lg font-semibold text-text-primary">
             Scores por Framework
           </h2>
-          <span className="rounded-full bg-blue-500/10 px-2.5 py-0.5 text-xs font-medium text-blue-400">
+          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
             {frameworkScores.length} ativos
           </span>
         </div>

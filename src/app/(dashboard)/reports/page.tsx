@@ -113,7 +113,7 @@ export default function ReportsPage() {
       <PageTitleRegistrar
         title="Relatórios de Conformidade"
         subtitle="Gere, visualize e baixe relatórios detalhados gerados pela inteligência GRC."
-        icon={<BarChart3 className="h-4 w-4 text-blue-400" />}
+        icon={<BarChart3 className="h-4 w-4 text-primary" />}
       />
       <div className="flex justify-end">
         <Button

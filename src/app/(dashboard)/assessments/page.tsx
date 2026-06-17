@@ -163,13 +163,13 @@ function RunAssessmentModal({
                   onClick={() => setMode("deep")}
                   className={`flex items-center gap-3 rounded-xl border p-4 transition-all ${
                     mode === "deep"
-                      ? "border-blue-500/50 bg-blue-500/10"
+                      ? "border-primary/50 bg-primary/10"
                       : "border-border-glass bg-white/5 hover:bg-white/[0.07]"
                   }`}
                 >
                   <ScanSearch
                     className={`h-5 w-5 ${
-                      mode === "deep" ? "text-blue-400" : "text-text-muted"
+                      mode === "deep" ? "text-primary" : "text-text-muted"
                     }`}
                   />
                   <div className="text-left">
@@ -409,7 +409,7 @@ export default function AssessmentsPage() {
           </>
         }
         subtitle="Run and monitor compliance scans powered by the Standard GRC Engine."
-        icon={<ClipboardCheck className="h-4 w-4 text-blue-400" />}
+        icon={<ClipboardCheck className="h-4 w-4 text-primary" />}
       />
 
       <div className="flex items-center justify-between gap-4">
@@ -511,7 +511,7 @@ export default function AssessmentsPage() {
                           </h3>
                           <Badge
                             variant="info"
-                            className="text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 py-0 px-1 font-mono uppercase"
+                            className="text-[9px] bg-primary/10 text-primary border border-primary/20 py-0 px-1 font-mono uppercase"
                           >
                             {item.mode}
                           </Badge>

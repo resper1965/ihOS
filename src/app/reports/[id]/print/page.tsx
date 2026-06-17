@@ -69,7 +69,7 @@ export default async function PrintReportPage({ params }: PageProps) {
         </h2>
         <div className="grid grid-cols-4 gap-4 text-center">
           <div className="border border-gray-200 p-3 rounded-lg bg-gray-50">
-            <p className="text-2xl font-black text-blue-600">
+            <p className="text-2xl font-black text-primary">
               {reportData.summary?.complianceRate ?? 0}%
             </p>
             <p className="text-xs font-bold text-gray-500 mt-1">Taxa de Conformidade</p>
@@ -144,7 +144,7 @@ export default async function PrintReportPage({ params }: PageProps) {
               <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
                 <td className="py-2 px-3 font-mono font-bold text-gray-900">{item.controlId || item.code}</td>
                 <td className="py-2 px-3 text-gray-700">{item.controlName || item.name}</td>
-                <td className="py-2 px-3 text-center font-bold text-blue-600">{item.roiScore || item.roi}</td>
+                <td className="py-2 px-3 text-center font-bold text-primary">{item.roiScore || item.roi}</td>
                 <td className="py-2 px-3 text-right text-xs text-gray-500">
                   {Array.isArray(item.frameworks) ? item.frameworks.join(", ") : item.frameworks || ""}
                 </td>

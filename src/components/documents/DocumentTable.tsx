@@ -16,6 +16,24 @@ interface DocumentTableProps {
 export function DocumentTable({ documents, loading, versions, activeVersion, onDelete, deletingId, onRefresh }: DocumentTableProps) {
   const [search, setSearch] = useState("");
   const [reindexingId, setReindexingId] = useState<number | null>(null);
+  const [updatingVersionId, setUpdatingVersionId] = useState<number | null>(null);
+
+  const handleVersionChange = async (docId: number, newVersionId: string | null) => {
+    setUpdatingVersionId(docId);
+    try {
+      const res = await fetch(`/api/documents/${docId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ product_version_id: newVersionId }),
+      });
+      if (!res.ok) throw new Error("Failed to update version");
+      if (onRefresh) onRefresh();
+    } catch (err: any) {
+      console.error("[version-update]", err);
+    } finally {
+      setUpdatingVersionId(null);
+    }
+  };
 
   const handleReindex = async (docId: number) => {
     if (reindexingId) return;
@@ -119,15 +137,23 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
                       <Badge variant="neutral" className="text-[10px] px-1.5 font-mono">
                         v{doc.version}
                       </Badge>
-                      {matchedVersion ? (
-                        <Badge variant="info" className="text-[10px] bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                          nCommand Lite {matchedVersion.version_code}
-                        </Badge>
-                      ) : (
-                        <Badge variant="neutral" className="text-[10px] bg-white/5 text-slate-300">
-                          Organizational / Global
-                        </Badge>
-                      )}
+                      <select
+                        value={doc.product_version_id ?? "global"}
+                        onChange={(e) => {
+                          const val = e.target.value === "global" ? null : e.target.value;
+                          handleVersionChange(doc.id, val);
+                        }}
+                        disabled={updatingVersionId === doc.id}
+                        className="text-[10px] rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-text-secondary cursor-pointer hover:bg-white/10 transition-colors focus:border-primary/40 focus:outline-none appearance-none"
+                        title="Assign document version"
+                      >
+                        <option value="global">🌐 Global / Organizacional</option>
+                        {versions.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            📦 {v.product_name} {v.version_code}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     <p className="text-xs text-text-muted">
                       {formatFileSize(doc.file_size_bytes)} • RAG Indexed: {doc.total_chunks ?? 0} chunks • Created at {formatDate(doc.created_at)}
@@ -173,7 +199,7 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
                   <button
                     onClick={() => handleReindex(doc.id)}
                     disabled={reindexingId === doc.id || deletingId === doc.id}
-                    className="rounded-lg p-1.5 text-slate-500 hover:bg-blue-500/10 hover:text-blue-400 transition-colors disabled:opacity-40"
+                    className="rounded-lg p-1.5 text-slate-500 hover:bg-primary/10 hover:text-primary transition-colors disabled:opacity-40"
                     title="Re-index (Generate Embeddings)"
                     aria-label="Re-index document"
                   >

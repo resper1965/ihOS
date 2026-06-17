@@ -20,9 +20,11 @@ export async function POST(req: Request) {
   const {
     messages,
     conversationId: incomingConversationId,
+    productVersionId,
   }: {
     messages: Array<{ role: 'user' | 'assistant' | 'system'; content?: string; parts?: any[] }>;
     conversationId?: string;
+    productVersionId?: string;
   } = body;
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user');
@@ -79,7 +81,7 @@ export async function POST(req: Request) {
   const context = await assembleContext(
     conversationId,
     userMessageText,
-    { userId }
+    { userId, productVersionId }
   );
 
   const result = streamText({

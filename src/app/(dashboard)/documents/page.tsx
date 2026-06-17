@@ -113,7 +113,7 @@ export default function DocumentsPage() {
         subtitle={activeVersion
           ? `Viewing policies for nCommand Lite ${activeVersion.version_code} + ISMS Global`
           : "Global document management for Ionic Health ISMS"}
-        icon={<FileText className="h-4 w-4 text-blue-400" />}
+        icon={<FileText className="h-4 w-4 text-primary" />}
       />
       <div className="flex justify-end">
         <div className="flex items-center gap-2">
@@ -138,7 +138,7 @@ export default function DocumentsPage() {
 
       {/* Stats Summary */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card title="ISMS Documents" icon={<FileText className="h-5 w-5 text-blue-400" />}>
+        <Card title="ISMS Documents" icon={<FileText className="h-5 w-5 text-primary" />}>
           <div className="mt-2">
             <span className="text-3xl font-bold text-text-primary">{documents.length}</span>
             <p className="text-xs text-text-muted mt-1">Total guidelines and specifications.</p>
@@ -168,14 +168,14 @@ export default function DocumentsPage() {
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               activeTab === tab.key
-                ? "bg-blue-500/15 text-blue-400 border border-blue-500/30"
+                ? "bg-primary/15 text-primary border border-primary/30"
                 : "text-slate-400 hover:text-slate-300 hover:bg-white/5 border border-transparent"
             }`}
           >
             {tab.icon}
             <span>{tab.label}</span>
             <span className={`ml-1 text-[10px] font-mono px-1 py-0.5 rounded ${
-              activeTab === tab.key ? "bg-blue-500/20 text-blue-300" : "bg-white/5 text-slate-500"
+              activeTab === tab.key ? "bg-primary/20 text-primary" : "bg-white/5 text-slate-500"
             }`}>
               {tab.key === "all" ? documents.length : tab.key === "global" ? globalCount : tab.key === "product" ? productCount : b2bCount}
             </span>

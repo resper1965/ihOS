@@ -206,7 +206,7 @@ export default async function DashboardPage() {
       <PageTitleRegistrar
         title={<>Bem-vindo ao <span className="text-emerald-400">ihOS</span></>}
         subtitle="Sua visão consolidada de compliance e governança."
-        icon={<LayoutDashboard className="h-4 w-4 text-blue-400" />}
+        icon={<LayoutDashboard className="h-4 w-4 text-primary" />}
       />
 
       {/* Stats Grid */}
