@@ -144,22 +144,16 @@ export interface BlastRadiusData {
 // ---------------------------------------------------------------------------
 
 export interface EvaluateEvidenceRequest {
-  control_id: string;
-  evidence_text: string;
-  framework_code: string;
+  controlRequirement: string;
+  evidenceDescription: string;
   tenant_id?: string;
 }
 
 export interface EvaluateEvidenceData {
-  control_id: string;
-  evidence_score: number; // 0–100
-  sufficiency: "sufficient" | "partial" | "insufficient";
-  findings: Array<{
-    category: string;
-    description: string;
-    severity: "high" | "medium" | "low";
-  }>;
-  recommendations: string[];
+  is_compliant: boolean;
+  confidence_score: number; // 0-100
+  missing_elements: string[];
+  auditor_notes: string;
 }
 
 // ---------------------------------------------------------------------------
