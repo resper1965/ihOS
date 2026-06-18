@@ -321,8 +321,8 @@ describe('API methods call correct endpoints', () => {
     const client = await import('@/lib/standard-api/client');
     await client.evaluateEvidence({
       control_id: 'CC6.1',
-      evidence_text: 'test',
-      framework_code: 'soc2',
+      controlRequirement: 'SOC 2 CC6.1 control requirement',
+      evidenceDescription: 'test',
     });
     const [url] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(url).toContain('/evaluate-evidence');
