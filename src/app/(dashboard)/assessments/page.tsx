@@ -568,7 +568,7 @@ export default function AssessmentsPage() {
                         <p className="text-xs text-text-muted mt-0.5">
                           {(item.frameworks || []).length} frameworks ·{" "}
                           {item.sales_channel || "All channels"} ·{" "}
-                          {new Date(item.created_at).toLocaleDateString()}
+                          {item.created_at ? new Date(item.created_at).toLocaleDateString() : '—'}
                         </p>
                       </div>
                     </Link>
