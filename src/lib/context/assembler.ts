@@ -36,11 +36,17 @@ async function fetchConversationHistory(conversationId: string) {
 // Fetch RAG chunks via pgvector
 // ---------------------------------------------------------------------------
 
-async function fetchRAGChunks(query: string, framework?: string, productVersionId?: string): Promise<RAGChunk[]> {
+async function fetchRAGChunks(
+  query: string,
+  framework?: string,
+  productVersionId?: string,
+  categories?: string[] | null,
+): Promise<RAGChunk[]> {
   try {
     const results = await searchDocuments(query, {
       framework,
       productVersionId,
+      categories: categories ?? undefined,
       limit: MAX_RAG_CHUNKS,
       threshold: RAG_SIMILARITY_THRESHOLD,
     });
@@ -123,6 +129,7 @@ export async function assembleContext(
     tenantId?: string;
     userId?: string;
     productVersionId?: string;
+    salesChannel?: 'B2B_GEHC' | 'B2B_DIRECT' | null;
   }
 ): Promise<AssembledContext> {
   const { profile, classification } = routeToAgent(userMessage);
@@ -133,7 +140,19 @@ export async function assembleContext(
   const frameworkHint = classification.matchedKeywords.find((kw) =>
     ['soc2', 'iso27001', 'lgpd', 'gdpr', 'nist-csf', 'pci-dss', 'hipaa'].includes(kw)
   );
-  const ragChunks = await fetchRAGChunks(userMessage, frameworkHint, options?.productVersionId);
+
+  // Derive allowed categories from the sales channel
+  // Mirrors logic from assessment engine (engine.ts lines 121-127)
+  let ragCategories: string[] | null = null;
+  const channel = options?.salesChannel;
+  if (channel === 'B2B_GEHC') {
+    ragCategories = ['ISMS_CORE', 'OPERATIONAL', 'B2B_GEHC'];
+  } else if (channel === 'B2B_DIRECT') {
+    ragCategories = ['ISMS_CORE', 'OPERATIONAL', 'B2B_DIRECT'];
+  }
+  // If no channel context (null/undefined), ragCategories stays null → all categories
+
+  const ragChunks = await fetchRAGChunks(userMessage, frameworkHint, options?.productVersionId, ragCategories);
 
   // Agentic evolution contexts
   let briefingContext = '';
