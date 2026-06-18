@@ -155,8 +155,31 @@ export type ComplianceAssessment = {
   id: string; // UUID
   framework_code: string;
   product_version_id: string | null; // UUID - FK to product_versions(id)
+  user_id: string | null; // UUID - FK to auth.users(id)
+  status: 'draft' | 'in_progress' | 'completed' | null;
   observation_start_date: string | null;
   observation_end_date: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+// Assessment run results (denormalized summary table)
+export type Assessment = {
+  id: string; // UUID
+  name: string;
+  status: 'running' | 'completed' | 'failed';
+  mode: 'quick' | 'deep';
+  sales_channel: string | null;
+  product_version_id: string | null; // UUID
+  frameworks: string[]; // TEXT[]
+  started_at: string | null;
+  completed_at: string | null;
+  total_controls: number;
+  compliant_controls: number;
+  missing_controls: number;
+  implemented_control_ids: string[]; // TEXT[]
+  framework_scores: Record<string, unknown>[]; // JSONB[]
+  created_by: string | null; // UUID
   created_at: string | null;
   updated_at: string | null;
 }
@@ -301,6 +324,12 @@ export type ComplianceAssessmentInsert = Omit<ComplianceAssessment, "id" | "crea
   updated_at?: string | null;
 };
 
+export type AssessmentInsert = Omit<Assessment, "id" | "created_at" | "updated_at"> & {
+  id?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+
 export type PoamItemInsert = Omit<PoamItem, "id" | "created_at" | "updated_at"> & {
   id?: string;
   created_at?: string | null;
@@ -355,6 +384,7 @@ export type IntelligenceSnapshotUpdate = Partial<Omit<IntelligenceSnapshot, "id"
 export type ProductVersionUpdate = Partial<Omit<ProductVersion, "id">>;
 export type ScfFrameworkMappingUpdate = Partial<Omit<ScfFrameworkMapping, "id">>;
 export type ComplianceAssessmentUpdate = Partial<Omit<ComplianceAssessment, "id">>;
+export type AssessmentUpdate = Partial<Omit<Assessment, "id">>;
 export type PoamItemUpdate = Partial<Omit<PoamItem, "id">>;
 export type AgentGoalUpdate = Partial<Omit<AgentGoal, "id">>;
 export type AgentTaskUpdate = Partial<Omit<AgentTask, "id">>;
@@ -482,6 +512,12 @@ export type Database = {
         Row: AgentOrgState;
         Insert: AgentOrgStateInsert;
         Update: AgentOrgStateUpdate;
+        Relationships: [];
+      };
+      assessments: {
+        Row: Assessment;
+        Insert: AssessmentInsert;
+        Update: AssessmentUpdate;
         Relationships: [];
       };
     };
