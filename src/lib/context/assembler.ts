@@ -6,8 +6,7 @@ import type { AgentProfile, AssembledContext, RAGChunk } from '@/lib/agents/type
 import { routeToAgent } from '@/lib/agents/intent-router';
 import { getMessages } from '@/lib/chat/persistence';
 import { searchDocuments } from '@/lib/chat/rag-search';
-import { createClient as createServerClient } from '@/lib/supabase/server';
-const createClient = createServerClient as any;
+import { createClient } from '@/lib/supabase/server';
 import { getAllOrgStates } from '@/lib/agents/org-state';
 
 const MAX_HISTORY_MESSAGES = 10;

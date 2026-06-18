@@ -11,7 +11,7 @@ export interface OrgStateRow {
  */
 async function getOrgState(userId: string, key: string): Promise<Record<string, unknown> | null> {
   try {
-    const supabase = (await createClient()) as any;
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('agent_org_state')
       .select('state_value')
@@ -41,7 +41,7 @@ async function setOrgState(
   value: Record<string, unknown>
 ): Promise<void> {
   try {
-    const supabase = (await createClient()) as any;
+    const supabase = await createClient();
     const { error } = await supabase
       .from('agent_org_state')
       .upsert(
@@ -68,7 +68,7 @@ async function setOrgState(
  */
 export async function getAllOrgStates(userId: string): Promise<OrgStateRow[]> {
   try {
-    const supabase = (await createClient()) as any;
+    const supabase = await createClient();
     const { data, error } = await supabase
       .from('agent_org_state')
       .select('state_key, state_value')

@@ -17,6 +17,7 @@ export interface SearchDocumentResult {
 export interface SearchDocumentsOptions {
   framework?: string;
   productVersionId?: string;
+  categories?: string[];
   limit?: number;
   threshold?: number;
 }
@@ -25,7 +26,7 @@ export async function searchDocuments(
   query: string,
   options: SearchDocumentsOptions = {}
 ): Promise<SearchDocumentResult[]> {
-  const { framework = null, productVersionId = null, limit = 5, threshold = 0.7 } = options;
+  const { framework = null, productVersionId = null, categories = null, limit = 5, threshold = 0.7 } = options;
 
   try {
     // Generate a real semantic embedding for the search query
@@ -40,9 +41,9 @@ export async function searchDocuments(
       return [];
     }
 
-    const supabase = (await createClient()) as any;
+    const supabase = await createClient();
 
-    // Try new signature first (with filter_version_id)
+    // Try new signature first (with filter_version_id + filter_categories)
     let { data, error } = await supabase.rpc('match_documents_hybrid', {
       query_text: query,
       query_embedding: queryEmbedding,
@@ -50,11 +51,12 @@ export async function searchDocuments(
       match_count: limit,
       filter_framework: framework,
       filter_version_id: productVersionId,
+      filter_categories: categories,
     });
 
-    // Fallback: if the new signature doesn't exist yet, retry without filter_version_id
+    // Fallback: if the new signature doesn't exist yet, retry without filter_version_id/filter_categories
     if (error && (error.code === '42883' || error.message?.includes('function') || error.code === 'PGRST202')) {
-      console.warn('[RAG] filter_version_id not supported yet, falling back to old signature');
+      console.warn('[RAG] filter_version_id/filter_categories not supported yet, falling back to old signature');
       const fallback = await supabase.rpc('match_documents_hybrid', {
         query_text: query,
         query_embedding: queryEmbedding,
