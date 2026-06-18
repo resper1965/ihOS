@@ -42,7 +42,8 @@ export async function searchDocuments(
 
     const supabase = (await createClient()) as any;
 
-    const { data, error } = await supabase.rpc('match_documents_hybrid', {
+    // Try new signature first (with filter_version_id)
+    let { data, error } = await supabase.rpc('match_documents_hybrid', {
       query_text: query,
       query_embedding: queryEmbedding,
       match_threshold: threshold,
@@ -50,6 +51,20 @@ export async function searchDocuments(
       filter_framework: framework,
       filter_version_id: productVersionId,
     });
+
+    // Fallback: if the new signature doesn't exist yet, retry without filter_version_id
+    if (error && (error.code === '42883' || error.message?.includes('function') || error.code === 'PGRST202')) {
+      console.warn('[RAG] filter_version_id not supported yet, falling back to old signature');
+      const fallback = await supabase.rpc('match_documents_hybrid', {
+        query_text: query,
+        query_embedding: queryEmbedding,
+        match_threshold: threshold,
+        match_count: limit,
+        filter_framework: framework,
+      });
+      data = fallback.data;
+      error = fallback.error;
+    }
 
     if (error) {
       console.error('[RAG] match_documents RPC error:', error.message);
