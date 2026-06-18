@@ -1,6 +1,6 @@
 // src/lib/agents/tools/index.ts
 // Vercel AI SDK v6 tool definitions for the ihOS agent system
-// Wired to real Standard GRC API + Supabase with mock fallbacks
+// Wired to real Standard GRC API + Supabase (no mock fallbacks)
 
 import { tool } from 'ai';
 import { z } from 'zod';
@@ -107,16 +107,17 @@ export const complianceScore = tool({
 
       throw new Error(`Framework score for ${input.framework} not cached, and regulation is not supported by API.`);
     } catch (err) {
-      console.warn('[Tool:complianceScore] API/DB unavailable, using mock:', (err as Error).message);
+      console.warn('[Tool:complianceScore] API/DB unavailable:', (err as Error).message);
       return {
         framework: input.framework,
-        overallScore: 73.5,
-        controlsTotal: 120,
-        controlsMet: 78,
-        controlsPartial: 22,
-        controlsNotMet: 20,
+        overallScore: 0,
+        controlsTotal: 0,
+        controlsMet: 0,
+        controlsPartial: 0,
+        controlsNotMet: 0,
         lastAssessedAt: new Date().toISOString(),
-        source: 'mock' as const,
+        source: 'unavailable' as const,
+        error: (err as Error).message,
       };
     }
   },
@@ -201,18 +202,16 @@ export const crossCoverage = tool({
         source: 'standard-api' as const,
       };
     } catch (err) {
-      console.warn('[Tool:crossCoverage] API/DB unavailable, using mock:', (err as Error).message);
+      console.warn('[Tool:crossCoverage] API/DB unavailable:', (err as Error).message);
       return {
         sourceFramework: input.sourceFramework,
         targetFramework: input.targetFramework,
-        overlappingControls: 45,
-        totalSourceControls: 120,
-        coveragePercentage: 37.5,
-        mappings: [
-          { sourceControlId: 'CC6.1', targetControlIds: ['A.9.1.1', 'A.9.1.2'], relationship: 'exact' },
-          { sourceControlId: 'CC6.2', targetControlIds: ['A.9.2.1'], relationship: 'partial' },
-        ],
-        source: 'mock' as const,
+        overlappingControls: 0,
+        totalSourceControls: 0,
+        coveragePercentage: 0,
+        mappings: [],
+        source: 'unavailable' as const,
+        error: (err as Error).message,
       };
     }
   },
@@ -268,18 +267,15 @@ export const blastRadius = tool({
         source: 'standard-api' as const,
       };
     } catch (err) {
-      console.warn('[Tool:blastRadius] API/DB unavailable, using mock:', (err as Error).message);
+      console.warn('[Tool:blastRadius] API/DB unavailable:', (err as Error).message);
       return {
         controlId: input.controlId,
         framework: input.framework,
-        impactLevel: 'high' as const,
-        affectedControls: [
-          { controlId: 'CC6.2', framework: 'soc2', relationship: 'depends-on' },
-          { controlId: 'A.9.1.1', framework: 'iso27001', relationship: 'mapped' },
-        ],
-        affectedProcesses: ['Access Management', 'User Provisioning', 'Authentication Services'],
-        remediationPriority: 1,
-        source: 'mock' as const,
+        affectedFrameworks: 0,
+        totalAffectedControls: 0,
+        riskSummary: '',
+        source: 'unavailable' as const,
+        error: (err as Error).message,
       };
     }
   },
@@ -315,20 +311,8 @@ export const searchDocuments = tool({
       }
       return [];
     } catch (err) {
-      console.warn('[Tool:searchDocuments] RAG unavailable, using mock:', (err as Error).message);
-      const count = input.limit ?? 5;
-      return Array.from({ length: count }, (_, i) => ({
-        id: `chunk-${i + 1}`,
-        content: `Relevant document content for "${input.query}" — chunk ${i + 1}.`,
-        similarity: Math.round((0.95 - i * 0.05) * 100) / 100,
-        metadata: {
-          documentId: `doc-${100 + i}`,
-          documentTitle: `Compliance Policy v${3 - Math.min(i, 2)}.0`,
-          framework: input.framework ?? 'general',
-          section: `Section ${i + 1}`,
-        },
-        source: 'mock' as const,
-      }));
+      console.warn('[Tool:searchDocuments] RAG unavailable:', (err as Error).message);
+      return [];
     }
   },
 });
@@ -370,19 +354,11 @@ export const listFrameworks = tool({
       }
       throw new Error('No framework data found');
     } catch (err) {
-      console.warn('[Tool:listFrameworks] Supabase unavailable, using mock:', (err as Error).message);
-      const all = [
-        { id: 'soc2', name: 'SOC 2 Type II', controlCount: 120, category: 'security' },
-        { id: 'iso27001', name: 'ISO 27001', controlCount: 93, category: 'security' },
-        { id: 'nist-csf', name: 'NIST CSF', controlCount: 108, category: 'security' },
-        { id: 'lgpd', name: 'LGPD', controlCount: 65, category: 'privacy' },
-        { id: 'gdpr', name: 'GDPR', controlCount: 87, category: 'privacy' },
-        { id: 'hipaa', name: 'HIPAA', controlCount: 75, category: 'industry' },
-        { id: 'scf', name: 'Secure Controls Framework', controlCount: 1468, category: 'security' },
-      ];
+      console.warn('[Tool:listFrameworks] Supabase unavailable:', (err as Error).message);
       return {
-        frameworks: input.category ? all.filter((f) => f.category === input.category) : all,
-        source: 'mock' as const,
+        frameworks: [],
+        source: 'unavailable' as const,
+        error: (err as Error).message,
       };
     }
   },
@@ -433,17 +409,13 @@ export const getAssessmentStatus = tool({
       }
       throw new Error('No assessment found');
     } catch (err) {
-      console.warn('[Tool:getAssessmentStatus] Supabase unavailable, using mock:', (err as Error).message);
+      console.warn('[Tool:getAssessmentStatus] Supabase unavailable:', (err as Error).message);
       return {
-        assessmentId: input.assessmentId ?? `assess-${input.framework}-2024`,
+        assessmentId: input.assessmentId ?? null,
         framework: input.framework,
-        status: 'in_progress' as const,
-        progress: 68,
-        controlsAssessed: 82,
-        controlsTotal: 120,
-        startedAt: '2024-01-15T00:00:00Z',
-        nextDeadline: '2024-06-30T00:00:00Z',
-        source: 'mock' as const,
+        status: 'unknown' as const,
+        source: 'unavailable' as const,
+        error: (err as Error).message,
       };
     }
   },
@@ -538,17 +510,11 @@ export const createGoal = tool({
       if (error) throw error;
       return { ...data, source: 'supabase' as const };
     } catch (err) {
-      console.warn('[Tool:createGoal] Supabase unavailable, using mock:', (err as Error).message);
+      console.warn('[Tool:createGoal] Supabase unavailable:', (err as Error).message);
       return {
-        id: crypto.randomUUID(),
-        framework_code: input.frameworkCode,
-        title: input.title,
-        description: input.description ?? null,
-        status: 'not_started' as const,
-        progress: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        source: 'mock' as const,
+        status: 'error',
+        message: `Não foi possível criar a meta: ${(err as Error).message}`,
+        source: 'unavailable' as const,
       };
     }
   },
@@ -578,30 +544,8 @@ export const listGoals = tool({
       if (error) throw error;
       return { goals: data, source: 'supabase' as const };
     } catch (err) {
-      console.warn('[Tool:listGoals] Supabase unavailable, using mock:', (err as Error).message);
-      const mockGoals = [
-        {
-          id: 'mock-goal-1',
-          framework_code: input.frameworkCode ?? 'ISO-27001',
-          title: 'Implementar Controle de Acessos Múltifo Fator (MFA)',
-          description: 'Ativar MFA para todos os usuários com acesso administrativo.',
-          status: 'in_progress' as const,
-          progress: 60,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-        {
-          id: 'mock-goal-2',
-          framework_code: input.frameworkCode ?? 'SOC-2',
-          title: 'Configurar Logs de Auditoria Contínua',
-          description: 'Habilitar monitoramento contínuo de logs de auditoria na AWS.',
-          status: 'not_started' as const,
-          progress: 0,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        }
-      ];
-      return { goals: mockGoals, source: 'mock' as const };
+      console.warn('[Tool:listGoals] Supabase unavailable:', (err as Error).message);
+      return { goals: [], source: 'unavailable' as const, error: (err as Error).message };
     }
   },
 });
@@ -646,13 +590,11 @@ export const updateGoalProgress = tool({
       if (error) throw error;
       return { ...data, source: 'supabase' as const };
     } catch (err) {
-      console.warn('[Tool:updateGoalProgress] Supabase unavailable, using mock:', (err as Error).message);
+      console.warn('[Tool:updateGoalProgress] Supabase unavailable:', (err as Error).message);
       return {
-        id: input.goalId,
-        progress: input.progress,
-        status: input.status ?? ('in_progress' as const),
-        updated_at: new Date().toISOString(),
-        source: 'mock' as const,
+        status: 'error',
+        message: `Não foi possível atualizar o progresso: ${(err as Error).message}`,
+        source: 'unavailable' as const,
       };
     }
   },
@@ -703,18 +645,11 @@ export const createTask = tool({
       if (error) throw error;
       return { ...data, source: 'supabase' as const };
     } catch (err) {
-      console.warn('[Tool:createTask] Supabase unavailable, using mock:', (err as Error).message);
+      console.warn('[Tool:createTask] Supabase unavailable:', (err as Error).message);
       return {
-        id: crypto.randomUUID(),
-        goal_id: input.goalId,
-        title: input.title,
-        description: input.description ?? null,
-        status: 'pending' as const,
-        deadline: input.deadline ?? null,
-        assigned_agent: input.assignedAgent ?? null,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        source: 'mock' as const,
+        status: 'error',
+        message: `Não foi possível criar a tarefa: ${(err as Error).message}`,
+        source: 'unavailable' as const,
       };
     }
   },
@@ -741,28 +676,8 @@ export const listTasks = tool({
       if (error) throw error;
       return { tasks: data, source: 'supabase' as const };
     } catch (err) {
-      console.warn('[Tool:listTasks] Supabase unavailable, using mock:', (err as Error).message);
-      const mockTasks = [
-        {
-          id: 'mock-task-1',
-          goal_id: input.goalId ?? 'mock-goal-1',
-          title: 'Configurar SSO com Google Workspace',
-          description: 'Habilitar logon único usando o Google Workspace no portal.',
-          status: 'completed' as const,
-          deadline: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-          assigned_agent: 'Compliance Agent',
-        },
-        {
-          id: 'mock-task-2',
-          goal_id: input.goalId ?? 'mock-goal-1',
-          title: 'Habilitar autenticação Duo MFA para administradores',
-          description: 'Configurar integração da API do Duo para autenticação administrativa.',
-          status: 'in_progress' as const,
-          deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-          assigned_agent: 'SOC Agent',
-        }
-      ];
-      return { tasks: mockTasks, source: 'mock' as const };
+      console.warn('[Tool:listTasks] Supabase unavailable:', (err as Error).message);
+      return { tasks: [], source: 'unavailable' as const, error: (err as Error).message };
     }
   },
 });
@@ -803,12 +718,11 @@ export const updateTaskStatus = tool({
       if (error) throw error;
       return { ...data, source: 'supabase' as const };
     } catch (err) {
-      console.warn('[Tool:updateTaskStatus] Supabase unavailable, using mock:', (err as Error).message);
+      console.warn('[Tool:updateTaskStatus] Supabase unavailable:', (err as Error).message);
       return {
-        id: input.taskId,
-        status: input.status,
-        updated_at: new Date().toISOString(),
-        source: 'mock' as const,
+        status: 'error',
+        message: `Não foi possível atualizar o status: ${(err as Error).message}`,
+        source: 'unavailable' as const,
       };
     }
   },
@@ -860,11 +774,11 @@ export const recordUserCorrection = tool({
       if (error) throw error;
       return { success: true, correctionId: data.id, source: 'supabase' as const };
     } catch (err) {
-      console.warn('[Tool:recordUserCorrection] Supabase unavailable, using mock:', (err as Error).message);
+      console.warn('[Tool:recordUserCorrection] Supabase unavailable:', (err as Error).message);
       return {
-        success: true,
-        correctionId: crypto.randomUUID(),
-        source: 'mock' as const,
+        success: false,
+        error: (err as Error).message,
+        source: 'unavailable' as const,
       };
     }
   },

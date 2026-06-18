@@ -1,7 +1,7 @@
 // ============================================================================
 // Compliance Intelligence — Data Layer
-// Source: Supabase tables → Standard GRC API → hardcoded fallback
-// Each function follows: DB query → API fallback → mock fallback (never crash)
+// Source: Supabase tables → Standard GRC API → empty fallback
+// Each function follows: DB query → API fallback → empty state (never crash)
 // ============================================================================
 
 import { createClient } from "@/lib/supabase/server";
@@ -51,99 +51,7 @@ export interface DomainBreakdown {
   rate: number;
 }
 
-// ---------------------------------------------------------------------------
-// Mock data (final fallback — ensures UI never crashes)
-// ---------------------------------------------------------------------------
 
-const MOCK_FRAMEWORK_SCORES: FrameworkScore[] = [
-  { code: "BR-LGPD", name: "LGPD", score: 100, coverage: null, missing: 0, icon: "🇧🇷" },
-  { code: "HI-2013", name: "HIPAA", score: null, coverage: 76, missing: 40, icon: "🏥" },
-  { code: "TX-LEVEL-2", name: "TX-RAMP L2", score: null, coverage: 65, missing: 97, icon: "⭐" },
-  { code: "iso27001", name: "ISO 27001", score: null, coverage: null, missing: 81, icon: "🔒" },
-  { code: "EU-GDPR", name: "EU GDPR", score: null, coverage: 0, missing: 0, icon: "🇪🇺" },
-];
-
-const MOCK_EVALUATION_SUMMARY: EvaluationSummary = {
-  total: 200,
-  compliant: 27,
-  nonCompliant: 173,
-  avgConfidence: 72.3,
-};
-
-const MOCK_TOP_GAPS: GapItem[] = [
-  {
-    code: "AST-16", domain: "AST", name: "BYOD Governance", confidence: 20, status: "critical",
-    missingElements: ["No BYOD policy documented", "Missing MDM solution", "No device enrollment procedures"],
-  },
-  {
-    code: "PRI-01.4", domain: "PRI", name: "DPO Appointment", confidence: 30, status: "high",
-    missingElements: ["No formal DPO appointment letter", "DPO responsibilities not published"],
-  },
-  {
-    code: "PRI-15", domain: "PRI", name: "Data Authority Registration", confidence: 50, status: "medium",
-    missingElements: ["Registration with data protection authority pending"],
-  },
-  {
-    code: "IRO-01", domain: "IRO", name: "Incident Response Operations", confidence: 50, status: "medium",
-    missingElements: ["IR plan exists but not tested in 12 months", "Missing tabletop exercise records"],
-  },
-  {
-    code: "PRI-06", domain: "PRI", name: "Data Subject Rights", confidence: 60, status: "medium",
-    missingElements: ["Data subject request SLA not defined"],
-  },
-  {
-    code: "TDA-19", domain: "TDA", name: "Transmission Confidentiality", confidence: 35, status: "high",
-    missingElements: ["TLS 1.2 minimum not enforced on all endpoints", "Missing certificate pinning documentation"],
-  },
-  {
-    code: "CRY-01", domain: "CRY", name: "Cryptographic Key Management", confidence: 40, status: "high",
-    missingElements: ["Key rotation schedule not documented", "No HSM inventory"],
-  },
-  {
-    code: "IAC-06", domain: "IAC", name: "Multi-Factor Authentication", confidence: 55, status: "medium",
-    missingElements: ["MFA not enforced for all privileged accounts"],
-  },
-  {
-    code: "DCH-06.1", domain: "DCH", name: "Data Classification Handling", confidence: 45, status: "high",
-    missingElements: ["Classification labels not applied to all repositories", "Handling procedures incomplete for 'Restricted' tier"],
-  },
-  {
-    code: "CFG-02", domain: "CFG", name: "System Hardening", confidence: 42, status: "high",
-    missingElements: ["CIS benchmarks not fully applied", "Missing baseline documentation for production servers"],
-  },
-];
-
-const MOCK_ROI_PATH: RoiItem[] = [
-  { code: "DCH-17", name: "Data Retention & Disposal", roi: 8.0, frameworks: ["ISO 27001"] },
-  { code: "MON-01", name: "Continuous Monitoring", roi: 3.0, frameworks: ["TX-RAMP", "HIPAA", "ISO 27001"] },
-  { code: "HRS-04", name: "Personnel Security", roi: 2.0, frameworks: ["TX-RAMP", "HIPAA", "ISO 27001"] },
-  { code: "IAC-21", name: "Credential Management", roi: 1.0, frameworks: ["TX-RAMP", "HIPAA", "ISO 27001"] },
-  { code: "TPM-01", name: "Third-Party Management", roi: 1.0, frameworks: ["HIPAA"] },
-  { code: "RSK-04", name: "Risk Assessment Program", roi: 0.9, frameworks: ["TX-RAMP", "ISO 27001"] },
-  { code: "GOV-02", name: "Security Governance Board", roi: 0.8, frameworks: ["TX-RAMP", "ISO 27001"] },
-  { code: "SAT-01", name: "Security Awareness Training", roi: 0.7, frameworks: ["TX-RAMP", "HIPAA", "ISO 27001"] },
-  { code: "BCD-01", name: "Business Continuity Plan", roi: 0.6, frameworks: ["TX-RAMP", "HIPAA"] },
-  { code: "VPM-06", name: "Patch Management", roi: 0.5, frameworks: ["TX-RAMP", "HIPAA", "ISO 27001"] },
-];
-
-const MOCK_DOMAIN_BREAKDOWN: DomainBreakdown[] = [
-  { domain: "AST", fullName: "Asset Management", total: 18, compliant: 5, rate: 28 },
-  { domain: "IAC", fullName: "Identity & Access Control", total: 24, compliant: 10, rate: 42 },
-  { domain: "PRI", fullName: "Privacy", total: 16, compliant: 3, rate: 19 },
-  { domain: "DCH", fullName: "Data Classification & Handling", total: 20, compliant: 6, rate: 30 },
-  { domain: "CRY", fullName: "Cryptography", total: 10, compliant: 4, rate: 40 },
-  { domain: "CFG", fullName: "Configuration Management", total: 14, compliant: 6, rate: 43 },
-  { domain: "MON", fullName: "Monitoring & Logging", total: 12, compliant: 5, rate: 42 },
-  { domain: "IRO", fullName: "Incident Response", total: 10, compliant: 3, rate: 30 },
-  { domain: "HRS", fullName: "Human Resource Security", total: 8, compliant: 4, rate: 50 },
-  { domain: "GOV", fullName: "Governance", total: 12, compliant: 7, rate: 58 },
-  { domain: "RSK", fullName: "Risk Management", total: 10, compliant: 5, rate: 50 },
-  { domain: "TPM", fullName: "Third-Party Management", total: 8, compliant: 2, rate: 25 },
-  { domain: "TDA", fullName: "Threat & Data Analysis", total: 14, compliant: 4, rate: 29 },
-  { domain: "BCD", fullName: "Business Continuity", total: 6, compliant: 3, rate: 50 },
-  { domain: "VPM", fullName: "Vulnerability & Patch Mgmt", total: 10, compliant: 4, rate: 40 },
-  { domain: "SAT", fullName: "Security Awareness", total: 8, compliant: 5, rate: 63 },
-];
 
 // ---------------------------------------------------------------------------
 // Icon map for framework codes
@@ -183,7 +91,7 @@ const DOMAIN_FULL_NAMES: Record<string, string> = {
 // ---------------------------------------------------------------------------
 // 1. getFrameworkScores()
 // Query intelligence_snapshots for latest scores per framework.
-// Fallback: Standard API complianceScore(). Final fallback: mock data.
+// Fallback: Standard API complianceScore(). Final fallback: empty array.
 // ---------------------------------------------------------------------------
 
 export async function getFrameworkScores(): Promise<FrameworkScore[]> {
@@ -236,7 +144,7 @@ export async function getFrameworkScores(): Promise<FrameworkScore[]> {
           const apiResult = await standardApi.complianceScore({ framework_code: code });
           results.push({
             code,
-            name: MOCK_FRAMEWORK_SCORES.find((f) => f.code === code)?.name ?? code,
+            name: code,
             score: apiResult.score ?? apiResult.overall_score ?? null,
             coverage: null,
             missing: apiResult.missing_controls?.length ?? 0,
@@ -252,11 +160,11 @@ export async function getFrameworkScores(): Promise<FrameworkScore[]> {
       // Standard API unavailable
     }
 
-    console.warn("[compliance-data] getFrameworkScores: using mock data fallback");
-    return MOCK_FRAMEWORK_SCORES;
+    console.warn("[compliance-data] getFrameworkScores: no data available");
+    return [];
   } catch (err) {
-    console.warn("[compliance-data] getFrameworkScores error, using mock:", err);
-    return MOCK_FRAMEWORK_SCORES;
+    console.warn("[compliance-data] getFrameworkScores error:", err);
+    return [];
   }
 }
 
@@ -290,11 +198,11 @@ export async function getEvaluationSummary(): Promise<EvaluationSummary> {
       };
     }
 
-    console.warn("[compliance-data] getEvaluationSummary: no evaluations found, using mock");
-    return MOCK_EVALUATION_SUMMARY;
+    console.warn("[compliance-data] getEvaluationSummary: no evaluations found");
+    return { total: 0, compliant: 0, nonCompliant: 0, avgConfidence: 0 };
   } catch (err) {
-    console.warn("[compliance-data] getEvaluationSummary error, using mock:", err);
-    return MOCK_EVALUATION_SUMMARY;
+    console.warn("[compliance-data] getEvaluationSummary error:", err);
+    return { total: 0, compliant: 0, nonCompliant: 0, avgConfidence: 0 };
   }
 }
 
@@ -336,11 +244,11 @@ export async function getTopGaps(): Promise<GapItem[]> {
       });
     }
 
-    console.warn("[compliance-data] getTopGaps: no gaps found, using mock");
-    return MOCK_TOP_GAPS;
+    console.warn("[compliance-data] getTopGaps: no gaps found");
+    return [];
   } catch (err) {
-    console.warn("[compliance-data] getTopGaps error, using mock:", err);
-    return MOCK_TOP_GAPS;
+    console.warn("[compliance-data] getTopGaps error:", err);
+    return [];
   }
 }
 
@@ -374,11 +282,11 @@ export async function getRoiPath(): Promise<RoiItem[]> {
       }));
     }
 
-    console.warn("[compliance-data] getRoiPath: API returned empty, using mock");
-    return MOCK_ROI_PATH;
+    console.warn("[compliance-data] getRoiPath: API returned empty");
+    return [];
   } catch (err) {
-    console.warn("[compliance-data] getRoiPath error, using mock:", err);
-    return MOCK_ROI_PATH;
+    console.warn("[compliance-data] getRoiPath error:", err);
+    return [];
   }
 }
 
@@ -427,10 +335,10 @@ export async function getDomainBreakdown(): Promise<DomainBreakdown[]> {
       return results;
     }
 
-    console.warn("[compliance-data] getDomainBreakdown: no evaluations found, using mock");
-    return MOCK_DOMAIN_BREAKDOWN;
+    console.warn("[compliance-data] getDomainBreakdown: no evaluations found");
+    return [];
   } catch (err) {
-    console.warn("[compliance-data] getDomainBreakdown error, using mock:", err);
-    return MOCK_DOMAIN_BREAKDOWN;
+    console.warn("[compliance-data] getDomainBreakdown error:", err);
+    return [];
   }
 }

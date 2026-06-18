@@ -146,18 +146,6 @@ async function getRecentActivity() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Fallback data
-// ─────────────────────────────────────────────────────────────────────────────
-
-const FALLBACK_ACTIVITY = [
-  { action: "Avaliação ISO 27001 atualizada", time: "há 2 min", type: "assessment" as const },
-  { action: "Análise de gaps TX-RAMP concluída", time: "há 15 min", type: "analysis" as const },
-  { action: "Documento SOC 2 Type II enviado", time: "há 1h", type: "document" as const },
-  { action: "Mapeamento HIPAA revisado", time: "há 3h", type: "review" as const },
-  { action: "Score NIST CSF atualizado para 92%", time: "há 5h", type: "score" as const },
-];
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Page (async Server Component)
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -167,7 +155,7 @@ export default async function DashboardPage() {
     getRecentActivity(),
   ]);
 
-  const activities = recentActivity ?? FALLBACK_ACTIVITY;
+  const activities = recentActivity ?? [];
 
   const STATS = [
     {

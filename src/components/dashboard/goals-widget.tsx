@@ -23,8 +23,8 @@ export function GoalsWidget() {
         const supabase = createClient();
         
         if (!user) {
-          setGoals(getMockGoals());
-          setTasks(getMockTasks());
+          setGoals([]);
+          setTasks([]);
           setLoading(false);
           return;
         }
@@ -45,8 +45,8 @@ export function GoalsWidget() {
         setTasks(tasksData || []);
       } catch (err) {
         console.error("Error fetching widget data:", err);
-        setGoals(getMockGoals());
-        setTasks(getMockTasks());
+        setGoals([]);
+        setTasks([]);
       } finally {
         setLoading(false);
       }
@@ -185,59 +185,4 @@ export function GoalsWidget() {
       </div>
     </div>
   );
-}
-
-// Fallback Mock Data for demo mode
-function getMockGoals(): AgentGoal[] {
-  return [
-    {
-      id: "mock-goal-1",
-      user_id: "demo-user",
-      framework_code: "TX-RAMP",
-      title: "Consolidar Políticas de MFA e SSO",
-      description: "Implementar autenticação em dois fatores e logon único.",
-      status: "in_progress",
-      progress: 50,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "mock-goal-2",
-      user_id: "demo-user",
-      framework_code: "ISO-27001",
-      title: "Auditoria Interna de Controle de Acesso",
-      description: "Revisar logs e privilégios administrativos.",
-      status: "not_started",
-      progress: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-  ];
-}
-
-function getMockTasks(): AgentTask[] {
-  return [
-    {
-      id: "mock-task-2",
-      goal_id: "mock-goal-1",
-      title: "Habilitar autenticação Duo MFA para administradores",
-      description: "Configurar integração da API do Duo para autenticação administrativa.",
-      status: "pending",
-      deadline: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000).toISOString(), // tomorrow
-      assigned_agent: "SOC Agent",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "mock-task-3",
-      goal_id: "mock-goal-2",
-      title: "Revisão semestral de privilégios IAM",
-      description: "Executar script de varredura de acessos admin.",
-      status: "pending",
-      deadline: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000).toISOString(),
-      assigned_agent: "SOC Agent",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-  ];
 }

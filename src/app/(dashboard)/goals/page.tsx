@@ -79,9 +79,9 @@ export default function GoalsPage() {
     setError(null);
     try {
       if (!user || !supabase) {
-        // Fallback for demo when unauthenticated or during build
-        setGoals(getMockGoals());
-        setTasks(getMockTasks());
+        // No user or Supabase client — show empty state
+        setGoals([]);
+        setTasks([]);
         setLoading(false);
         return;
       }
@@ -106,9 +106,9 @@ export default function GoalsPage() {
       setTasks(tasksData || []);
     } catch (err) {
       console.error("Error fetching goals/tasks:", err);
-      setError("Não foi possível carregar os dados. Exibindo dados simulados.");
-      setGoals(getMockGoals());
-      setTasks(getMockTasks());
+      setError("Não foi possível carregar os dados.");
+      setGoals([]);
+      setTasks([]);
     } finally {
       setLoading(false);
     }
@@ -705,92 +705,3 @@ export default function GoalsPage() {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Mock Data Generators for fallback
-// ---------------------------------------------------------------------------
-function getMockGoals(): AgentGoal[] {
-  return [
-    {
-      id: "mock-goal-1",
-      user_id: "demo-user",
-      framework_code: "TX-RAMP",
-      title: "Consolidar Políticas de MFA e SSO",
-      description: "Implementar autenticação em dois fatores e logon único para sistemas governamentais, suprindo o gap de controle TX-RAMP L2.",
-      status: "in_progress",
-      progress: 50,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "mock-goal-2",
-      user_id: "demo-user",
-      framework_code: "ISO-27001",
-      title: "Auditoria Interna de Controle de Acesso",
-      description: "Revisar logs e privilégios administrativos dos servidores de nuvem conforme requisitos da seção A.9 da ISO 27001.",
-      status: "not_started",
-      progress: 0,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "mock-goal-3",
-      user_id: "demo-user",
-      framework_code: "LGPD",
-      title: "Inventário de Dados Pessoais (RoPA)",
-      description: "Mapear a coleta e fluxo de dados pessoais de pacientes no aplicativo ihOS de acordo com as exigências da LGPD.",
-      status: "completed",
-      progress: 100,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-  ];
-}
-
-function getMockTasks(): AgentTask[] {
-  return [
-    {
-      id: "mock-task-1",
-      goal_id: "mock-goal-1",
-      title: "Configurar SSO com Google Workspace",
-      description: "Habilitar logon único usando o Google Workspace no portal.",
-      status: "completed",
-      deadline: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-      assigned_agent: "Compliance Agent",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "mock-task-2",
-      goal_id: "mock-goal-1",
-      title: "Habilitar autenticação Duo MFA para administradores",
-      description: "Configurar integração da API do Duo para autenticação administrativa.",
-      status: "pending",
-      deadline: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-      assigned_agent: "SOC Agent",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "mock-task-3",
-      goal_id: "mock-goal-2",
-      title: "Revisão semestral de privilégios IAM",
-      description: "Executar script de varredura de acessos admin e gerar relatório.",
-      status: "pending",
-      deadline: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-      assigned_agent: "SOC Agent",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    },
-    {
-      id: "mock-task-4",
-      goal_id: "mock-goal-3",
-      title: "Mapear tabelas com dados de saúde",
-      description: "Localizar e catalogar colunas no banco Supabase que armazenam dados médicos protegidos.",
-      status: "completed",
-      deadline: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-      assigned_agent: "Privacy Agent",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
-  ];
-}
