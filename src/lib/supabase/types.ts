@@ -178,7 +178,7 @@ export type Assessment = {
   compliant_controls: number;
   missing_controls: number;
   implemented_control_ids: string[]; // TEXT[]
-  framework_scores: Record<string, unknown>[]; // JSONB[]
+  framework_scores: any[]; // JSONB[] - FrameworkScore objects
   created_by: string | null; // UUID
   created_at: string | null;
   updated_at: string | null;
@@ -528,6 +528,26 @@ export type Database = {
       get_user_role: {
         Args: Record<string, never>;
         Returns: string;
+      };
+      match_documents_hybrid: {
+        Args: {
+          query_text: string;
+          query_embedding: number[];
+          match_threshold?: number;
+          match_count?: number;
+          filter_framework?: string | null;
+          filter_version_id?: string | null;
+          filter_categories?: string[] | null;
+        };
+        Returns: {
+          id: number;
+          content: string;
+          similarity: number;
+          document_id: number;
+          document_title: string;
+          section_title: string;
+          framework: string;
+        }[];
       };
     };
     Enums: {

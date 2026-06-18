@@ -146,6 +146,7 @@ export interface BlastRadiusData {
 export interface EvaluateEvidenceRequest {
   controlRequirement: string;
   evidenceDescription: string;
+  control_id?: string;
   tenant_id?: string;
 }
 

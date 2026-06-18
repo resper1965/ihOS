@@ -91,7 +91,7 @@ export async function POST(
     const file = new File([arrayBuffer], doc.filename, { type: mimeType });
 
     // ── 4. Text Extraction ───────────────────────────────────────────────
-    const text = await extractText(file, doc.file_format);
+    const text = await extractText(file, doc.file_format || 'txt');
     if (!text.trim()) {
       return NextResponse.json(
         { success: false, error: 'No text content could be extracted from the file.' },
