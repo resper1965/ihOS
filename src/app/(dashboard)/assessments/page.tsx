@@ -21,7 +21,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useVersion } from "@/lib/context/version-context";
-import { DEFAULT_FRAMEWORKS } from "@/lib/assessment/engine";
+import { DEFAULT_FRAMEWORKS } from "@/lib/assessment/frameworks";
 
 // ---------------------------------------------------------------------------
 // Types

@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     // ────────────────────────────────────────────────────────────────────────
-    // Sweep 1 (O(1) Join Query): Approaching or overdue tasks for all users
+    // Sweep 1 (Batch): Approaching or overdue tasks for all users
     // ────────────────────────────────────────────────────────────────────────
     const { data: tasks, error: tasksError } = await supabase
       .from('agent_tasks')
@@ -39,6 +39,15 @@ export async function GET(req: Request) {
     }
 
     if (tasks && tasks.length > 0) {
+      // Build candidate notifications in memory
+      const taskNotifCandidates: Array<{
+        user_id: string;
+        title: string;
+        content: string;
+        type: string;
+        read: boolean;
+      }> = [];
+
       for (const task of tasks) {
         if (!task.deadline) continue;
 
@@ -57,32 +66,39 @@ export async function GET(req: Request) {
             ? `A tarefa "${task.title}" do projeto "${goal.title || ''}" (${framework}) está atrasada. Devia ter sido concluída em ${deadlineDate.toLocaleDateString('pt-BR')}.`
             : `A tarefa "${task.title}" do projeto "${goal.title || ''}" (${framework}) vence em breve: ${deadlineDate.toLocaleDateString('pt-BR')}.`;
 
-          // Deduplicate notification check
-          const { data: existingNotifs } = await supabase
-            .from('agent_notifications')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('title', title)
-            .eq('content', content)
-            .eq('read', false)
-            .limit(1);
+          taskNotifCandidates.push({ user_id: userId, title, content, type: 'task_deadline', read: false });
+        }
+      }
 
-          if (!existingNotifs || existingNotifs.length === 0) {
-            await supabase.from('agent_notifications').insert({
-              user_id: userId,
-              title,
-              content,
-              type: 'task_deadline',
-              read: false,
-            });
-            alertsGenerated.push({ userId, type: 'task_deadline', title });
+      if (taskNotifCandidates.length > 0) {
+        // Batch dedup: fetch ALL unread task_deadline notifications in one query
+        const { data: existingTaskNotifs } = await supabase
+          .from('agent_notifications')
+          .select('user_id, title, content')
+          .eq('type', 'task_deadline')
+          .eq('read', false);
+
+        const existingSet = new Set(
+          (existingTaskNotifs || []).map(
+            (n: any) => `${n.user_id}||${n.title}||${n.content}`
+          )
+        );
+
+        const toInsert = taskNotifCandidates.filter(
+          (c) => !existingSet.has(`${c.user_id}||${c.title}||${c.content}`)
+        );
+
+        if (toInsert.length > 0) {
+          await supabase.from('agent_notifications').insert(toInsert);
+          for (const n of toInsert) {
+            alertsGenerated.push({ userId: n.user_id, type: n.type, title: n.title });
           }
         }
       }
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    // Sweep 2 (O(1) Join Query): POAM items expiring (risk acceptance)
+    // Sweep 2 (Batch): POAM items expiring (risk acceptance)
     // ────────────────────────────────────────────────────────────────────────
     const { data: poamItems, error: poamError } = await supabase
       .from('poam_items')
@@ -94,6 +110,14 @@ export async function GET(req: Request) {
     }
 
     if (poamItems && poamItems.length > 0) {
+      const poamNotifCandidates: Array<{
+        user_id: string;
+        title: string;
+        content: string;
+        type: string;
+        read: boolean;
+      }> = [];
+
       for (const item of poamItems) {
         if (!item.risk_acceptance_expires_at) continue;
 
@@ -111,31 +135,39 @@ export async function GET(req: Request) {
             ? `O termo de aceitação de risco para o controle "${item.control_code || 'N/A'}" expirou em ${expiryDate.toLocaleDateString('pt-BR')}.`
             : `O termo de aceitação de risco para o controle "${item.control_code || 'N/A'}" expira em ${expiryDate.toLocaleDateString('pt-BR')}.`;
 
-          const { data: existingNotifs } = await supabase
-            .from('agent_notifications')
-            .select('id')
-            .eq('user_id', userId)
-            .eq('title', title)
-            .eq('content', content)
-            .eq('read', false)
-            .limit(1);
+          poamNotifCandidates.push({ user_id: userId, title, content, type: 'poam_expiry', read: false });
+        }
+      }
 
-          if (!existingNotifs || existingNotifs.length === 0) {
-            await supabase.from('agent_notifications').insert({
-              user_id: userId,
-              title,
-              content,
-              type: 'poam_expiry',
-              read: false,
-            });
-            alertsGenerated.push({ userId, type: 'poam_expiry', title });
+      if (poamNotifCandidates.length > 0) {
+        // Batch dedup: fetch ALL unread poam_expiry notifications in one query
+        const { data: existingPoamNotifs } = await supabase
+          .from('agent_notifications')
+          .select('user_id, title, content')
+          .eq('type', 'poam_expiry')
+          .eq('read', false);
+
+        const existingSet = new Set(
+          (existingPoamNotifs || []).map(
+            (n: any) => `${n.user_id}||${n.title}||${n.content}`
+          )
+        );
+
+        const toInsert = poamNotifCandidates.filter(
+          (c) => !existingSet.has(`${c.user_id}||${c.title}||${c.content}`)
+        );
+
+        if (toInsert.length > 0) {
+          await supabase.from('agent_notifications').insert(toInsert);
+          for (const n of toInsert) {
+            alertsGenerated.push({ userId: n.user_id, type: n.type, title: n.title });
           }
         }
       }
     }
 
     // ────────────────────────────────────────────────────────────────────────
-    // Sweep 3 (Cached score checking): Framework score fluctuations
+    // Sweep 3 (Batch): Framework score fluctuations
     // ────────────────────────────────────────────────────────────────────────
     // Compile map of user_id -> active frameworks
     const userActiveFrameworks = new Map<string, Set<string>>();
@@ -185,22 +217,45 @@ export async function GET(req: Request) {
       cachedScores.set(framework, currentScore);
     }
 
+    // Batch-fetch ALL org state rows for framework scores in one query
+    const stateKeys = [...allUniqueFrameworks].map((fw) => `framework_score_${fw}`);
+    const { data: allOrgStates } = stateKeys.length > 0
+      ? await supabase
+          .from('agent_org_state')
+          .select('user_id, state_key, state_value')
+          .in('state_key', stateKeys)
+      : { data: [] };
+
+    // Index: "userId::stateKey" -> state_value
+    const orgStateIndex = new Map<string, any>();
+    (allOrgStates || []).forEach((row: any) => {
+      orgStateIndex.set(`${row.user_id}::${row.state_key}`, row.state_value);
+    });
+
     // Evaluate score variations for each user and their active frameworks
+    const scoreNotifications: Array<{
+      user_id: string;
+      title: string;
+      content: string;
+      type: string;
+      read: boolean;
+    }> = [];
+    const scoreUpserts: Array<{
+      user_id: string;
+      state_key: string;
+      state_value: { score: number };
+      updated_at: string;
+    }> = [];
+
     for (const [userId, frameworks] of userActiveFrameworks.entries()) {
       for (const framework of frameworks) {
         const currentScore = cachedScores.get(framework) ?? 73.5;
         const stateKey = `framework_score_${framework}`;
 
-        // Retrieve last known score
-        const { data: orgState } = await supabase
-          .from('agent_org_state')
-          .select('state_value')
-          .eq('user_id', userId)
-          .eq('state_key', stateKey)
-          .single();
-
-        const oldScore = orgState?.state_value && typeof orgState.state_value === 'object' && 'score' in orgState.state_value
-          ? (orgState.state_value as { score: number }).score
+        // Look up old score from batch-fetched index
+        const stateValue = orgStateIndex.get(`${userId}::${stateKey}`);
+        const oldScore = stateValue && typeof stateValue === 'object' && 'score' in stateValue
+          ? (stateValue as { score: number }).score
           : null;
 
         if (oldScore !== null && Math.abs(oldScore - currentScore) > 0.01) {
@@ -211,31 +266,34 @@ export async function GET(req: Request) {
             ? `O score de conformidade para o framework ${framework} subiu de ${oldScore.toFixed(1)}% para ${currentScore.toFixed(1)}%.`
             : `ATENÇÃO: O score de conformidade para o framework ${framework} caiu de ${oldScore.toFixed(1)}% para ${currentScore.toFixed(1)}%.`;
 
-          await supabase.from('agent_notifications').insert({
-            user_id: userId,
-            title,
-            content,
-            type: 'score_change',
-            read: false,
-          });
-
+          scoreNotifications.push({ user_id: userId, title, content, type: 'score_change', read: false });
           alertsGenerated.push({ userId, type: 'score_change', title });
         }
 
-        // Persist updated score
-        await supabase
-          .from('agent_org_state')
-          .upsert({
-            user_id: userId,
-            state_key: stateKey,
-            state_value: { score: currentScore },
-            updated_at: new Date().toISOString(),
-          }, { onConflict: 'user_id,state_key' });
+        // Queue upsert for updated score
+        scoreUpserts.push({
+          user_id: userId,
+          state_key: stateKey,
+          state_value: { score: currentScore },
+          updated_at: new Date().toISOString(),
+        });
       }
     }
 
+    // Batch insert all score-change notifications
+    if (scoreNotifications.length > 0) {
+      await supabase.from('agent_notifications').insert(scoreNotifications);
+    }
+
+    // Batch upsert all org state scores
+    if (scoreUpserts.length > 0) {
+      await supabase
+        .from('agent_org_state')
+        .upsert(scoreUpserts, { onConflict: 'user_id,state_key' });
+    }
+
     // ────────────────────────────────────────────────────────────────────────
-    // Sweep 4 (Reactive Lifecycle): Expired compliance documents
+    // Sweep 4 (Batch): Expired compliance documents
     // ────────────────────────────────────────────────────────────────────────
     const { data: expiredDocs, error: expiredDocsError } = await supabase
       .from('compliance_documents')
@@ -249,7 +307,18 @@ export async function GET(req: Request) {
     }
 
     if (expiredDocs && expiredDocs.length > 0) {
-      // Fetch admins to notify
+      // Batch update all expired documents to 'expired' status
+      const expiredDocIds = expiredDocs.map((doc: any) => doc.id);
+      const { error: updateError } = await supabase
+        .from('compliance_documents')
+        .update({ status: 'expired', updated_at: now.toISOString() })
+        .in('id', expiredDocIds);
+
+      if (updateError) {
+        console.error(`Failed to batch-update expired docs:`, updateError.message);
+      }
+
+      // Fetch admins to notify (single query)
       const { data: admins } = await supabase
         .from('profiles')
         .select('id')
@@ -257,42 +326,46 @@ export async function GET(req: Request) {
 
       const adminIds = admins?.map((a: any) => a.id) || [];
 
-      for (const doc of expiredDocs) {
-        // Update document status to 'expired'
-        const { error: updateError } = await supabase
-          .from('compliance_documents')
-          .update({ status: 'expired', updated_at: now.toISOString() })
-          .eq('id', doc.id);
+      if (adminIds.length > 0) {
+        // Build candidate notifications for all doc × admin combos
+        const docNotifCandidates: Array<{
+          user_id: string;
+          title: string;
+          content: string;
+          type: string;
+          read: boolean;
+        }> = [];
 
-        if (updateError) {
-          console.error(`Failed to update expired status for doc ${doc.id}:`, updateError.message);
-          continue;
-        }
-
-        // Notify admins
-        for (const adminId of adminIds) {
+        for (const doc of expiredDocs) {
           const title = 'Documento de Conformidade Expirado';
           const content = `O documento "${doc.filename}" expirou em ${new Date(doc.expires_at).toLocaleDateString('pt-BR')}. As avaliações de evidência vinculadas foram marcadas para revisão.`;
 
-          // Check if notification already exists
-          const { data: existingNotifs } = await supabase
-            .from('agent_notifications')
-            .select('id')
-            .eq('user_id', adminId)
-            .eq('title', title)
-            .eq('content', content)
-            .eq('read', false)
-            .limit(1);
+          for (const adminId of adminIds) {
+            docNotifCandidates.push({ user_id: adminId, title, content, type: 'document_expired', read: false });
+          }
+        }
 
-          if (!existingNotifs || existingNotifs.length === 0) {
-            await supabase.from('agent_notifications').insert({
-              user_id: adminId,
-              title,
-              content,
-              type: 'document_expired',
-              read: false,
-            });
-            alertsGenerated.push({ userId: adminId, type: 'document_expired', title });
+        // Batch dedup: fetch ALL unread document_expired notifications in one query
+        const { data: existingDocNotifs } = await supabase
+          .from('agent_notifications')
+          .select('user_id, title, content')
+          .eq('type', 'document_expired')
+          .eq('read', false);
+
+        const existingSet = new Set(
+          (existingDocNotifs || []).map(
+            (n: any) => `${n.user_id}||${n.title}||${n.content}`
+          )
+        );
+
+        const toInsert = docNotifCandidates.filter(
+          (c) => !existingSet.has(`${c.user_id}||${c.title}||${c.content}`)
+        );
+
+        if (toInsert.length > 0) {
+          await supabase.from('agent_notifications').insert(toInsert);
+          for (const n of toInsert) {
+            alertsGenerated.push({ userId: n.user_id, type: n.type, title: n.title });
           }
         }
       }

@@ -32,92 +32,6 @@ const FRAMEWORK_NAMES: Record<string, string> = {
 };
 
 /* ------------------------------------------------------------------ */
-/*  Mock fallback – used when no DB rows are found                    */
-/* ------------------------------------------------------------------ */
-const MOCK_FRAMEWORK_DATA: Record<string, {
-  name: string;
-  score: number;
-  progress: number;
-  controls: {
-    code: string;
-    name: string;
-    description: string;
-    status: "compliant" | "non-compliant" | "partial" | "unreviewed";
-    evidence?: string;
-  }[];
-}> = {
-  "iso-27001": {
-    name: "ISO/IEC 27001:2022",
-    score: 84.5,
-    progress: 78,
-    controls: [
-      {
-        code: "A.5.1",
-        name: "Políticas de Segurança da Informação",
-        description: "Diretrizes definidas pela alta direção sobre segurança de dados.",
-        status: "compliant",
-        evidence: "politica_seguranca_v2.1.pdf",
-      },
-      {
-        code: "A.5.15",
-        name: "Controle de Acesso",
-        description: "Regras de privilégios mínimos e monitoramento de usuários.",
-        status: "compliant",
-        evidence: "relatorio_usuarios_iam.xlsx",
-      },
-      {
-        code: "A.8.20",
-        name: "Segurança de Redes",
-        description: "Criptografia de tráfego, segmentação e firewalls.",
-        status: "partial",
-        evidence: "topologia_rede_producao.png",
-      },
-      {
-        code: "A.8.24",
-        name: "Uso de Criptografia",
-        description: "Chaves TLS/AES gerenciadas para tráfego em trânsito e em repouso.",
-        status: "non-compliant",
-      },
-    ],
-  },
-  "tx-ramp": {
-    name: "TX-RAMP Level 2",
-    score: 96.8,
-    progress: 92,
-    controls: [
-      {
-        code: "AC-2",
-        name: "Account Management",
-        description: "Gerenciamento de credenciais, desativação de contas e auditoria de privilégios.",
-        status: "compliant",
-        evidence: "tx_ramp_iam_policy.pdf",
-      },
-      {
-        code: "CP-9",
-        name: "Information System Backup",
-        description: "Backups diários criptografados e testes semestrais de restore.",
-        status: "compliant",
-        evidence: "backup_verification_logs.txt",
-      },
-      {
-        code: "RA-5",
-        name: "Vulnerability Monitoring and Scanning",
-        description: "Varreduras de vulnerabilidades automáticas semanais nos ambientes cloud.",
-        status: "compliant",
-        evidence: "vuln_scan_report_may.pdf",
-      },
-      {
-        code: "SC-7",
-        name: "Boundary Protection",
-        description: "Controle de firewalls e balanceamento de carga com bloqueio de tráfego malicioso.",
-        status: "partial",
-        evidence: "cloudflare_waf_config.json",
-      },
-    ],
-  },
-};
-
-/* ------------------------------------------------------------------ */
 /*  Types                                                             */
 /* ------------------------------------------------------------------ */
 type ControlStatus = "compliant" | "non-compliant" | "partial" | "unreviewed";
@@ -137,6 +51,21 @@ interface FrameworkData {
   progress: number;
   controls: ControlItem[];
 }
+
+/* ------------------------------------------------------------------ */
+/*  Default empty fallback – used when DB has no data (never crashes) */
+/* ------------------------------------------------------------------ */
+const DEFAULT_EMPTY_FRAMEWORK: FrameworkData = {
+  name: "Framework de Compliance",
+  score: 0,
+  progress: 0,
+  controls: [],
+};
+
+/* ------------------------------------------------------------------ */
+/*  Logging prefix (matches compliance-data.ts pattern)               */
+/* ------------------------------------------------------------------ */
+const LOG_PREFIX = "[assessment-detail]";
 
 /* ------------------------------------------------------------------ */
 /*  Skeleton loader                                                   */
@@ -219,14 +148,8 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           .single();
 
         if (assessmentError || !assessment) {
-          // Fallback to mock data
-          const fallback = MOCK_FRAMEWORK_DATA[id] || {
-            name: "Framework de Compliance",
-            score: 0,
-            progress: 0,
-            controls: [],
-          };
-          setData(fallback);
+          console.warn(`${LOG_PREFIX} Assessment not found for id=${id}, using empty fallback`);
+          setData(DEFAULT_EMPTY_FRAMEWORK);
           setLoading(false);
           return;
         }
@@ -238,14 +161,11 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           .eq("assessment_id", id);
 
         if (evalsError || !evaluations || evaluations.length === 0) {
-          // Assessment exists but no evaluations – use mock fallback
-          const fallback = MOCK_FRAMEWORK_DATA[id] || {
+          console.warn(`${LOG_PREFIX} No evaluations found for assessment id=${id}, using empty fallback`);
+          setData({
+            ...DEFAULT_EMPTY_FRAMEWORK,
             name: FRAMEWORK_NAMES[assessment.framework_code] || assessment.framework_code,
-            score: 0,
-            progress: 0,
-            controls: [],
-          };
-          setData(fallback);
+          });
           setLoading(false);
           return;
         }
@@ -296,15 +216,9 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           progress: Math.round(progress * 10) / 10,
           controls,
         });
-      } catch {
-        // On any unexpected error, fall back to mock
-        const fallback = MOCK_FRAMEWORK_DATA[id] || {
-          name: "Framework de Compliance",
-          score: 0,
-          progress: 0,
-          controls: [],
-        };
-        setData(fallback);
+      } catch (err) {
+        console.warn(`${LOG_PREFIX} Unexpected error for id=${id}, using empty fallback:`, err);
+        setData(DEFAULT_EMPTY_FRAMEWORK);
       } finally {
         setLoading(false);
       }
