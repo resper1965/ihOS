@@ -1,6 +1,7 @@
 // src/app/api/assessments/run/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { runAssessment, DEFAULT_FRAMEWORKS } from '@/lib/assessment/engine';
 import type { AssessmentConfig } from '@/lib/assessment/engine';
 
@@ -61,6 +62,50 @@ export async function POST(req: Request) {
     if (insertError) {
       console.error('[Assessment] Failed to persist:', insertError.message);
       // Return result anyway even if persistence fails
+    }
+
+    // ── Batch-insert evidence evaluations ────────────────────────────────
+    // Uses admin client to bypass RLS since this is a server-side pipeline.
+    // Errors are logged but never fail the assessment response.
+    if (assessmentRecord?.id && result.controlEvaluations.length > 0) {
+      try {
+        const adminSupabase = createAdminClient();
+
+        const evidenceBatch = result.controlEvaluations.map((evaluation) => ({
+          assessment_id: assessmentRecord.id,
+          control_code: evaluation.controlId,
+          domain_code: evaluation.domain,
+          control_name: evaluation.controlName,
+          is_compliant: evaluation.isCompliant,
+          confidence_score: evaluation.confidenceScore,
+          missing_elements: null,
+          auditor_notes: evaluation.auditorNotes || null,
+          evidence_sources: evaluation.evidenceChunkId
+            ? [{ chunk_id: evaluation.evidenceChunkId, snippet: evaluation.evidenceSnippet }]
+            : null,
+          needs_review: evaluation.confidenceScore > 0 && evaluation.confidenceScore < 70,
+        }));
+
+        const { error: evidenceInsertError } = await adminSupabase
+          .from('evidence_evaluations')
+          .insert(evidenceBatch);
+
+        if (evidenceInsertError) {
+          console.error(
+            '[Assessment] Failed to persist evidence evaluations:',
+            evidenceInsertError.message,
+          );
+        } else {
+          console.log(
+            `[Assessment] Persisted ${evidenceBatch.length} evidence evaluations for assessment ${assessmentRecord.id}`,
+          );
+        }
+      } catch (evidenceErr) {
+        console.error(
+          '[Assessment] Evidence evaluation insert threw:',
+          evidenceErr instanceof Error ? evidenceErr.message : evidenceErr,
+        );
+      }
     }
 
     return NextResponse.json({
