@@ -13,6 +13,8 @@ import {
   CheckCircle2,
   XCircle,
   ChevronDown,
+  ChevronUp,
+  AlertTriangle,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -44,6 +46,18 @@ interface AssessmentRecord {
   }>;
   created_at: string;
   completed_at: string | null;
+}
+
+interface EvidenceEvaluation {
+  id: string;
+  control_code: string;
+  control_name: string;
+  is_compliant: boolean;
+  confidence_score: number;
+  needs_review: boolean;
+  auditor_notes: string | null;
+  domain_code: string | null;
+  evidence_sources: any | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -355,6 +369,39 @@ export default function AssessmentsPage() {
   const [assessments, setAssessments] = useState<AssessmentRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [evidenceMap, setEvidenceMap] = useState<Record<string, EvidenceEvaluation[]>>({});
+  const [evidenceLoading, setEvidenceLoading] = useState<string | null>(null);
+
+  const toggleExpand = useCallback(async (assessmentId: string) => {
+    if (expandedId === assessmentId) {
+      setExpandedId(null);
+      return;
+    }
+    setExpandedId(assessmentId);
+
+    // Skip fetch if we already have data cached
+    if (evidenceMap[assessmentId]) return;
+
+    setEvidenceLoading(assessmentId);
+    try {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from('evidence_evaluations')
+        .select('*')
+        .eq('assessment_id', assessmentId)
+        .order('control_code');
+
+      if (error) {
+        console.error('[Assessments] evidence fetch error:', error.message);
+      }
+      setEvidenceMap((prev) => ({ ...prev, [assessmentId]: data || [] }));
+    } catch {
+      setEvidenceMap((prev) => ({ ...prev, [assessmentId]: [] }));
+    } finally {
+      setEvidenceLoading(null);
+    }
+  }, [expandedId, evidenceMap]);
 
   const fetchAssessments = useCallback(async () => {
     try {
@@ -491,27 +538,29 @@ export default function AssessmentsPage() {
                     (item.compliant_controls / item.total_controls) * 100
                   )
                 : 0;
+            const isExpanded = expandedId === item.id;
+            const evidenceRows = evidenceMap[item.id];
+            const isEvidenceLoading = evidenceLoading === item.id;
 
             return (
-              <Link
-                key={item.id}
-                href={`/assessments/${item.id}`}
-                className="group block"
-              >
-                <div className="glass-card h-full p-6 transition-all duration-300 hover:scale-[1.01] hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5">
+              <div key={item.id} className="group block">
+                <div className={`glass-card h-full p-6 transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 ${isExpanded ? 'border-[#53c4cd]/30 shadow-lg shadow-[#53c4cd]/5' : ''}`}>
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-accent/20">
+                    <Link
+                      href={`/assessments/${item.id}`}
+                      className="flex items-center gap-3 flex-1 min-w-0"
+                    >
+                      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 shrink-0">
                         <ClipboardCheck className="h-5 w-5 text-primary" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <h3 className="font-semibold text-text-primary group-hover:text-primary transition-colors leading-tight">
+                          <h3 className="font-semibold text-text-primary group-hover:text-primary transition-colors leading-tight truncate">
                             {item.name}
                           </h3>
                           <Badge
                             variant="info"
-                            className="text-[9px] bg-primary/10 text-primary border border-primary/20 py-0 px-1 font-mono uppercase"
+                            className="text-[9px] bg-primary/10 text-primary border border-primary/20 py-0 px-1 font-mono uppercase shrink-0"
                           >
                             {item.mode}
                           </Badge>
@@ -522,15 +571,28 @@ export default function AssessmentsPage() {
                           {new Date(item.created_at).toLocaleDateString()}
                         </p>
                       </div>
+                    </Link>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Badge
+                        variant={
+                          item.status === "completed" ? "success" : "info"
+                        }
+                        dot
+                      >
+                        {item.status === "completed" ? "Complete" : "Running"}
+                      </Badge>
+                      <button
+                        onClick={() => toggleExpand(item.id)}
+                        className="rounded-lg p-1.5 hover:bg-white/10 transition-colors text-text-muted hover:text-[#53c4cd]"
+                        aria-label={isExpanded ? "Collapse evidence" : "Expand evidence"}
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4" />
+                        )}
+                      </button>
                     </div>
-                    <Badge
-                      variant={
-                        item.status === "completed" ? "success" : "info"
-                      }
-                      dot
-                    >
-                      {item.status === "completed" ? "Complete" : "Running"}
-                    </Badge>
                   </div>
 
                   {/* Framework score pills */}
@@ -592,8 +654,100 @@ export default function AssessmentsPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* ── Expandable Evidence Evaluations ─────────────── */}
+                  {isExpanded && (
+                    <div className="mt-5 border-t border-[#53c4cd]/20 pt-5 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <h4 className="text-xs font-semibold uppercase tracking-wider text-[#53c4cd] mb-3">
+                        Evidence Evaluations
+                      </h4>
+
+                      {isEvidenceLoading && (
+                        <div className="flex items-center gap-2 py-6 justify-center text-text-muted text-sm">
+                          <Loader2 className="h-4 w-4 animate-spin text-[#53c4cd]" />
+                          Loading evaluations…
+                        </div>
+                      )}
+
+                      {!isEvidenceLoading && evidenceRows && evidenceRows.length === 0 && (
+                        <p className="text-xs text-text-muted text-center py-4">
+                          No evidence evaluations recorded for this assessment.
+                        </p>
+                      )}
+
+                      {!isEvidenceLoading && evidenceRows && evidenceRows.length > 0 && (
+                        <div className="overflow-x-auto rounded-lg border border-[#53c4cd]/10">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="bg-[#53c4cd]/10 text-[#53c4cd]">
+                                <th className="px-3 py-2 text-left font-semibold whitespace-nowrap">Control Code</th>
+                                <th className="px-3 py-2 text-left font-semibold">Control Name</th>
+                                <th className="px-3 py-2 text-center font-semibold">Status</th>
+                                <th className="px-3 py-2 text-center font-semibold">Confidence</th>
+                                <th className="px-3 py-2 text-left font-semibold">Auditor Notes</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-white/5">
+                              {evidenceRows.map((ev) => {
+                                // ✅ = is_compliant
+                                // ❌ = !is_compliant && confidence === 0
+                                // ⚠️ = needs_review
+                                let statusIcon: React.ReactNode;
+                                let statusLabel: string;
+                                if (ev.is_compliant) {
+                                  statusIcon = <CheckCircle2 className="h-4 w-4 text-emerald-400" />;
+                                  statusLabel = "Compliant";
+                                } else if (ev.needs_review) {
+                                  statusIcon = <AlertTriangle className="h-4 w-4 text-amber-400" />;
+                                  statusLabel = "Needs Review";
+                                } else {
+                                  statusIcon = <XCircle className="h-4 w-4 text-red-400" />;
+                                  statusLabel = "Non-Compliant";
+                                }
+
+                                return (
+                                  <tr
+                                    key={ev.id}
+                                    className="hover:bg-white/[0.03] transition-colors"
+                                  >
+                                    <td className="px-3 py-2.5 font-mono text-[#53c4cd] font-medium whitespace-nowrap">
+                                      {ev.control_code}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-text-primary max-w-[200px] truncate">
+                                      {ev.control_name}
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center">
+                                      <span className="inline-flex items-center gap-1" title={statusLabel}>
+                                        {statusIcon}
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-center">
+                                      <span
+                                        className={`font-semibold ${
+                                          ev.confidence_score >= 70
+                                            ? "text-emerald-400"
+                                            : ev.confidence_score >= 40
+                                            ? "text-amber-400"
+                                            : "text-red-400"
+                                        }`}
+                                      >
+                                        {ev.confidence_score}%
+                                      </span>
+                                    </td>
+                                    <td className="px-3 py-2.5 text-text-secondary max-w-[250px] truncate" title={ev.auditor_notes || undefined}>
+                                      {ev.auditor_notes || "—"}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
-              </Link>
+              </div>
             );
           })}
         </div>
