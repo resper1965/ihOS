@@ -1,9 +1,5 @@
-// src/lib/assessment/local-engine.ts
-// Local Assessment Engine — evaluates compliance using RAG evidence only
-// Does NOT depend on Standard GRC API. Uses semantic similarity to determine
-// if document evidence addresses each ISO 27001 Annex A control.
-
-import { searchDocuments } from '@/lib/chat/rag-search';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { generateEmbedding } from '@/lib/chat/embeddings';
 import type {
   AssessmentConfig,
   AssessmentResult,
@@ -132,7 +128,7 @@ const ISO27001_ANNEX_A: AnnexAControl[] = [
 // ---------------------------------------------------------------------------
 const SIMILARITY_COMPLIANT = 0.72;    // >= this: strong evidence, compliant
 const SIMILARITY_PARTIAL = 0.60;      // >= this: partial evidence, needs review
-const SIMILARITY_THRESHOLD = 0.50;    // >= this: some evidence found (search min)
+const MATCH_THRESHOLD = 0.30;         // Minimum match threshold for RPC
 
 // ---------------------------------------------------------------------------
 // Local Assessment Engine
@@ -143,9 +139,10 @@ export async function runLocalAssessment(
   onProgress?: ProgressCallback,
 ): Promise<AssessmentResult> {
   const startedAt = new Date().toISOString();
+  const adminSupabase = createAdminClient();
 
   // Phase 1: Load controls
-  const controls = ISO27001_ANNEX_A; // For now, only ISO 27001
+  const controls = ISO27001_ANNEX_A;
   onProgress?.({
     phase: 'loading_controls',
     current: controls.length,
@@ -167,61 +164,95 @@ export async function runLocalAssessment(
       message: `[${control.id}] ${control.name}`,
     });
 
-    // Search RAG for evidence matching this control requirement
-    const ragResults = await searchDocuments(control.description, {
-      limit: 3,
-      threshold: SIMILARITY_THRESHOLD,
-    });
+    try {
+      // Generate semantic embedding for this control's description
+      const queryEmbedding = await generateEmbedding(control.description);
 
-    if (ragResults.length === 0) {
+      // Call RPC via admin client (bypasses RLS and browser auth)
+      const { data, error } = await adminSupabase.rpc('match_documents_hybrid', {
+        query_text: control.description,
+        query_embedding: queryEmbedding,
+        match_threshold: MATCH_THRESHOLD,
+        match_count: 3,
+        filter_framework: null,
+        filter_version_id: null,
+        filter_categories: null,
+      });
+
+      if (error) {
+        console.error(`[Audit] RPC error for ${control.id}:`, error.message);
+        evaluations.push({
+          controlId: control.id,
+          controlName: control.name,
+          domain: control.domain,
+          isCompliant: false,
+          confidenceScore: 0,
+          auditorNotes: `RAG search failed: ${error.message}`,
+        });
+        continue;
+      }
+
+      if (!data || data.length === 0) {
+        evaluations.push({
+          controlId: control.id,
+          controlName: control.name,
+          domain: control.domain,
+          isCompliant: false,
+          confidenceScore: 0,
+          auditorNotes: 'No documentary evidence found in ISMS repository.',
+        });
+        continue;
+      }
+
+      // Take the best match
+      const best = data[0] as Record<string, unknown>;
+      const similarity = (best.similarity as number) ?? 0;
+      let isCompliant = false;
+      let auditorNotes: string;
+      const docTitle = (best.doc_title as string) ?? (best.doc_filename as string) ?? 'Unknown';
+
+      if (similarity >= SIMILARITY_COMPLIANT) {
+        isCompliant = true;
+        auditorNotes = `Strong evidence found (similarity: ${(similarity * 100).toFixed(1)}%) in "${docTitle}"`;
+      } else if (similarity >= SIMILARITY_PARTIAL) {
+        isCompliant = false;
+        auditorNotes = `Partial evidence found (similarity: ${(similarity * 100).toFixed(1)}%). May not fully address the requirement. Source: "${docTitle}"`;
+      } else {
+        isCompliant = false;
+        auditorNotes = `Weak evidence found (similarity: ${(similarity * 100).toFixed(1)}%). Tangentially related. Source: "${docTitle}"`;
+      }
+
+      const confidenceScore = Math.round(similarity * 100);
+
+      evaluations.push({
+        controlId: control.id,
+        controlName: control.name,
+        domain: control.domain,
+        isCompliant,
+        confidenceScore,
+        evidenceChunkId: best.id as number,
+        evidenceSnippet: ((best.content as string) ?? '').slice(0, 300),
+        auditorNotes,
+      });
+
+      if (isCompliant) {
+        implementedControlIds.push(control.id);
+      }
+    } catch (err) {
+      console.error(`[Audit] Error evaluating ${control.id}:`, err instanceof Error ? err.message : err);
       evaluations.push({
         controlId: control.id,
         controlName: control.name,
         domain: control.domain,
         isCompliant: false,
         confidenceScore: 0,
-        auditorNotes: 'No documentary evidence found in ISMS repository.',
+        auditorNotes: `Evaluation error: ${err instanceof Error ? err.message : 'Unknown error'}`,
       });
-      continue;
     }
 
-    // Take the best match
-    const best = ragResults[0];
-    const similarity = best.similarity;
-    let isCompliant = false;
-    let auditorNotes: string;
-
-    if (similarity >= SIMILARITY_COMPLIANT) {
-      isCompliant = true;
-      auditorNotes = `Strong evidence found (similarity: ${(similarity * 100).toFixed(1)}%) in "${best.metadata.documentTitle}"`;
-    } else if (similarity >= SIMILARITY_PARTIAL) {
-      isCompliant = false; // partial — needs human review
-      auditorNotes = `Partial evidence found (similarity: ${(similarity * 100).toFixed(1)}%). Evidence may not fully address the requirement. Source: "${best.metadata.documentTitle}"`;
-    } else {
-      isCompliant = false;
-      auditorNotes = `Weak evidence found (similarity: ${(similarity * 100).toFixed(1)}%). May be tangentially related. Source: "${best.metadata.documentTitle}"`;
-    }
-
-    const confidenceScore = Math.round(similarity * 100);
-
-    evaluations.push({
-      controlId: control.id,
-      controlName: control.name,
-      domain: control.domain,
-      isCompliant,
-      confidenceScore,
-      evidenceChunkId: best.id,
-      evidenceSnippet: best.content.slice(0, 300),
-      auditorNotes,
-    });
-
-    if (isCompliant) {
-      implementedControlIds.push(control.id);
-    }
-
-    // Rate limiting: small delay every 5 controls
-    if (i % 5 === 4) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+    // Rate limiting: small delay every 10 controls to avoid API throttling
+    if (i % 10 === 9) {
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 
@@ -272,3 +303,4 @@ export async function runLocalAssessment(
 
   return result;
 }
+

@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     // Batch-insert evidence evaluations
     if (assessmentRecord?.id && result.controlEvaluations.length > 0) {
       const evidenceBatch = result.controlEvaluations.map((evaluation) => ({
-        chunk_id: evaluation.evidenceChunkId ?? 0,
+        chunk_id: evaluation.evidenceChunkId ?? null,
         scf_control_code: evaluation.controlId,
         control_requirement: evaluation.controlName,
         evidence_text: evaluation.evidenceSnippet ?? 'No evidence found',
