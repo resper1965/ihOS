@@ -395,7 +395,7 @@ export default function AssessmentsPage() {
       if (error) {
         console.error('[Assessments] evidence fetch error:', error.message);
       }
-      setEvidenceMap((prev) => ({ ...prev, [assessmentId]: data || [] }));
+      setEvidenceMap((prev) => ({ ...prev, [assessmentId]: (data ?? []) as EvidenceEvaluation[] }));
     } catch {
       setEvidenceMap((prev) => ({ ...prev, [assessmentId]: [] }));
     } finally {

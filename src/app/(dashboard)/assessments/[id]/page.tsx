@@ -176,7 +176,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           let status: ControlStatus;
           if (ev.is_compliant) {
             status = "compliant";
-          } else if (ev.confidence_score > 50) {
+          } else if ((ev.confidence_score ?? 0) > 50) {
             status = "partial";
           } else {
             status = "non-compliant";
@@ -190,8 +190,8 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
               : `Controle avaliado no domínio ${ev.domain_code}.`;
 
           return {
-            code: ev.control_code,
-            name: ev.control_name,
+            code: ev.control_code ?? ev.scf_control_code ?? 'UNKNOWN',
+            name: ev.control_name ?? ev.control_requirement ?? 'Unknown',
             description,
             status,
             evidence: "Avaliado pela IA",

@@ -95,10 +95,10 @@ export async function GET(req: Request) {
         { total: number; compliant: number }
       >();
       for (const e of evaluations) {
-        const d = domainMap.get(e.domain_code) ?? { total: 0, compliant: 0 };
+        const d = domainMap.get(e.domain_code ?? 'UNKNOWN') ?? { total: 0, compliant: 0 };
         d.total++;
         if (e.is_compliant) d.compliant++;
-        domainMap.set(e.domain_code, d);
+        domainMap.set(e.domain_code ?? 'UNKNOWN', d);
       }
 
       const domains = Array.from(domainMap.entries()).map(
@@ -273,10 +273,10 @@ export async function POST(req: Request) {
 
     const domainMap = new Map<string, { total: number; compliant: number }>();
     for (const e of evaluations ?? []) {
-      const d = domainMap.get(e.domain_code) ?? { total: 0, compliant: 0 };
+      const d = domainMap.get(e.domain_code ?? 'UNKNOWN') ?? { total: 0, compliant: 0 };
       d.total++;
       if (e.is_compliant) d.compliant++;
-      domainMap.set(e.domain_code, d);
+      domainMap.set(e.domain_code ?? 'UNKNOWN', d);
     }
 
     const domains = Array.from(domainMap.entries()).map(([domain, stats]) => ({
@@ -323,6 +323,9 @@ export async function POST(req: Request) {
       .insert({
         snapshot_type: "full_report",
         framework_code: frameworkCode,
+        input_payload: { source: 'compliance_report', framework: frameworkCode },
+        result_payload: { summary: reportData.summary },
+        score: reportData.summary?.complianceRate ?? null,
         snapshot_data: reportData,
         user_id: user.id,
         metadata: {

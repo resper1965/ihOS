@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runAssessment, DEFAULT_FRAMEWORKS } from '@/lib/assessment/engine';
+import { syncScorecard } from '@/lib/assessment/assessment-to-scorecard';
 import type { AssessmentConfig } from '@/lib/assessment/engine';
 
 export const maxDuration = 300; // 5 minutes for deep scans
@@ -72,7 +73,13 @@ export async function POST(req: Request) {
         const adminSupabase = createAdminClient();
 
         const evidenceBatch = result.controlEvaluations.map((evaluation) => ({
-          assessment_id: assessmentRecord.id,
+          // Required columns (NOT NULL in schema)
+          chunk_id: evaluation.evidenceChunkId ?? 0,
+          scf_control_code: evaluation.controlId,
+          control_requirement: evaluation.controlName,
+          evidence_text: evaluation.evidenceSnippet ?? 'No evidence found',
+          needs_review: evaluation.confidenceScore > 0 && evaluation.confidenceScore < 70,
+          // Optional columns
           control_code: evaluation.controlId,
           domain_code: evaluation.domain,
           control_name: evaluation.controlName,
@@ -80,10 +87,7 @@ export async function POST(req: Request) {
           confidence_score: evaluation.confidenceScore,
           missing_elements: null,
           auditor_notes: evaluation.auditorNotes || null,
-          evidence_sources: evaluation.evidenceChunkId
-            ? [{ chunk_id: evaluation.evidenceChunkId, snippet: evaluation.evidenceSnippet }]
-            : null,
-          needs_review: evaluation.confidenceScore > 0 && evaluation.confidenceScore < 70,
+          trace_id: assessmentRecord.id,
         }));
 
         const { error: evidenceInsertError } = await adminSupabase
@@ -106,6 +110,18 @@ export async function POST(req: Request) {
           evidenceErr instanceof Error ? evidenceErr.message : evidenceErr,
         );
       }
+    }
+
+    // ── Sync scorecard: Assessment results → intelligence_snapshots ──────
+    // This ensures the dashboard always reflects REAL evaluated data.
+    try {
+      await syncScorecard(assessmentRecord?.id ?? result.id, result);
+      console.log('[Assessment] Scorecard synced successfully');
+    } catch (scorecardErr) {
+      console.error(
+        '[Assessment] Scorecard sync failed (non-fatal):',
+        scorecardErr instanceof Error ? scorecardErr.message : scorecardErr,
+      );
     }
 
     return NextResponse.json({

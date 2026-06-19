@@ -107,30 +107,41 @@ export type ScfControl = {
 }
 
 export type EvidenceEvaluation = {
-  id: string; // UUID
-  control_code: string;
-  domain_code: string;
-  control_name: string;
-  is_compliant: boolean;
-  confidence_score: number;
-  missing_elements: string[] | null; // JSONB
+  id: string; // bigint
+  chunk_id: number; // bigint — FK to document_chunks(id)
+  scf_control_code: string; // varchar — SCF control identifier
+  control_requirement: string; // text — control description/requirement
+  evidence_text: string; // text — evidence content from document
+  is_compliant: boolean | null;
+  confidence_score: number | null;
+  missing_elements: string[] | null; // ARRAY
   auditor_notes: string | null;
-  evidence_sources: any[] | null; // JSONB
-  assessment_id: string | null; // UUID — FK to compliance_assessments(id)
-  needs_review: boolean;
+  trace_id: string | null; // text — links to assessment run
   evaluated_at: string | null;
-  created_at: string | null;
-  updated_at: string | null;
+  // Denormalized columns (optional, for dashboard queries)
+  control_code: string | null;
+  domain_code: string | null;
+  control_name: string | null;
+  needs_review: boolean;
+  tenant_id: string | null; // UUID
+  // Legacy columns kept for backward compatibility
+  assessment_id?: string | null;
+  evidence_sources?: any[] | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export type IntelligenceSnapshot = {
-  id: string; // UUID
-  snapshot_type: SnapshotType;
-  framework_code: string | null;
-  snapshot_data: any; // JSONB
-  metadata: any; // JSONB
-  user_id: string | null; // UUID - FK to auth.users(id)
+  id: string; // serial
+  framework_code: string; // varchar NOT NULL
+  snapshot_type: string; // varchar NOT NULL
+  input_payload: any; // jsonb NOT NULL
+  result_payload: any; // jsonb NOT NULL
+  score: number | null; // numeric
   created_at: string | null;
+  snapshot_data: any | null; // jsonb
+  metadata: any | null; // jsonb
+  user_id: string | null; // UUID
 }
 
 export type ProductVersion = {
@@ -295,11 +306,14 @@ export type NistControlInsert = Omit<NistControl, "id" | "created_at"> & {
 
 export type ScfControlInsert = ScfControl;
 
-export type EvidenceEvaluationInsert = Omit<EvidenceEvaluation, "id" | "created_at" | "updated_at" | "evaluated_at"> & {
+export type EvidenceEvaluationInsert = Omit<EvidenceEvaluation, "id" | "created_at" | "updated_at" | "evaluated_at" | "tenant_id" | "assessment_id" | "evidence_sources"> & {
   id?: string;
   created_at?: string | null;
   updated_at?: string | null;
   evaluated_at?: string | null;
+  tenant_id?: string | null;
+  assessment_id?: string | null;
+  evidence_sources?: any[] | null;
 };
 
 export type IntelligenceSnapshotInsert = Omit<IntelligenceSnapshot, "id" | "created_at"> & {

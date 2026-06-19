@@ -219,7 +219,7 @@ export async function getTopGaps(): Promise<GapItem[]> {
 
     const { data: gaps, error } = await supabase
       .from("evidence_evaluations")
-      .select("control_code, domain_code, control_name, confidence_score, missing_elements")
+      .select("control_code, domain_code, control_name, confidence_score, missing_elements, scf_control_code, control_requirement")
       .eq("is_compliant", false)
       .order("confidence_score", { ascending: true })
       .limit(10);
@@ -235,9 +235,9 @@ export async function getTopGaps(): Promise<GapItem[]> {
         else if (conf < 60) status = "medium";
 
         return {
-          code: g.control_code,
-          domain: g.domain_code,
-          name: g.control_name,
+          code: g.control_code ?? g.scf_control_code ?? 'UNKNOWN',
+          domain: g.domain_code ?? 'UNKNOWN',
+          name: g.control_name ?? g.control_requirement ?? 'Unknown Control',
           confidence: conf,
           status,
           missingElements: (g.missing_elements as string[] | null) ?? undefined,
@@ -311,7 +311,7 @@ export async function getDomainBreakdown(): Promise<DomainBreakdown[]> {
       const domainMap = new Map<string, { total: number; compliant: number }>();
 
       for (const ev of evaluations) {
-        const domain = ev.domain_code;
+        const domain = ev.domain_code ?? 'UNKNOWN';
         if (!domainMap.has(domain)) {
           domainMap.set(domain, { total: 0, compliant: 0 });
         }
