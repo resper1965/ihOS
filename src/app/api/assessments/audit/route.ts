@@ -4,7 +4,7 @@
 
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { runAssessment, DEFAULT_FRAMEWORKS } from '@/lib/assessment/engine';
+import { runLocalAssessment } from '@/lib/assessment/local-engine';
 import { syncScorecard } from '@/lib/assessment/assessment-to-scorecard';
 import type { AssessmentConfig } from '@/lib/assessment/engine';
 
@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const {
-      frameworks = DEFAULT_FRAMEWORKS.map(f => f.id),
+      frameworks = ['iso27001'],
       mode = 'quick',
       salesChannel = null,
       productVersionId = null,
@@ -35,9 +35,9 @@ export async function POST(req: Request) {
       productVersionId,
     };
 
-    console.log('[Audit] Starting assessment:', JSON.stringify(config));
-    const result = await runAssessment(config);
-    console.log(`[Audit] Assessment complete: ${result.totalControlsCompliant}/${result.totalControlsEvaluated} controls compliant`);
+    console.log('[Audit] Starting LOCAL assessment:', JSON.stringify(config));
+    const result = await runLocalAssessment(config);
+    console.log(`[Audit] Assessment complete: ${result.totalControlsCompliant}/${result.totalControlsEvaluated} controls with evidence`);
 
     // Persist to Supabase via admin client (no RLS)
     const adminSupabase = createAdminClient();
@@ -57,6 +57,7 @@ export async function POST(req: Request) {
         missing_controls: result.totalControlsMissing,
         implemented_control_ids: result.implementedControlIds,
         framework_scores: result.frameworkScores,
+        created_by: null,
       })
       .select('id')
       .single();
