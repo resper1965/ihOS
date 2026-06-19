@@ -62,6 +62,7 @@ const FRAMEWORK_ICONS: Record<string, string> = {
   "HI-2013": "🏥",
   "TX-LEVEL-2": "⭐",
   "iso27001": "🔒",
+  "iso27701": "🛡️",
   "EU-GDPR": "🇪🇺",
 };
 
@@ -136,7 +137,7 @@ export async function getFrameworkScores(): Promise<FrameworkScore[]> {
 
     // Fallback: try Standard API for each known framework
     try {
-      const frameworks = ["BR-LGPD", "HI-2013", "TX-LEVEL-2", "iso27001", "EU-GDPR"];
+      const frameworks = ["iso27001", "iso27701", "BR-LGPD", "HI-2013", "TX-LEVEL-2", "EU-GDPR"];
       const results: FrameworkScore[] = [];
 
       for (const code of frameworks) {
