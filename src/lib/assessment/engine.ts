@@ -26,6 +26,27 @@ export interface ControlEvaluation {
   evidenceChunkId?: number;
   evidenceSnippet?: string;
   auditorNotes?: string;
+  
+  // 2-Phase addition:
+  ismsPhase?: {
+    found: boolean;
+    score: number;
+    docTitle?: string;
+    docFilename?: string;
+    snippet?: string;
+    chunkId?: number | null;
+  };
+  evidencePhase?: {
+    found: boolean;
+    score: number;
+    docTitle?: string;
+    docFilename?: string;
+    snippet?: string;
+    chunkId?: number | null;
+  };
+  combinedStatus?: 'conforming' | 'partial' | 'informal' | 'gap';
+  scfControlCode?: string;
+  domainCode?: string;
 }
 
 export interface FrameworkScore {
@@ -35,6 +56,14 @@ export interface FrameworkScore {
   totalRequired: number;
   missingControls: string[];
   message?: string;
+  
+  // 2-Phase scores and counts
+  ismsScore?: number;
+  evidenceScore?: number;
+  conformingCount?: number;
+  partialCount?: number;
+  informalCount?: number;
+  gapCount?: number;
 }
 
 export interface AssessmentResult {
@@ -48,6 +77,14 @@ export interface AssessmentResult {
   totalControlsEvaluated: number;
   totalControlsCompliant: number;
   totalControlsMissing: number;
+  
+  // 2-Phase totals
+  totalIsmsCompliant?: number;
+  totalEvidenceCompliant?: number;
+  totalConforming?: number;
+  totalPartial?: number;
+  totalInformal?: number;
+  totalGap?: number;
 }
 
 // ---------------------------------------------------------------------------

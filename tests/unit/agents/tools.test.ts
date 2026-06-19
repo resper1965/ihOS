@@ -10,6 +10,7 @@ import {
 } from '@/lib/agents/tools/index';
 import * as standardApi from '@/lib/standard-api/client';
 import { searchDocuments as ragSearch } from '@/lib/chat/rag-search';
+import { mockSupabaseAdmin, mockSupabaseServer } from '../../setup';
 
 // ---------------------------------------------------------------------------
 // agentTools map
@@ -110,7 +111,12 @@ describe('crossCoverage execute', () => {
 // ---------------------------------------------------------------------------
 describe('blastRadius execute', () => {
   beforeEach(() => {
-    (standardApi.blastRadius as any).mockRejectedValue(new Error('Force mock fallback'));
+    (standardApi.blastRadius as any).mockResolvedValue({
+      control_id: 'CC6.1',
+      affected_frameworks: [],
+      total_affected_controls: 0,
+      risk_summary: '',
+    });
   });
 
   it('returns blast radius shape', async () => {
@@ -120,12 +126,10 @@ describe('blastRadius execute', () => {
     )) as any;
     expect(result).toHaveProperty('controlId', 'CC6.1');
     expect(result).toHaveProperty('framework', 'soc2');
-    expect(result).toHaveProperty('impactLevel');
-    expect(result).toHaveProperty('affectedControls');
-    expect(result).toHaveProperty('affectedProcesses');
-    expect(result).toHaveProperty('remediationPriority');
-    expect(Array.isArray(result.affectedControls)).toBe(true);
-    expect(Array.isArray(result.affectedProcesses)).toBe(true);
+    expect(result).toHaveProperty('affectedFrameworks');
+    expect(result).toHaveProperty('totalAffectedControls');
+    expect(result).toHaveProperty('riskSummary');
+    expect(result).toHaveProperty('source', 'standard-api');
   });
 });
 
@@ -134,7 +138,19 @@ describe('blastRadius execute', () => {
 // ---------------------------------------------------------------------------
 describe('searchDocuments execute', () => {
   beforeEach(() => {
-    (ragSearch as any).mockRejectedValue(new Error('Force mock fallback'));
+    (ragSearch as any).mockImplementation(async (query: string, options: any) => {
+      const limit = options?.limit ?? 5;
+      return Array.from({ length: limit }, (_, i) => ({
+        id: `doc-${i}`,
+        content: `Content ${i}`,
+        similarity: 0.9 - i * 0.1,
+        metadata: {
+          documentId: `doc-${i}`,
+          documentTitle: `Document ${i}`,
+          framework: options?.framework ?? 'soc2',
+        },
+      }));
+    });
   });
 
   it('returns array of search results', async () => {
@@ -183,6 +199,21 @@ describe('searchDocuments execute', () => {
 // listFrameworks
 // ---------------------------------------------------------------------------
 describe('listFrameworks execute', () => {
+  beforeEach(() => {
+    mockSupabaseAdmin.order.mockResolvedValue({
+      data: [
+        { framework_code: 'SOC2', scf_control_code: 'CC1.1' },
+        { framework_code: 'NIST-CSF', scf_control_code: 'ID.AM-1' },
+        { framework_code: 'CIS-Controls', scf_control_code: '1.1' },
+        { framework_code: 'ISO27001', scf_control_code: 'A.5.1' },
+        { framework_code: 'PCI-DSS', scf_control_code: '1.1.1' },
+        { framework_code: 'GDPR', scf_control_code: 'Art 5' },
+        { framework_code: 'LGPD', scf_control_code: 'Art 6' },
+      ],
+      error: null,
+    });
+  });
+
   it('returns all frameworks without category filter', async () => {
     const result = (await listFrameworks.execute!(
       {},
@@ -221,20 +252,47 @@ describe('listFrameworks execute', () => {
 // getAssessmentStatus
 // ---------------------------------------------------------------------------
 describe('getAssessmentStatus execute', () => {
+  beforeEach(() => {
+    let lastFramework: string | undefined;
+    let lastAssessmentId: string | undefined;
+    mockSupabaseServer.eq.mockImplementation((field: string, value: any) => {
+      if (field === 'id') {
+        lastAssessmentId = value;
+      } else if (field === 'framework_code') {
+        lastFramework = value;
+      }
+      return mockSupabaseServer;
+    });
+    mockSupabaseServer.single.mockImplementation(async () => {
+      const id = lastAssessmentId ?? `test-assessment-${(lastFramework ?? 'iso27001').toLowerCase()}`;
+      const framework_code = lastFramework ?? 'ISO-27001';
+      lastAssessmentId = undefined;
+      lastFramework = undefined;
+      return {
+        data: {
+          id,
+          framework_code,
+          observation_start_date: '2026-01-01',
+          observation_end_date: '2028-12-31',
+          created_at: '2026-01-01T00:00:00Z',
+        },
+        error: null,
+      };
+    });
+  });
+
   it('returns assessment status shape', async () => {
     const result = (await getAssessmentStatus.execute!(
       { framework: 'soc2' },
       { messages: [], toolCallId: 'test-13' }
     )) as any;
     expect(result).toHaveProperty('assessmentId');
-    expect(result).toHaveProperty('framework', 'soc2');
+    expect(result).toHaveProperty('framework');
     expect(result).toHaveProperty('status', 'in_progress');
-    expect(result).toHaveProperty('progress');
-    expect(typeof result.progress).toBe('number');
-    expect(result).toHaveProperty('controlsAssessed');
-    expect(result).toHaveProperty('controlsTotal');
-    expect(result).toHaveProperty('startedAt');
-    expect(result).toHaveProperty('nextDeadline');
+    expect(result).toHaveProperty('observationStart');
+    expect(result).toHaveProperty('observationEnd');
+    expect(result).toHaveProperty('createdAt');
+    expect(result).toHaveProperty('source', 'supabase');
   });
 
   it('uses provided assessmentId when given', async () => {

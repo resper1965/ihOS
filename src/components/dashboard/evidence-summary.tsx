@@ -96,7 +96,7 @@ function DomainBarChart({ domains }: { domains: DomainBreakdown[] }) {
   const sorted = [...domains].sort((a, b) => a.rate - b.rate);
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       {sorted.map((d) => {
         const isHovered = hoveredDomain === d.domain;
         return (
@@ -106,6 +106,7 @@ function DomainBarChart({ domains }: { domains: DomainBreakdown[] }) {
             onMouseEnter={() => setHoveredDomain(d.domain)}
             onMouseLeave={() => setHoveredDomain(null)}
           >
+            {/* Domain Header */}
             <div className="flex items-center justify-between text-xs mb-1">
               <div className="flex items-center gap-2">
                 <span className="w-8 font-mono font-semibold text-text-muted">{d.domain}</span>
@@ -116,8 +117,8 @@ function DomainBarChart({ domains }: { domains: DomainBreakdown[] }) {
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="tabular-nums text-text-muted">
-                  {d.compliant}/{d.total}
+                <span className="tabular-nums text-text-muted text-[10px]">
+                  {d.compliant}/{d.total} conforme
                 </span>
                 <span
                   className={`w-10 text-right font-semibold tabular-nums ${
@@ -128,17 +129,37 @@ function DomainBarChart({ domains }: { domains: DomainBreakdown[] }) {
                 </span>
               </div>
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
+
+            {/* Overall Conforming Progress Bar */}
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
               <div
                 className={`h-full rounded-full transition-all duration-700 ease-out ${
                   d.rate >= 50
-                    ? "bg-gradient-to-r from-emerald-600 to-accent"
+                    ? "bg-gradient-to-r from-emerald-600 to-emerald-400"
                     : d.rate >= 30
                       ? "bg-gradient-to-r from-amber-600 to-amber-400"
                       : "bg-gradient-to-r from-red-600 to-red-400"
                 } ${isHovered ? "brightness-125" : ""}`}
                 style={{ width: `${d.rate}%` }}
               />
+            </div>
+
+            {/* Dual Phase Micro-Bars */}
+            <div className="flex items-center gap-4 mt-1.5 text-[10px] text-text-muted">
+              <div className="flex-1 flex items-center gap-1.5">
+                <span className="shrink-0">Políticas:</span>
+                <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-emerald-500/80 rounded-full" style={{ width: `${d.ismsRate}%` }} />
+                </div>
+                <span className="font-semibold tabular-nums text-text-secondary">{d.ismsRate}%</span>
+              </div>
+              <div className="flex-1 flex items-center gap-1.5">
+                <span className="shrink-0">Evidências:</span>
+                <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-cyan-500/80 rounded-full" style={{ width: `${d.evidenceRate}%` }} />
+                </div>
+                <span className="font-semibold tabular-nums text-text-secondary">{d.evidenceRate}%</span>
+              </div>
             </div>
           </div>
         );
@@ -157,12 +178,19 @@ interface EvidenceSummaryProps {
 }
 
 export function EvidenceSummary({ evaluation, domains }: EvidenceSummaryProps) {
+  // Aggregate overall phase stats from domains breakdown
+  const totalControls = domains.reduce((sum, d) => sum + d.total, 0);
+  const totalIsms = domains.reduce((sum, d) => sum + d.ismsCompliantCount, 0);
+  const totalEv = domains.reduce((sum, d) => sum + d.evidenceCompliantCount, 0);
+  const ismsPct = totalControls > 0 ? Math.round((totalIsms / totalControls) * 100) : 0;
+  const evidencePct = totalControls > 0 ? Math.round((totalEv / totalControls) * 100) : 0;
+
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       {/* Donut + Stats */}
       <div className="glass-card p-6">
         <h3 className="mb-5 text-lg font-semibold text-text-primary">
-          Evidence Evaluation
+          Auditoria de Duas Fases (Resumo)
         </h3>
         <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
           <DonutChart
@@ -172,22 +200,35 @@ export function EvidenceSummary({ evaluation, domains }: EvidenceSummaryProps) {
           />
           <div className="flex flex-1 flex-col justify-center gap-4">
             <StatPill
-              label="Compliant"
+              label="Totalmente Conforme (Ambas as Fases)"
               value={evaluation.compliant}
               color="bg-emerald-400"
             />
             <StatPill
-              label="Non-Compliant"
+              label="Não Conforme (Gaps / Parcial)"
               value={evaluation.nonCompliant}
               color="bg-red-400"
             />
             <StatPill
-              label="Total Evaluated"
+              label="Controles Avaliados"
               value={evaluation.total}
               color="bg-primary"
             />
+            
+            {/* Dual Phase Summary Aggregates */}
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <div className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5">
+                <p className="text-[10px] text-text-muted">Políticas (ISMS)</p>
+                <p className="text-sm font-bold text-emerald-400 tabular-nums">{ismsPct}%</p>
+              </div>
+              <div className="rounded-lg border border-white/5 bg-white/[0.02] px-3 py-1.5">
+                <p className="text-[10px] text-text-muted">Evidências Técnicas</p>
+                <p className="text-sm font-bold text-cyan-400 tabular-nums">{evidencePct}%</p>
+              </div>
+            </div>
+
             <div className="mt-1 rounded-lg border border-white/5 bg-white/[0.02] px-3 py-2">
-              <p className="text-xs text-text-muted">Avg. Confidence</p>
+              <p className="text-xs text-text-muted">Confiança Média</p>
               <p className="text-lg font-bold tabular-nums text-text-primary">
                 {evaluation.avgConfidence}
                 <span className="text-sm text-text-muted">%</span>
@@ -200,7 +241,7 @@ export function EvidenceSummary({ evaluation, domains }: EvidenceSummaryProps) {
       {/* Domain Breakdown */}
       <div className="glass-card p-6">
         <h3 className="mb-5 text-lg font-semibold text-text-primary">
-          Domain Breakdown
+          Conformidade por Domínio (Políticas vs. Evidências)
         </h3>
         <DomainBarChart domains={domains} />
       </div>

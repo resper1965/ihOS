@@ -57,6 +57,13 @@ export async function syncScorecard(
       implemented: fw.implementedCount,
       total_required: fw.totalRequired,
       evaluated_at: result.completedAt,
+      // 2-Phase addition:
+      isms_score: fw.ismsScore ?? null,
+      evidence_score: fw.evidenceScore ?? null,
+      conforming_count: fw.conformingCount ?? null,
+      partial_count: fw.partialCount ?? null,
+      informal_count: fw.informalCount ?? null,
+      gap_count: fw.gapCount ?? null,
     };
 
     // Delete previous scorecard for this framework, then insert fresh
@@ -81,6 +88,12 @@ export async function syncScorecard(
           implemented: fw.implementedCount,
           total_required: fw.totalRequired,
           missing_controls: fw.missingControls.slice(0, 20),
+          isms_score: fw.ismsScore ?? null,
+          evidence_score: fw.evidenceScore ?? null,
+          conforming_count: fw.conformingCount ?? null,
+          partial_count: fw.partialCount ?? null,
+          informal_count: fw.informalCount ?? null,
+          gap_count: fw.gapCount ?? null,
         },
         snapshot_data: snapshotData,
         score: score,
@@ -105,8 +118,29 @@ export async function syncScorecard(
       icon: FRAMEWORK_ICONS[code] ?? '📋',
       implemented: fw.implementedCount,
       total_required: fw.totalRequired,
+      // 2-Phase addition:
+      isms_score: fw.ismsScore ?? null,
+      evidence_score: fw.evidenceScore ?? null,
+      conforming_count: fw.conformingCount ?? null,
+      partial_count: fw.partialCount ?? null,
+      informal_count: fw.informalCount ?? null,
+      gap_count: fw.gapCount ?? null,
     };
   });
+
+  const totalIsms = result.totalIsmsCompliant ?? 0;
+  const totalEv = result.totalEvidenceCompliant ?? 0;
+  const conforming = result.totalConforming ?? 0;
+  const partial = result.totalPartial ?? 0;
+  const informal = result.totalInformal ?? 0;
+  const gap = result.totalGap ?? 0;
+
+  const allIsmsScore = result.totalControlsEvaluated > 0
+    ? Math.round((totalIsms / result.totalControlsEvaluated) * 100)
+    : null;
+  const allEvidenceScore = result.totalControlsEvaluated > 0
+    ? Math.round((totalEv / result.totalControlsEvaluated) * 100)
+    : null;
 
   // Delete old "all" scorecard
   await adminSupabase
@@ -128,6 +162,12 @@ export async function syncScorecard(
         frameworks_evaluated: allFrameworks.length,
         total_controls: result.totalControlsEvaluated,
         total_compliant: result.totalControlsCompliant,
+        isms_score: allIsmsScore,
+        evidence_score: allEvidenceScore,
+        conforming_count: conforming,
+        partial_count: partial,
+        informal_count: informal,
+        gap_count: gap,
       },
       snapshot_data: {
         frameworks: allFrameworks,
@@ -135,6 +175,12 @@ export async function syncScorecard(
         overall_score: result.totalControlsEvaluated > 0
           ? Math.round((result.totalControlsCompliant / result.totalControlsEvaluated) * 100)
           : null,
+        isms_score: allIsmsScore,
+        evidence_score: allEvidenceScore,
+        conforming_count: conforming,
+        partial_count: partial,
+        informal_count: informal,
+        gap_count: gap,
       },
       score: result.totalControlsEvaluated > 0
         ? Math.round((result.totalControlsCompliant / result.totalControlsEvaluated) * 100)

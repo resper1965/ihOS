@@ -43,7 +43,7 @@ export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
       {frameworks.map((fw, idx) => {
         const effectiveScore = getEffectiveScore(fw);
         const isHovered = hoveredIndex === idx;
@@ -56,7 +56,7 @@ export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
             className={`
               glass-card group relative cursor-default overflow-hidden p-5
               transition-all duration-500 ease-out
-              ${isHovered ? `scale-[1.03] shadow-xl ${getScoreGlow(effectiveScore)}` : ""}
+              ${isHovered ? `scale-[1.02] shadow-xl ${getScoreGlow(effectiveScore)}` : ""}
             `}
           >
             {/* Top glow accent */}
@@ -84,43 +84,64 @@ export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
               {effectiveScore !== null && (
                 <span className={`text-sm font-medium ${getScoreColor(effectiveScore)}`}>%</span>
               )}
+              <span className="ml-2 text-xs text-text-muted">Conformidade Geral (Conforme)</span>
             </div>
 
-            {/* Score label */}
-            <p className="mt-1 text-xs text-text-muted">
-              {fw.score !== null
-                ? "Score"
-                : fw.coverage !== null
-                  ? "Coverage"
-                  : "Pending"}
-            </p>
+            {/* Dual Phase Progress Bars */}
+            <div className="mt-4 space-y-3">
+              <div>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="text-text-secondary font-medium">1. Políticas & Processos (ISMS)</span>
+                  <span className="font-semibold text-emerald-400 tabular-nums">
+                    {fw.ismsScore !== null ? `${fw.ismsScore}%` : "—"}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-1000 ease-out"
+                    style={{ width: `${fw.ismsScore ?? 0}%` }}
+                  />
+                </div>
+              </div>
 
-            {/* Progress bar */}
-            <div className="mt-3">
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
-                <div
-                  className={`h-full rounded-full bg-gradient-to-r ${getProgressGradient(effectiveScore)} transition-all duration-1000 ease-out`}
-                  style={{ width: `${effectiveScore ?? 0}%` }}
-                />
+              <div>
+                <div className="flex items-center justify-between text-[11px] mb-1">
+                  <span className="text-text-secondary font-medium">2. Evidências Técnicas (Operacional)</span>
+                  <span className="font-semibold text-cyan-400 tabular-nums">
+                    {fw.evidenceScore !== null ? `${fw.evidenceScore}%` : "—"}
+                  </span>
+                </div>
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-1000 ease-out"
+                    style={{ width: `${fw.evidenceScore ?? 0}%` }}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Missing controls */}
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-xs text-text-muted">Missing controls</span>
-              <span
-                className={`
-                  rounded-md px-2 py-0.5 text-xs font-semibold tabular-nums
-                  ${fw.missing === 0
-                    ? "bg-emerald-500/10 text-emerald-400"
-                    : fw.missing < 50
-                      ? "bg-amber-500/10 text-amber-400"
-                      : "bg-red-500/10 text-red-400"
-                  }
-                `}
-              >
-                {fw.missing}
-              </span>
+            {/* 4-State Indicators Grid */}
+            <div className="mt-4 pt-3 border-t border-white/5 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[10px]">
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
+                <span className="text-text-muted truncate">Conforme:</span>
+                <span className="font-bold text-text-primary ml-auto tabular-nums">{fw.conformingCount ?? 0}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
+                <span className="text-text-muted truncate">Parcial:</span>
+                <span className="font-bold text-text-primary ml-auto tabular-nums">{fw.partialCount ?? 0}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-orange-400 shadow-sm shadow-orange-400/50" />
+                <span className="text-text-muted truncate">Informal:</span>
+                <span className="font-bold text-text-primary ml-auto tabular-nums">{fw.informalCount ?? 0}</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-red-400 shadow-sm shadow-red-400/50" />
+                <span className="text-text-muted truncate">Gaps:</span>
+                <span className="font-bold text-text-primary ml-auto tabular-nums">{fw.gapCount ?? 0}</span>
+              </div>
             </div>
           </div>
         );

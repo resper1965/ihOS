@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin';
-import { generateEmbedding } from '@/lib/chat/embeddings';
+import { generateEmbedding, generateEmbeddings } from '@/lib/chat/embeddings';
 import type {
   AssessmentConfig,
   AssessmentResult,
@@ -126,9 +126,11 @@ const ISO27001_ANNEX_A: AnnexAControl[] = [
 // ---------------------------------------------------------------------------
 // Confidence thresholds for RAG similarity
 // ---------------------------------------------------------------------------
-const SIMILARITY_COMPLIANT = 0.72;    // >= this: strong evidence, compliant
-const SIMILARITY_PARTIAL = 0.60;      // >= this: partial evidence, needs review
-const MATCH_THRESHOLD = 0.30;         // Minimum match threshold for RPC
+// RRF combined_score ranges from 0 to ~0.033 (1/(rank+60) sum)
+// Any result returned already passed the vector similarity >= match_threshold filter
+const SCORE_STRONG = 0.025;      // >= this: strong evidence (top-ranked match)
+const SCORE_PARTIAL = 0.015;     // >= this: partial evidence, needs review
+const MATCH_THRESHOLD = 0.20;    // Minimum cosine similarity for vector search in RPC
 
 // ---------------------------------------------------------------------------
 // Local Assessment Engine
@@ -141,21 +143,54 @@ export async function runLocalAssessment(
   const startedAt = new Date().toISOString();
   const adminSupabase = createAdminClient();
 
-  // Phase 1: Load controls
+  // Phase 1: Load controls and SCF framework mappings
   const controls = ISO27001_ANNEX_A;
   onProgress?.({
     phase: 'loading_controls',
     current: controls.length,
     total: controls.length,
-    message: `Loaded ${controls.length} ISO 27001:2022 Annex A controls.`,
+    message: `Loaded ${controls.length} ISO 27001:2022 Annex A controls. Loading SCF mappings...`,
   });
+
+  // Query scf_framework_mappings for target mapping lookup
+  const { data: mappingsData, error: mappingsError } = await adminSupabase
+    .from('scf_framework_mappings')
+    .select('target_control_id, scf_control_code')
+    .eq('framework_code', 'iso27001');
+
+  if (mappingsError) {
+    console.error('[Audit] Failed to load SCF framework mappings:', mappingsError.message);
+  }
+
+  // Group mappings in a Map for fast lookup
+  const mappingsMap = new Map<string, string[]>();
+  if (mappingsData) {
+    for (const m of mappingsData) {
+      const key = m.target_control_id;
+      const list = mappingsMap.get(key) || [];
+      list.push(m.scf_control_code);
+      mappingsMap.set(key, list);
+    }
+  }
 
   // Phase 2: Evaluate each control against RAG evidence
   const evaluations: ControlEvaluation[] = [];
   const implementedControlIds: string[] = [];
 
+  onProgress?.({
+    phase: 'evaluating',
+    current: 0,
+    total: controls.length,
+    message: 'Generating embeddings for all control descriptions...',
+  });
+
+  // Batch generate embeddings to minimize API roundtrips
+  const controlDescriptions = controls.map(c => c.description);
+  const queryEmbeddings = await generateEmbeddings(controlDescriptions);
+
   for (let i = 0; i < controls.length; i++) {
     const control = controls[i];
+    const queryEmbedding = queryEmbeddings[i];
 
     onProgress?.({
       phase: 'evaluating',
@@ -165,64 +200,100 @@ export async function runLocalAssessment(
     });
 
     try {
-      // Generate semantic embedding for this control's description
-      const queryEmbedding = await generateEmbedding(control.description);
+      // Map control ID to SCF code
+      const targetId = control.id.replace(/^A\./, '');
+      const scfCodes = mappingsMap.get(targetId) || [];
+      const scfControlCode = scfCodes[0] || 'GOV-01.3'; // Fallback
+      const domainCode = scfControlCode.split('-')[0];
 
-      // Call RPC via admin client (bypasses RLS and browser auth)
-      const { data, error } = await adminSupabase.rpc('match_documents_hybrid', {
+      // --- PHASE 1: ISMS policies/procedures RAG search ---
+      const { data: ismsData, error: ismsError } = await adminSupabase.rpc('match_documents_hybrid', {
         query_text: control.description,
         query_embedding: queryEmbedding,
         match_threshold: MATCH_THRESHOLD,
-        match_count: 3,
+        match_count: 5,
         filter_framework: null,
         filter_version_id: null,
-        filter_categories: null,
+        filter_categories: ['ISMS_CORE'],
       });
 
-      if (error) {
-        console.error(`[Audit] RPC error for ${control.id}:`, error.message);
-        evaluations.push({
-          controlId: control.id,
-          controlName: control.name,
-          domain: control.domain,
-          isCompliant: false,
-          confidenceScore: 0,
-          auditorNotes: `RAG search failed: ${error.message}`,
-        });
-        continue;
+      if (ismsError) {
+        console.error(`[Audit] ISMS Phase RPC error for ${control.id}:`, ismsError.message);
       }
 
-      if (!data || data.length === 0) {
-        evaluations.push({
-          controlId: control.id,
-          controlName: control.name,
-          domain: control.domain,
-          isCompliant: false,
-          confidenceScore: 0,
-          auditorNotes: 'No documentary evidence found in ISMS repository.',
-        });
-        continue;
+      const ismsMatches = (ismsData || []).filter((chunk: any) =>
+        ['policy', 'manual', 'soa', 'matrix', 'procedure'].includes(chunk.doc_type)
+      );
+
+      let ismsPhase = { found: false, score: 0 } as any;
+      if (ismsMatches.length > 0) {
+        const bestIsms = ismsMatches[0];
+        ismsPhase = {
+          found: true,
+          score: bestIsms.similarity ?? 0,
+          docTitle: bestIsms.doc_title ?? bestIsms.doc_filename ?? 'Unknown',
+          docFilename: bestIsms.doc_filename,
+          snippet: bestIsms.content.slice(0, 300),
+          chunkId: bestIsms.id,
+        };
       }
 
-      // Take the best match
-      const best = data[0] as Record<string, unknown>;
-      const similarity = (best.similarity as number) ?? 0;
-      let isCompliant = false;
-      let auditorNotes: string;
-      const docTitle = (best.doc_title as string) ?? (best.doc_filename as string) ?? 'Unknown';
+      // --- PHASE 2: Evidence/Implementation RAG search ---
+      const { data: evidenceData, error: evidenceError } = await adminSupabase.rpc('match_documents_hybrid', {
+        query_text: control.description,
+        query_embedding: queryEmbedding,
+        match_threshold: MATCH_THRESHOLD,
+        match_count: 5,
+        filter_framework: null,
+        filter_version_id: null,
+        filter_categories: ['OPERATIONAL', 'ISMS_CORE'],
+      });
 
-      if (similarity >= SIMILARITY_COMPLIANT) {
-        isCompliant = true;
-        auditorNotes = `Strong evidence found (similarity: ${(similarity * 100).toFixed(1)}%) in "${docTitle}"`;
-      } else if (similarity >= SIMILARITY_PARTIAL) {
-        isCompliant = false;
-        auditorNotes = `Partial evidence found (similarity: ${(similarity * 100).toFixed(1)}%). May not fully address the requirement. Source: "${docTitle}"`;
-      } else {
-        isCompliant = false;
-        auditorNotes = `Weak evidence found (similarity: ${(similarity * 100).toFixed(1)}%). Tangentially related. Source: "${docTitle}"`;
+      if (evidenceError) {
+        console.error(`[Audit] Evidence Phase RPC error for ${control.id}:`, evidenceError.message);
       }
 
-      const confidenceScore = Math.round(similarity * 100);
+      const evidenceMatches = (evidenceData || []).filter((chunk: any) =>
+        chunk.doc_category === 'OPERATIONAL' || ['evidence', 'audit_report', 'internal_audit'].includes(chunk.doc_type)
+      );
+
+      let evidencePhase = { found: false, score: 0 } as any;
+      if (evidenceMatches.length > 0) {
+        const bestEv = evidenceMatches[0];
+        evidencePhase = {
+          found: true,
+          score: bestEv.similarity ?? 0,
+          docTitle: bestEv.doc_title ?? bestEv.doc_filename ?? 'Unknown',
+          docFilename: bestEv.doc_filename,
+          snippet: bestEv.content.slice(0, 300),
+          chunkId: bestEv.id,
+        };
+      }
+
+      // --- 4-State Compliance Logic ---
+      const ismsCompliant = ismsPhase.score >= SCORE_STRONG;
+      const evidenceCompliant = evidencePhase.score >= SCORE_STRONG;
+
+      let combinedStatus: 'conforming' | 'partial' | 'informal' | 'gap';
+      if (ismsCompliant && evidenceCompliant) combinedStatus = 'conforming';
+      else if (ismsCompliant && !evidenceCompliant) combinedStatus = 'partial';
+      else if (!ismsCompliant && evidenceCompliant) combinedStatus = 'informal';
+      else combinedStatus = 'gap';
+
+      const isCompliant = combinedStatus === 'conforming'; // Only fully conforming is compliant
+      const ismsNorm = Math.min(100, Math.round((ismsPhase.score / 0.033) * 100));
+      const evNorm = Math.min(100, Math.round((evidencePhase.score / 0.033) * 100));
+      const confidenceScore = Math.round((ismsNorm + evNorm) / 2);
+
+      // Construct structured auditor notes
+      const ismsStatusStr = ismsCompliant ? 'CONFORME' : 'NÃO CONFORME';
+      const evStatusStr = evidenceCompliant ? 'CONFORME' : 'NÃO CONFORME';
+      let auditorNotes = `Auditoria de Duas Fases (Modo Auditor):\n`;
+      auditorNotes += `- Fase 1 (ISMS/Políticas): ${ismsStatusStr} (Score RRF: ${ismsPhase.score.toFixed(4)})\n`;
+      if (ismsPhase.found) auditorNotes += `  Documento: "${ismsPhase.docTitle}"\n`;
+      auditorNotes += `- Fase 2 (Evidência Técnica): ${evStatusStr} (Score RRF: ${evidencePhase.score.toFixed(4)})\n`;
+      if (evidencePhase.found) auditorNotes += `  Documento: "${evidencePhase.docTitle}"\n`;
+      auditorNotes += `Status Combinado: ${combinedStatus.toUpperCase()}`;
 
       evaluations.push({
         controlId: control.id,
@@ -230,9 +301,14 @@ export async function runLocalAssessment(
         domain: control.domain,
         isCompliant,
         confidenceScore,
-        evidenceChunkId: best.id as number,
-        evidenceSnippet: ((best.content as string) ?? '').slice(0, 300),
+        evidenceChunkId: evidencePhase.chunkId ?? ismsPhase.chunkId ?? undefined,
+        evidenceSnippet: evidencePhase.snippet ?? ismsPhase.snippet ?? undefined,
         auditorNotes,
+        ismsPhase,
+        evidencePhase,
+        combinedStatus,
+        scfControlCode,
+        domainCode,
       });
 
       if (isCompliant) {
@@ -247,12 +323,15 @@ export async function runLocalAssessment(
         isCompliant: false,
         confidenceScore: 0,
         auditorNotes: `Evaluation error: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        ismsPhase: { found: false, score: 0 },
+        evidencePhase: { found: false, score: 0 },
+        combinedStatus: 'gap',
       });
     }
 
-    // Rate limiting: small delay every 10 controls to avoid API throttling
+    // Rate limiting: delay to avoid throttling
     if (i % 10 === 9) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 400));
     }
   }
 
@@ -264,19 +343,31 @@ export async function runLocalAssessment(
     message: 'Calculating compliance scores...',
   });
 
-  const totalCompliant = evaluations.filter(e => e.isCompliant).length;
-  const score = controls.length > 0
-    ? Math.round((totalCompliant / controls.length) * 100)
-    : 0;
+  const totalIsmsCompliant = evaluations.filter(e => (e.ismsPhase?.score ?? 0) >= SCORE_STRONG).length;
+  const totalEvidenceCompliant = evaluations.filter(e => (e.evidencePhase?.score ?? 0) >= SCORE_STRONG).length;
+  const totalConforming = evaluations.filter(e => e.combinedStatus === 'conforming').length;
+  const totalPartial = evaluations.filter(e => e.combinedStatus === 'partial').length;
+  const totalInformal = evaluations.filter(e => e.combinedStatus === 'informal').length;
+  const totalGap = evaluations.filter(e => e.combinedStatus === 'gap').length;
+
+  const ismsScore = Math.round((totalIsmsCompliant / controls.length) * 100);
+  const evidenceScore = Math.round((totalEvidenceCompliant / controls.length) * 100);
+  const score = Math.round((totalConforming / controls.length) * 100);
 
   const frameworkScores: FrameworkScore[] = config.frameworks.map(fwId => ({
     frameworkId: fwId,
     score,
-    implementedCount: totalCompliant,
+    implementedCount: totalConforming,
     totalRequired: controls.length,
     missingControls: evaluations
-      .filter(e => !e.isCompliant)
+      .filter(e => e.combinedStatus !== 'conforming')
       .map(e => e.controlId),
+    ismsScore,
+    evidenceScore,
+    conformingCount: totalConforming,
+    partialCount: totalPartial,
+    informalCount: totalInformal,
+    gapCount: totalGap,
   }));
 
   // Phase 4: Result
@@ -290,15 +381,21 @@ export async function runLocalAssessment(
     frameworkScores,
     implementedControlIds,
     totalControlsEvaluated: evaluations.length,
-    totalControlsCompliant: totalCompliant,
-    totalControlsMissing: evaluations.length - totalCompliant,
+    totalControlsCompliant: totalConforming,
+    totalControlsMissing: evaluations.length - totalConforming,
+    totalIsmsCompliant,
+    totalEvidenceCompliant,
+    totalConforming,
+    totalPartial,
+    totalInformal,
+    totalGap,
   };
 
   onProgress?.({
     phase: 'complete',
     current: 1,
     total: 1,
-    message: `Assessment complete: ${totalCompliant}/${evaluations.length} controls with evidence (${score}%).`,
+    message: `Assessment complete: ${totalConforming}/${evaluations.length} controls fully conforming (${score}%). Policies: ${totalIsmsCompliant}, Evidence: ${totalEvidenceCompliant}.`,
   });
 
   return result;

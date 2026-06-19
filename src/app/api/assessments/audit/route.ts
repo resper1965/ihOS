@@ -28,11 +28,29 @@ export async function POST(req: Request) {
       productVersionId = null,
     } = body;
 
+    const adminSupabase = createAdminClient();
+
+    // Resolve product version (nCommand Lite) if not provided
+    let activeProductVersionId = productVersionId;
+    if (!activeProductVersionId) {
+      const { data: defaultVersion } = await adminSupabase
+        .from('product_versions')
+        .select('id')
+        .eq('product_name', 'nCommand Lite')
+        .eq('is_default', true)
+        .limit(1)
+        .single();
+      if (defaultVersion) {
+        activeProductVersionId = defaultVersion.id;
+        console.log(`[Audit] Auto-linked to default nCommand Lite version: ${activeProductVersionId}`);
+      }
+    }
+
     const config: AssessmentConfig = {
       frameworks,
       mode,
       salesChannel,
-      productVersionId,
+      productVersionId: activeProductVersionId,
     };
 
     console.log('[Audit] Starting LOCAL assessment:', JSON.stringify(config));
@@ -40,7 +58,6 @@ export async function POST(req: Request) {
     console.log(`[Audit] Assessment complete: ${result.totalControlsCompliant}/${result.totalControlsEvaluated} controls with evidence`);
 
     // Persist to Supabase via admin client (no RLS)
-    const adminSupabase = createAdminClient();
     const { data: assessmentRecord, error: insertError } = await adminSupabase
       .from('assessments')
       .insert({
@@ -48,7 +65,7 @@ export async function POST(req: Request) {
         status: 'completed',
         mode,
         sales_channel: salesChannel,
-        product_version_id: productVersionId,
+        product_version_id: activeProductVersionId,
         frameworks: frameworks,
         started_at: result.startedAt,
         completed_at: result.completedAt,
@@ -70,18 +87,29 @@ export async function POST(req: Request) {
     if (assessmentRecord?.id && result.controlEvaluations.length > 0) {
       const evidenceBatch = result.controlEvaluations.map((evaluation) => ({
         chunk_id: evaluation.evidenceChunkId ?? null,
-        scf_control_code: evaluation.controlId,
+        scf_control_code: evaluation.scfControlCode || evaluation.controlId,
         control_requirement: evaluation.controlName,
         evidence_text: evaluation.evidenceSnippet ?? 'No evidence found',
         needs_review: evaluation.confidenceScore > 0 && evaluation.confidenceScore < 70,
         control_code: evaluation.controlId,
-        domain_code: evaluation.domain,
+        domain_code: evaluation.domainCode || evaluation.domain,
         control_name: evaluation.controlName,
         is_compliant: evaluation.isCompliant,
         confidence_score: evaluation.confidenceScore,
-        missing_elements: null,
+        missing_elements: evaluation.combinedStatus !== 'conforming'
+          ? [
+              evaluation.combinedStatus === 'partial' ? 'Falta evidência técnica de implementação operacional' :
+              evaluation.combinedStatus === 'informal' ? 'Falta política ou procedimento formalizado no ISMS' :
+              'Falta política formalizada e evidência operacional'
+            ]
+          : null,
         auditor_notes: evaluation.auditorNotes || null,
         trace_id: assessmentRecord.id,
+        evidence_sources: {
+          ismsPhase: evaluation.ismsPhase,
+          evidencePhase: evaluation.evidencePhase,
+          combinedStatus: evaluation.combinedStatus
+        } as any,
       }));
 
       const { error: evidenceError } = await adminSupabase

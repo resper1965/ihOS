@@ -150,6 +150,7 @@ export type ProductVersion = {
   version_code: string;
   status: 'active' | 'deprecated' | 'supported';
   technical_specs: any; // JSONB
+  is_default?: boolean;
   created_at: string | null;
   updated_at: string | null;
 }
@@ -306,7 +307,7 @@ export type NistControlInsert = Omit<NistControl, "id" | "created_at"> & {
 
 export type ScfControlInsert = ScfControl;
 
-export type EvidenceEvaluationInsert = Omit<EvidenceEvaluation, "id" | "created_at" | "updated_at" | "evaluated_at" | "tenant_id" | "assessment_id" | "evidence_sources"> & {
+export type EvidenceEvaluationInsert = Omit<EvidenceEvaluation, "id" | "created_at" | "updated_at" | "evaluated_at" | "tenant_id" | "assessment_id" | "evidence_sources" | "chunk_id"> & {
   id?: string;
   created_at?: string | null;
   updated_at?: string | null;
@@ -314,6 +315,7 @@ export type EvidenceEvaluationInsert = Omit<EvidenceEvaluation, "id" | "created_
   tenant_id?: string | null;
   assessment_id?: string | null;
   evidence_sources?: any[] | null;
+  chunk_id?: number | null;
 };
 
 export type IntelligenceSnapshotInsert = Omit<IntelligenceSnapshot, "id" | "created_at"> & {
@@ -556,11 +558,18 @@ export type Database = {
         Returns: {
           id: number;
           content: string;
+          content_en: string | null;
           similarity: number;
           document_id: number;
-          document_title: string;
-          section_title: string;
-          framework: string;
+          chunk_index: number | null;
+          section_title: string | null;
+          nist_families: string[] | null;
+          iso_controls: string[] | null;
+          scf_controls: string[] | null;
+          doc_filename: string;
+          doc_title: string;
+          doc_category: string | null;
+          doc_type: string | null;
         }[];
       };
     };

@@ -125,8 +125,8 @@ describe('complianceScore tool', () => {
       { toolCallId: 'test', messages: [], abortSignal: undefined as any },
     );
 
-    expect(result.source).toBe('mock');
-    expect(result.overallScore).toBe(73.5);
+    expect(result.source).toBe('unavailable');
+    expect(result.overallScore).toBe(0);
   });
 });
 

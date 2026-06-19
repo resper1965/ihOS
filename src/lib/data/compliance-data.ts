@@ -18,6 +18,13 @@ export interface FrameworkScore {
   coverage: number | null;
   missing: number;
   icon: string;
+  // 2-Phase addition:
+  ismsScore?: number | null;
+  evidenceScore?: number | null;
+  conformingCount?: number | null;
+  partialCount?: number | null;
+  informalCount?: number | null;
+  gapCount?: number | null;
 }
 
 export interface EvaluationSummary {
@@ -49,6 +56,11 @@ export interface DomainBreakdown {
   total: number;
   compliant: number;
   rate: number;
+  // 2-Phase addition:
+  ismsCompliantCount: number;
+  evidenceCompliantCount: number;
+  ismsRate: number;
+  evidenceRate: number;
 }
 
 
@@ -129,6 +141,13 @@ export async function getFrameworkScores(): Promise<FrameworkScore[]> {
             coverage: (data?.coverage as number) ?? null,
             missing: (data?.missing as number) ?? 0,
             icon: FRAMEWORK_ICONS[code] ?? "📋",
+            // 2-Phase addition:
+            ismsScore: (data?.isms_score as number) ?? null,
+            evidenceScore: (data?.evidence_score as number) ?? null,
+            conformingCount: (data?.conforming_count as number) ?? null,
+            partialCount: (data?.partial_count as number) ?? null,
+            informalCount: (data?.informal_count as number) ?? null,
+            gapCount: (data?.gap_count as number) ?? null,
           });
         }
         return results;
@@ -302,22 +321,42 @@ export async function getDomainBreakdown(): Promise<DomainBreakdown[]> {
 
     const { data: evaluations, error } = await supabase
       .from("evidence_evaluations")
-      .select("domain_code, is_compliant");
+      .select("domain_code, is_compliant, evidence_sources");
 
     if (error) throw error;
 
     if (evaluations && evaluations.length > 0) {
       // Group by domain_code
-      const domainMap = new Map<string, { total: number; compliant: number }>();
+      const domainMap = new Map<string, { total: number; compliant: number; ismsCompliant: number; evidenceCompliant: number }>();
 
       for (const ev of evaluations) {
         const domain = ev.domain_code ?? 'UNKNOWN';
         if (!domainMap.has(domain)) {
-          domainMap.set(domain, { total: 0, compliant: 0 });
+          domainMap.set(domain, { total: 0, compliant: 0, ismsCompliant: 0, evidenceCompliant: 0 });
         }
         const entry = domainMap.get(domain)!;
         entry.total++;
         if (ev.is_compliant) entry.compliant++;
+
+        // Resolve individual phases compliance from evidence_sources
+        let ismsOk = ev.is_compliant;
+        let evOk = ev.is_compliant;
+        if (ev.evidence_sources) {
+          try {
+            const sources = typeof ev.evidence_sources === 'string'
+              ? JSON.parse(ev.evidence_sources)
+              : ev.evidence_sources;
+            if (sources && sources.ismsPhase && sources.evidencePhase) {
+              ismsOk = (sources.ismsPhase.score ?? 0) >= 0.025;
+              evOk = (sources.evidencePhase.score ?? 0) >= 0.025;
+            }
+          } catch (e) {
+            console.warn('[compliance-data] Failed to parse evidence_sources JSON:', e);
+          }
+        }
+
+        if (ismsOk) entry.ismsCompliant++;
+        if (evOk) entry.evidenceCompliant++;
       }
 
       const results: DomainBreakdown[] = [];
@@ -328,6 +367,10 @@ export async function getDomainBreakdown(): Promise<DomainBreakdown[]> {
           total: stats.total,
           compliant: stats.compliant,
           rate: Math.round((stats.compliant / stats.total) * 100),
+          ismsCompliantCount: stats.ismsCompliant,
+          evidenceCompliantCount: stats.evidenceCompliant,
+          ismsRate: Math.round((stats.ismsCompliant / stats.total) * 100),
+          evidenceRate: Math.round((stats.evidenceCompliant / stats.total) * 100),
         });
       }
 
