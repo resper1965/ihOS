@@ -1,23 +1,69 @@
 @import "tailwindcss";
 
-@theme inline {
-  /* Ionic Health Brand Colors */
+:root {
+  /* Light Theme Variables */
+  --color-primary: #3da8b0;
+  --color-primary-hover: #2e949c;
+  --color-accent: #2e949c;
+  --color-accent-hover: #216d73;
+  --color-brand-gray: #58595b;
+  
+  --color-bg-dark: #f1f5f9;
+  --color-bg-card: #ffffff;
+  --color-bg-glass: rgba(255, 255, 255, 0.85);
+  --color-bg-glass-light: rgba(255, 255, 255, 0.5);
+  --color-border-glass: rgba(61, 168, 176, 0.15);
+  --color-border-glass-hover: rgba(61, 168, 176, 0.3);
+  
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
+  
+  --color-danger: #e11d48;
+  --color-warning: #d97706;
+}
+
+.dark {
+  /* Dark Theme Variables */
   --color-primary: #53c4cd;
   --color-primary-hover: #3fb3bc;
   --color-accent: #3da8b0;
   --color-accent-hover: #2e949c;
   --color-brand-gray: #58595b;
+  
   --color-bg-dark: #0b1520;
   --color-bg-card: #101e2c;
   --color-bg-glass: rgba(16, 30, 44, 0.75);
   --color-bg-glass-light: rgba(16, 30, 44, 0.4);
   --color-border-glass: rgba(83, 196, 205, 0.08);
   --color-border-glass-hover: rgba(83, 196, 205, 0.2);
+  
   --color-text-primary: #f0f6f7;
   --color-text-secondary: #94b3be;
   --color-text-muted: #5a7a88;
+  
   --color-danger: #f43f5e;
   --color-warning: #fbbf24;
+}
+
+@theme inline {
+  /* Ionic Health Brand Colors mapped to dynamic CSS variables */
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+  --color-accent: var(--color-accent);
+  --color-accent-hover: var(--color-accent-hover);
+  --color-brand-gray: var(--color-brand-gray);
+  --color-bg-dark: var(--color-bg-dark);
+  --color-bg-card: var(--color-bg-card);
+  --color-bg-glass: var(--color-bg-glass);
+  --color-bg-glass-light: var(--color-bg-glass-light);
+  --color-border-glass: var(--color-border-glass);
+  --color-border-glass-hover: var(--color-border-glass-hover);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-danger: var(--color-danger);
+  --color-warning: var(--color-warning);
   --font-sans: var(--font-sans);
 }
 

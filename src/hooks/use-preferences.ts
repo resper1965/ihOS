@@ -42,7 +42,20 @@ export function usePreferences(): UsePreferencesResult {
           .single();
 
         if (profile?.preferences && typeof profile.preferences === "object") {
-          setPrefs({ ...DEFAULTS, ...(profile.preferences as Partial<UserPreferences>) });
+          const loadedPrefs = { ...DEFAULTS, ...(profile.preferences as Partial<UserPreferences>) };
+          setPrefs(loadedPrefs);
+          localStorage.setItem("darkMode", String(loadedPrefs.darkMode));
+
+          if (typeof document !== "undefined") {
+            const html = document.documentElement;
+            if (loadedPrefs.darkMode) {
+              html.classList.add("dark");
+              html.classList.remove("light");
+            } else {
+              html.classList.add("light");
+              html.classList.remove("dark");
+            }
+          }
         }
       } catch {
         // Graceful fallback to defaults
@@ -58,7 +71,23 @@ export function usePreferences(): UsePreferencesResult {
   const setPref = useCallback(
     async <K extends keyof UserPreferences>(key: K, value: UserPreferences[K]) => {
       // Optimistic update
-      setPrefs((prev) => ({ ...prev, [key]: value }));
+      setPrefs((prev) => {
+        const next = { ...prev, [key]: value };
+        if (key === "darkMode") {
+          localStorage.setItem("darkMode", String(value));
+          if (typeof document !== "undefined") {
+            const html = document.documentElement;
+            if (value) {
+              html.classList.add("dark");
+              html.classList.remove("light");
+            } else {
+              html.classList.add("light");
+              html.classList.remove("dark");
+            }
+          }
+        }
+        return next;
+      });
       setIsSaving(true);
 
       try {
@@ -78,7 +107,24 @@ export function usePreferences(): UsePreferencesResult {
         }
       } catch (err) {
         // Revert optimistic update on failure
-        setPrefs((prev) => ({ ...prev, [key]: !value }));
+        setPrefs((prev) => {
+          const reverted = { ...prev, [key]: !value };
+          if (key === "darkMode") {
+            const revertedVal = !value;
+            localStorage.setItem("darkMode", String(revertedVal));
+            if (typeof document !== "undefined") {
+              const html = document.documentElement;
+              if (revertedVal) {
+                html.classList.add("dark");
+                html.classList.remove("light");
+              } else {
+                html.classList.add("light");
+                html.classList.remove("dark");
+              }
+            }
+          }
+          return reverted;
+        });
         console.error("[Preferences] Save failed:", err);
       } finally {
         setIsSaving(false);

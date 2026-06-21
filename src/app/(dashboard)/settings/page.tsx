@@ -219,8 +219,7 @@ export default function SettingsPage() {
             description="Dark theme enabled by default"
             icon={Moon}
             checked={prefs.darkMode}
-            disabled
-            onChange={() => {}}
+            onChange={(v) => setPref("darkMode", v)}
           />
           <ToggleSwitch
             label="Compliance Alerts"

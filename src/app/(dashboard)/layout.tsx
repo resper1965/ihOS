@@ -69,7 +69,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <VersionProvider>
       <PageTitleProvider>
-      <div className="flex h-screen overflow-hidden bg-[#0f172a]">
+      <div className="flex h-screen overflow-hidden bg-bg-dark">
         {/* Sidebar */}
         <aside className={`glass-surface relative flex flex-col transition-all duration-300 ease-in-out ${sidebarOpen ? "w-64" : "w-20"}`}>
           <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
@@ -119,7 +119,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <button onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-[#1e293b] text-slate-400 shadow-md hover:text-white transition-all"
+            className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-bg-card text-slate-400 shadow-md hover:text-white transition-all"
             aria-label={sidebarOpen ? "Collapse menu" : "Expand menu"}>
             <ChevronLeft className={`h-3.5 w-3.5 transition-transform duration-300 ${sidebarOpen ? "" : "rotate-180"}`} />
           </button>
@@ -158,7 +158,7 @@ function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
   })();
 
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-[#0f172a]/80 px-6 backdrop-blur-md">
+    <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-bg-dark/80 px-6 backdrop-blur-md">
       {/* Left — page title */}
       <div className="flex items-center gap-4">
         <button onClick={onMenuClick} className="text-slate-400 hover:text-white lg:hidden">
@@ -212,7 +212,7 @@ function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
           </button>
 
           {showUserMenu && (
-            <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-[#1e293b]/95 shadow-xl backdrop-blur-xl">
+            <div className="absolute right-0 top-full z-50 mt-2 w-56 overflow-hidden rounded-xl border border-white/10 bg-bg-card/95 shadow-xl backdrop-blur-xl">
               <div className="border-b border-white/10 px-4 py-3">
                 <p className="text-sm font-medium text-white">{user?.email ?? "—"}</p>
                 <p className="text-xs text-slate-400">{roleLabel}</p>

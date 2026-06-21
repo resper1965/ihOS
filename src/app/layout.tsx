@@ -22,6 +22,27 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={`${plusJakartaSans.variable} dark`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  const saved = localStorage.getItem("darkMode");
+                  const isDark = saved !== null ? saved === "true" : true;
+                  if (isDark) {
+                    document.documentElement.classList.add("dark");
+                    document.documentElement.classList.remove("light");
+                  } else {
+                    document.documentElement.classList.add("light");
+                    document.documentElement.classList.remove("dark");
+                  }
+                } catch (_) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-screen bg-bg-dark text-text-primary antialiased">
         {children}
       </body>
