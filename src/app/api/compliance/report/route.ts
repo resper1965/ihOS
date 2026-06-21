@@ -44,8 +44,8 @@ export async function GET(req: Request) {
         success: true,
         data: reports.map((r) => ({
           id: r.id.toString(), // Convert BigInt to string for safety in JSON
-          title: (r.metadata as any)?.title || `Relatório de Conformidade ${r.framework_code}`,
-          framework: r.framework_code || "Múltiplos Frameworks",
+          title: (r.metadata as any)?.title || `Compliance Report ${r.framework_code}`,
+          framework: r.framework_code || "Multiple Frameworks",
           createdAt: r.created_at,
           type: (r.metadata as any)?.type || "Gap Analysis",
           status: (r.metadata as any)?.status || "ready",
@@ -220,7 +220,7 @@ export async function POST(req: Request) {
     }
 
     let frameworkCode = "ISO-27001";
-    let title = "Relatório de Gap Analysis ISO-27001";
+    let title = "ISO-27001 Gap Analysis Report";
     try {
       const body = await req.json();
       if (body.frameworkCode) frameworkCode = body.frameworkCode;

@@ -78,16 +78,16 @@ export function GoalsWidget() {
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays < 0) {
-      return { label: `Atrasado há ${Math.abs(diffDays)}d`, variant: "danger" as const };
+      return { label: `Overdue by ${Math.abs(diffDays)}d`, variant: "danger" as const };
     } else if (diffDays === 0) {
-      return { label: "Hoje", variant: "warning" as const };
+      return { label: "Today", variant: "warning" as const };
     } else if (diffDays === 1) {
-      return { label: "Amanhã", variant: "warning" as const };
+      return { label: "Tomorrow", variant: "warning" as const };
     } else if (diffDays <= 7) {
-      return { label: `Em ${diffDays} dias`, variant: "info" as const };
+      return { label: `In ${diffDays} days`, variant: "info" as const };
     } else {
       return {
-        label: deadline.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" }),
+        label: deadline.toLocaleDateString("en-US", { day: "2-digit", month: "2-digit" }),
         variant: "neutral" as const,
       };
     }
@@ -116,14 +116,14 @@ export function GoalsWidget() {
               <Target className="h-5 w-5 text-primary" />
             </div>
             <h3 className="text-lg font-semibold text-text-primary">
-              Projetos de Remediação
+              Remediation Projects
             </h3>
           </div>
           <Link 
             href="/goals" 
             className="text-xs font-semibold text-primary hover:text-primary-hover flex items-center gap-1 group transition-colors"
           >
-            Ver tudo
+            View all
             <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
@@ -131,7 +131,7 @@ export function GoalsWidget() {
         {/* Global Progress */}
         <div className="space-y-1.5">
           <div className="flex items-center justify-between text-xs text-text-secondary">
-            <span>Progresso Médio</span>
+            <span>Average Progress</span>
             <span className="font-semibold text-text-primary">{averageProgress}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-white/5">
@@ -146,13 +146,13 @@ export function GoalsWidget() {
         <div className="space-y-3 pt-2">
           <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-text-muted">
             <ListTodo className="h-3.5 w-3.5" />
-            <span>Tarefas Críticas Próximas</span>
+            <span>Upcoming Critical Tasks</span>
           </div>
 
           <div className="space-y-2">
             {pendingTasks.length === 0 ? (
               <p className="text-sm text-text-muted py-2">
-                Nenhuma tarefa crítica pendente. Tudo em conformidade!
+                No pending critical tasks. All in compliance!
               </p>
             ) : (
               pendingTasks.map((task) => {

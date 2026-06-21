@@ -61,10 +61,10 @@ export async function GET(req: Request) {
         if (isOverdue || isApproaching) {
           const userId = goal.user_id;
           const framework = goal.framework_code || 'Unknown';
-          const title = isOverdue ? 'Tarefa de Remediação Atrasada' : 'Tarefa de Remediação Próxima do Vencimento';
+          const title = isOverdue ? 'Remediation Task Overdue' : 'Remediation Task Approaching Deadline';
           const content = isOverdue
-            ? `A tarefa "${task.title}" do projeto "${goal.title || ''}" (${framework}) está atrasada. Devia ter sido concluída em ${deadlineDate.toLocaleDateString('pt-BR')}.`
-            : `A tarefa "${task.title}" do projeto "${goal.title || ''}" (${framework}) vence em breve: ${deadlineDate.toLocaleDateString('pt-BR')}.`;
+            ? `The task "${task.title}" from project "${goal.title || ''}" (${framework}) is overdue. It was due on ${deadlineDate.toLocaleDateString('en-US')}.`
+            : `The task "${task.title}" from project "${goal.title || ''}" (${framework}) is expiring soon: ${deadlineDate.toLocaleDateString('en-US')}.`;
 
           taskNotifCandidates.push({ user_id: userId, title, content, type: 'task_deadline', read: false });
         }
@@ -130,10 +130,10 @@ export async function GET(req: Request) {
 
         if (isExpired || isExpiring) {
           const userId = assessment.user_id;
-          const title = isExpired ? 'Aceitação de Risco Expirada' : 'Aceitação de Risco Próxima do Vencimento';
+          const title = isExpired ? 'Risk Acceptance Expired' : 'Risk Acceptance Approaching Expiry';
           const content = isExpired
-            ? `O termo de aceitação de risco para o controle "${item.control_code || 'N/A'}" expirou em ${expiryDate.toLocaleDateString('pt-BR')}.`
-            : `O termo de aceitação de risco para o controle "${item.control_code || 'N/A'}" expira em ${expiryDate.toLocaleDateString('pt-BR')}.`;
+            ? `The risk acceptance for control "${item.control_code || 'N/A'}" expired on ${expiryDate.toLocaleDateString('en-US')}.`
+            : `The risk acceptance for control "${item.control_code || 'N/A'}" expires on ${expiryDate.toLocaleDateString('en-US')}.`;
 
           poamNotifCandidates.push({ user_id: userId, title, content, type: 'poam_expiry', read: false });
         }
@@ -261,10 +261,10 @@ export async function GET(req: Request) {
         if (oldScore !== null && Math.abs(oldScore - currentScore) > 0.01) {
           const scoreDiff = currentScore - oldScore;
           const isIncrease = scoreDiff > 0;
-          const title = isIncrease ? 'Aumento no Score de Conformidade' : 'Queda no Score de Conformidade';
+          const title = isIncrease ? 'Compliance Score Increase' : 'Compliance Score Decrease';
           const content = isIncrease
-            ? `O score de conformidade para o framework ${framework} subiu de ${oldScore.toFixed(1)}% para ${currentScore.toFixed(1)}%.`
-            : `ATENÇÃO: O score de conformidade para o framework ${framework} caiu de ${oldScore.toFixed(1)}% para ${currentScore.toFixed(1)}%.`;
+            ? `The compliance score for the framework ${framework} increased from ${oldScore.toFixed(1)}% to ${currentScore.toFixed(1)}%.`
+            : `WARNING: The compliance score for the framework ${framework} decreased from ${oldScore.toFixed(1)}% to ${currentScore.toFixed(1)}%.`;
 
           scoreNotifications.push({ user_id: userId, title, content, type: 'score_change', read: false });
           alertsGenerated.push({ userId, type: 'score_change', title });
@@ -337,8 +337,8 @@ export async function GET(req: Request) {
         }> = [];
 
         for (const doc of expiredDocs) {
-          const title = 'Documento de Conformidade Expirado';
-          const content = `O documento "${doc.filename}" expirou em ${new Date(doc.expires_at).toLocaleDateString('pt-BR')}. As avaliações de evidência vinculadas foram marcadas para revisão.`;
+          const title = 'Compliance Document Expired';
+          const content = `The document "${doc.filename}" expired on ${new Date(doc.expires_at).toLocaleDateString('en-US')}. Linked evidence evaluations have been marked for review.`;
 
           for (const adminId of adminIds) {
             docNotifCandidates.push({ user_id: adminId, title, content, type: 'document_expired', read: false });

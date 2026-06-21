@@ -45,19 +45,19 @@ export default async function PrintReportPage({ params }: PageProps) {
           </p>
         </div>
         <div className="text-right">
-          <p className="text-sm font-semibold">Relatório de Conformidade GRC</p>
-          <p className="text-xs text-gray-500">Gerado em: {generatedAt}</p>
+          <p className="text-sm font-semibold">GRC Compliance Report</p>
+          <p className="text-xs text-gray-500">Generated at: {generatedAt}</p>
         </div>
       </div>
 
       {/* Metadata */}
       <div className="grid grid-cols-2 gap-4 mb-8 bg-gray-50 p-4 rounded-lg text-sm border border-gray-200">
         <div>
-          <p className="font-semibold text-gray-600">Framework Principal:</p>
-          <p className="font-bold text-gray-900">{snapshot.framework_code || "Múltiplos"}</p>
+          <p className="font-semibold text-gray-600">Primary Framework:</p>
+          <p className="font-bold text-gray-900">{snapshot.framework_code || "Multiple"}</p>
         </div>
         <div>
-          <p className="font-semibold text-gray-600">ID do Relatório:</p>
+          <p className="font-semibold text-gray-600">Report ID:</p>
           <p className="font-mono text-gray-900">{id}</p>
         </div>
       </div>
@@ -65,32 +65,32 @@ export default async function PrintReportPage({ params }: PageProps) {
       {/* Summary */}
       <div className="mb-8">
         <h2 className="text-xl font-bold border-b border-gray-300 pb-2 mb-4">
-          1. Sumário Executivo
+          1. Executive Summary
         </h2>
         <div className="grid grid-cols-4 gap-4 text-center">
           <div className="border border-gray-200 p-3 rounded-lg bg-gray-50">
             <p className="text-2xl font-black text-primary">
               {reportData.summary?.complianceRate ?? 0}%
             </p>
-            <p className="text-xs font-bold text-gray-500 mt-1">Taxa de Conformidade</p>
+            <p className="text-xs font-bold text-gray-500 mt-1">Compliance Rate</p>
           </div>
           <div className="border border-gray-200 p-3 rounded-lg bg-gray-50">
             <p className="text-2xl font-black text-gray-900">
               {reportData.summary?.total ?? 0}
             </p>
-            <p className="text-xs font-bold text-gray-500 mt-1">Controles Avaliados</p>
+            <p className="text-xs font-bold text-gray-500 mt-1">Controls Assessed</p>
           </div>
           <div className="border border-gray-200 p-3 rounded-lg bg-gray-50">
             <p className="text-2xl font-black text-emerald-600">
               {reportData.summary?.compliant ?? 0}
             </p>
-            <p className="text-xs font-bold text-gray-500 mt-1">Conformes</p>
+            <p className="text-xs font-bold text-gray-500 mt-1">Compliant</p>
           </div>
           <div className="border border-gray-200 p-3 rounded-lg bg-gray-50">
             <p className="text-2xl font-black text-red-600">
               {reportData.summary?.nonCompliant ?? 0}
             </p>
-            <p className="text-xs font-bold text-gray-500 mt-1">Não Conformes</p>
+            <p className="text-xs font-bold text-gray-500 mt-1">Non-Compliant</p>
           </div>
         </div>
       </div>
@@ -98,15 +98,15 @@ export default async function PrintReportPage({ params }: PageProps) {
       {/* Domain Breakdown */}
       <div className="mb-8 page-break-after">
         <h2 className="text-xl font-bold border-b border-gray-300 pb-2 mb-4">
-          2. Conformidade por Domínio
+          2. Compliance by Domain
         </h2>
         <table className="w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-gray-400 bg-gray-50">
-              <th className="py-2 px-3 font-bold">Domínio</th>
-              <th className="py-2 px-3 font-bold text-center">Avaliações</th>
-              <th className="py-2 px-3 font-bold text-center">Conformes</th>
-              <th className="py-2 px-3 font-bold text-right">Taxa</th>
+              <th className="py-2 px-3 font-bold">Domain</th>
+              <th className="py-2 px-3 font-bold text-center">Assessments</th>
+              <th className="py-2 px-3 font-bold text-center">Compliant</th>
+              <th className="py-2 px-3 font-bold text-right">Rate</th>
             </tr>
           </thead>
           <tbody>
@@ -125,17 +125,17 @@ export default async function PrintReportPage({ params }: PageProps) {
       {/* Remediation Plan (ROI Path) */}
       <div className="mb-8 page-break-before">
         <h2 className="text-xl font-bold border-b border-gray-300 pb-2 mb-4">
-          3. Plano de Remediação Priorizado (ROI)
+          3. Prioritized Remediation Plan (ROI)
         </h2>
         <p className="text-xs text-gray-500 mb-4">
-          Ações recomendadas ordenadas pelo retorno sobre investimento (ROI) de conformidade, cruzando impacto de segurança com custo de remediação.
+          Recommended actions ordered by compliance return on investment (ROI), crossing security impact with remediation cost.
         </p>
         <table className="w-full border-collapse text-left text-sm">
           <thead>
             <tr className="border-b border-gray-400 bg-gray-50">
-              <th className="py-2 px-3 font-bold w-24">Controle</th>
-              <th className="py-2 px-3 font-bold">Descrição/Nome</th>
-              <th className="py-2 px-3 font-bold text-center w-24">Pontuação ROI</th>
+              <th className="py-2 px-3 font-bold w-24">Control</th>
+              <th className="py-2 px-3 font-bold">Description/Name</th>
+              <th className="py-2 px-3 font-bold text-center w-24">ROI Score</th>
               <th className="py-2 px-3 font-bold text-right w-36">Frameworks</th>
             </tr>
           </thead>
@@ -157,7 +157,7 @@ export default async function PrintReportPage({ params }: PageProps) {
       {/* Top Gaps Detail */}
       <div className="mb-8 page-break-before">
         <h2 className="text-xl font-bold border-b border-gray-300 pb-2 mb-4">
-          4. Detalhamento dos Gaps Identificados
+          4. Detail of Identified Gaps
         </h2>
         <div className="space-y-6">
           {(reportData.topGaps || []).slice(0, 10).map((gap: any, index: number) => (
@@ -178,11 +178,11 @@ export default async function PrintReportPage({ params }: PageProps) {
                   {gap.status}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 mb-2">Domínio: {gap.domain}</p>
+              <p className="text-xs text-gray-500 mb-2">Domain: {gap.domain}</p>
               
               {gap.missingElements && gap.missingElements.length > 0 && (
                 <div className="mb-2">
-                  <p className="text-xs font-bold text-gray-600 mb-1">Elementos Faltantes:</p>
+                  <p className="text-xs font-bold text-gray-600 mb-1">Missing Elements:</p>
                   <ul className="list-disc pl-5 text-xs text-gray-700 space-y-0.5">
                     {gap.missingElements.map((el: string, idx: number) => (
                       <li key={idx}>{el}</li>
@@ -193,7 +193,7 @@ export default async function PrintReportPage({ params }: PageProps) {
 
               {gap.auditorNotes && (
                 <div>
-                  <p className="text-xs font-bold text-gray-600 mb-1">Notas de Auditoria:</p>
+                  <p className="text-xs font-bold text-gray-600 mb-1">Auditor Notes:</p>
                   <p className="text-xs text-gray-600 italic bg-white p-2 rounded border border-gray-200">
                     {gap.auditorNotes}
                   </p>
@@ -206,8 +206,8 @@ export default async function PrintReportPage({ params }: PageProps) {
 
       {/* Footer / Signature */}
       <div className="mt-16 border-t border-gray-300 pt-8 flex justify-between items-center text-xs text-gray-500">
-        <p>© 2026 ihOS GRC Platform. Todos os direitos reservados.</p>
-        <p>Assinatura Digital de Conformidade GRC</p>
+        <p>© 2026 ihOS GRC Platform. All rights reserved.</p>
+        <p>GRC Compliance Digital Signature</p>
       </div>
 
       {/* Auto print trigger */}

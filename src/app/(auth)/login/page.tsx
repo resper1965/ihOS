@@ -37,7 +37,7 @@ function LoginContent() {
 
       {(error || callbackError) && (
         <div className="mb-5 rounded-xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-          {error ?? "Erro na autenticação. Tente novamente."}
+          {error ?? "Authentication error. Please try again."}
         </div>
       )}
 
@@ -50,12 +50,12 @@ function LoginContent() {
             type="email"
             required
             autoComplete="email"
-            placeholder="voce@ionichealth.com"
+            placeholder="you@ionichealth.com"
             className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-text-primary outline-none transition-all placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
         </div>
         <div className="space-y-2">
-          <label htmlFor="password" className="block text-sm font-medium text-text-secondary">Senha</label>
+          <label htmlFor="password" className="block text-sm font-medium text-text-secondary">Password</label>
           <input
             id="password"
             name="password"
@@ -68,7 +68,7 @@ function LoginContent() {
         </div>
         <div className="flex justify-end">
           <button type="button" className="text-xs text-text-muted hover:text-primary transition-colors">
-            Esqueceu a senha?
+            Forgot password?
           </button>
         </div>
         <button
@@ -82,15 +82,15 @@ function LoginContent() {
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
-              Entrando…
+              Signing in...
             </span>
-          ) : "Entrar"}
+          ) : "Sign In"}
         </button>
       </form>
 
       <p className="mt-6 text-center text-sm text-text-muted">
-        Não tem conta?{" "}
-        <Link href="/signup" className="font-medium text-primary hover:text-primary-hover">Criar conta</Link>
+        Don't have an account?{" "}
+        <Link href="/signup" className="font-medium text-primary hover:text-primary-hover">Sign Up</Link>
       </p>
     </div>
   );
@@ -103,7 +103,7 @@ export default function LoginPage() {
         <div className="glass-card flex items-center justify-center p-12 min-w-[320px]">
           <div className="flex flex-col items-center gap-3">
             <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-            <span className="text-sm text-text-muted">Carregando…</span>
+            <span className="text-sm text-text-muted">Loading...</span>
           </div>
         </div>
       }

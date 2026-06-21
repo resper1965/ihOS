@@ -21,58 +21,58 @@ import Link from "next/link";
 const STEPS = [
   {
     id: "welcome",
-    title: "Bem-vindo ao ihOS",
-    subtitle: "Inteligência de compliance para a Ionic Health",
+    title: "Welcome to ihOS",
+    subtitle: "Compliance intelligence for Ionic Health",
     icon: Sparkles,
     iconColor: "text-primary",
     iconBg: "from-primary/20 to-accent/20",
     description:
-      "O ihOS é o sistema central de governança, risco e compliance da Ionic Health. Em poucos passos você estará monitorando frameworks como LGPD, ISO 27001, TX-RAMP e muito mais.",
+      "ihOS is the central governance, risk, and compliance operating system for Ionic Health. In just a few steps, you will be monitoring frameworks such as LGPD, ISO 27001, TX-RAMP, and more.",
     action: null,
   },
   {
     id: "framework",
-    title: "Escolha seus Frameworks",
-    subtitle: "Passo 1 de 4",
+    title: "Choose Your Frameworks",
+    subtitle: "Step 1 of 4",
     icon: ShieldCheck,
     iconColor: "text-emerald-400",
     iconBg: "from-accent/20 to-cyan-500/20",
     description:
-      "Acesse a página de Compliance para visualizar o scorecard dos frameworks disponíveis. O sistema já monitora LGPD, HIPAA, ISO 27001, TX-RAMP e EU GDPR automaticamente.",
-    action: { label: "Ver Compliance", href: "/compliance" },
+      "Access the Compliance page to view the scorecard of available frameworks. The system automatically monitors LGPD, HIPAA, ISO 27001, TX-RAMP, and EU GDPR.",
+    action: { label: "View Compliance", href: "/compliance" },
   },
   {
     id: "documents",
-    title: "Carregue seus Documentos",
-    subtitle: "Passo 2 de 4",
+    title: "Upload Your Documents",
+    subtitle: "Step 2 of 4",
     icon: FileText,
     iconColor: "text-cyan-400",
     iconBg: "from-primary/20 to-primary/20",
     description:
-      "Envie políticas, procedimentos e evidências do SGSI. O sistema vai indexar automaticamente e tornar esses documentos disponíveis para consulta via IA e avaliações de conformidade.",
-    action: { label: "Ir para Documentos", href: "/documents" },
+      "Upload your ISMS policies, procedures, and evidence. The system will automatically index and make these documents available for AI query and compliance assessments.",
+    action: { label: "Go to Documents", href: "/documents" },
   },
   {
     id: "assessment",
-    title: "Crie sua Primeira Avaliação",
-    subtitle: "Passo 3 de 4",
+    title: "Create Your First Assessment",
+    subtitle: "Step 3 of 4",
     icon: ClipboardCheck,
     iconColor: "text-amber-400",
     iconBg: "from-amber-500/20 to-orange-500/20",
     description:
-      "Avaliações de conformidade registram o progresso contra cada controle de um framework. Você pode importar respostas via planilha ou preencher manualmente.",
-    action: { label: "Ver Avaliações", href: "/assessments" },
+      "Compliance assessments record progress against each framework control. You can import answers via spreadsheet or fill them out manually.",
+    action: { label: "View Assessments", href: "/assessments" },
   },
   {
     id: "chat",
-    title: "Converse com o Assistente IA",
-    subtitle: "Passo 4 de 4",
+    title: "Chat with the AI Assistant",
+    subtitle: "Step 4 of 4",
     icon: MessageSquare,
     iconColor: "text-violet-400",
     iconBg: "from-violet-500/20 to-purple-500/20",
     description:
-      "O assistente IA do ihOS analisa seus documentos, avaliações e dados de compliance em tempo real. Pergunte sobre gaps, scores ou peça um resumo executivo.",
-    action: { label: "Abrir Chat", href: "/chat" },
+      "The ihOS AI assistant analyzes your documents, assessments, and compliance data in real time. Ask about gaps, scores, or request an executive summary.",
+    action: { label: "Open Chat", href: "/chat" },
   },
 ] as const;
 
@@ -112,7 +112,7 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
         <button
           onClick={onDismiss}
           className="absolute right-4 top-4 z-10 flex h-7 w-7 items-center justify-center rounded-full text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
-          aria-label="Fechar"
+          aria-label="Close"
         >
           <X className="h-4 w-4" />
         </button>
@@ -157,7 +157,7 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
                     ? "w-2 bg-emerald-500"
                     : "w-2 bg-white/10"
                 }`}
-                aria-label={`Ir para passo ${i + 1}`}
+                aria-label={`Go to step ${i + 1}`}
               />
             ))}
           </div>
@@ -170,7 +170,7 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
                 className="flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2.5 text-sm text-slate-400 hover:bg-white/5 hover:text-white transition-all"
               >
                 <ArrowLeft className="h-4 w-4" />
-                Voltar
+                Back
               </button>
             )}
 
@@ -191,14 +191,14 @@ export function OnboardingWizard({ onComplete, onDismiss }: OnboardingWizardProp
               className="ml-auto flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-5 py-2.5 text-sm font-medium text-white shadow-lg shadow-primary/20 hover:from-primary hover:to-accent transition-all disabled:opacity-60"
             >
               {completing ? (
-                "Concluindo..."
+                "Completing..."
               ) : isLast ? (
                 <>
-                  <Check className="h-4 w-4" /> Concluir
+                  <Check className="h-4 w-4" /> Finish
                 </>
               ) : (
                 <>
-                  Próximo <ArrowRight className="h-4 w-4" />
+                  Next <ArrowRight className="h-4 w-4" />
                 </>
               )}
             </button>

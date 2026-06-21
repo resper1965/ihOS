@@ -43,28 +43,28 @@ export default async function CompliancePage() {
 
   const quickStats = [
     {
-      label: "Frameworks Monitorados",
+      label: "Monitored Frameworks",
       value: frameworkScores.length.toString(),
       icon: ShieldCheck,
       color: "text-primary",
       bgColor: "bg-primary/10",
     },
     {
-      label: "Evidências Avaliadas",
+      label: "Evaluated Evidence",
       value: evaluationSummary.total.toString(),
       icon: BarChart3,
       color: "text-cyan-400",
       bgColor: "bg-cyan-500/10",
     },
     {
-      label: "Gaps Abertos",
+      label: "Open Gaps",
       value: evaluationSummary.nonCompliant.toString(),
       icon: AlertTriangle,
       color: "text-amber-400",
       bgColor: "bg-amber-500/10",
     },
     {
-      label: "Confiança Média",
+      label: "Average Confidence",
       value: `${evaluationSummary.avgConfidence}%`,
       icon: TrendingUp,
       color: "text-emerald-400",
@@ -76,7 +76,7 @@ export default async function CompliancePage() {
     <div className="w-full space-y-8">
       <PageTitleRegistrar
         title={<>Compliance <span className="text-emerald-400">Intelligence</span></>}
-        subtitle={`Postura em tempo real em ${frameworkScores.length} frameworks`}
+        subtitle={`Real-time posture across ${frameworkScores.length} frameworks`}
         icon={<ShieldCheck className="h-4 w-4 text-primary" />}
       />
 
@@ -106,10 +106,10 @@ export default async function CompliancePage() {
       <section>
         <div className="mb-4 flex items-center gap-2">
           <h2 className="text-lg font-semibold text-text-primary">
-            Scores por Framework
+            Framework Scores
           </h2>
           <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-            {frameworkScores.length} ativos
+            {frameworkScores.length} active
           </span>
         </div>
         <ComplianceScorecard frameworks={frameworkScores} />

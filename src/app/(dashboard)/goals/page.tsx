@@ -106,7 +106,7 @@ export default function GoalsPage() {
       setTasks(tasksData || []);
     } catch (err) {
       console.error("Error fetching goals/tasks:", err);
-      setError("Não foi possível carregar os dados.");
+      setError("Unable to load data.");
       setGoals([]);
       setTasks([]);
     } finally {
@@ -306,8 +306,8 @@ export default function GoalsPage() {
   return (
     <div className="w-full space-y-8 pb-12">
       <PageTitleRegistrar
-        title="Metas de Remediação"
-        subtitle="Acompanhe projetos e tarefas técnicas recomendados pela inteligência para mitigação de gaps de conformidade."
+        title="Remediation Goals"
+        subtitle="Track projects and technical tasks recommended by intelligence to mitigate compliance gaps."
         icon={<Target className="h-4 w-4 text-amber-400" />}
       />
       <div className="flex justify-end">
@@ -316,7 +316,7 @@ export default function GoalsPage() {
           icon={<Plus className="h-4 w-4" />}
           onClick={() => setIsGoalModalOpen(true)}
         >
-          Novo Projeto
+          New Project
         </Button>
       </div>
 
@@ -329,19 +329,19 @@ export default function GoalsPage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
-        <Card title="Metas em Andamento" icon={<Target className="h-5 w-5 text-primary" />}>
+        <Card title="Active Goals" icon={<Target className="h-5 w-5 text-primary" />}>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-3xl font-bold text-text-primary">{activeGoalsCount}</span>
-            <span className="text-xs text-text-muted">de {goals.length} projetos</span>
+            <span className="text-xs text-text-muted">of {goals.length} projects</span>
           </div>
         </Card>
-        <Card title="Tarefas Pendentes" icon={<ListTodo className="h-5 w-5 text-accent" />}>
+        <Card title="Pending Tasks" icon={<ListTodo className="h-5 w-5 text-accent" />}>
           <div className="mt-2 flex items-baseline gap-2">
             <span className="text-3xl font-bold text-text-primary">{pendingTasksCount}</span>
-            <span className="text-xs text-text-muted">aguardando evidência</span>
+            <span className="text-xs text-text-muted">awaiting evidence</span>
           </div>
         </Card>
-        <Card title="Progresso Médio" icon={<Sparkles className="h-5 w-5 text-warning" />}>
+        <Card title="Average Progress" icon={<Sparkles className="h-5 w-5 text-warning" />}>
           <div className="mt-2 space-y-2">
             <span className="text-3xl font-bold text-text-primary">{averageProgress}%</span>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
@@ -392,13 +392,13 @@ export default function GoalsPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              aria-label="Filtrar por status"
+              aria-label="Filter by status"
               className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-3 py-2 text-sm text-text-primary outline-none transition-all focus:border-primary/50"
             >
-              <option value="all">Todos Status</option>
-              <option value="not_started">Não Iniciado</option>
-              <option value="in_progress">Em Progresso</option>
-              <option value="completed">Concluído</option>
+              <option value="all">All Statuses</option>
+              <option value="not_started">Not Started</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
             </select>
           </div>
         </div>
@@ -423,9 +423,9 @@ export default function GoalsPage() {
         ) : filteredGoals.length === 0 ? (
           <div className="glass-card p-12 text-center space-y-3">
             <Target className="h-12 w-12 text-text-muted mx-auto" />
-            <h3 className="text-lg font-semibold text-text-primary">Nenhuma meta encontrada</h3>
+            <h3 className="text-lg font-semibold text-text-primary">No goals found</h3>
             <p className="text-sm text-text-secondary max-w-sm mx-auto">
-              Experimente ajustar os filtros ou clique em "Novo Projeto" para criar uma nova meta de remediação.
+              Try adjusting the filters or click "New Project" to create a new remediation goal.
             </p>
           </div>
         ) : (
@@ -463,10 +463,10 @@ export default function GoalsPage() {
                           dot={goal.status === "in_progress"}
                         >
                           {goal.status === "completed" 
-                            ? "Concluído" 
+                            ? "Completed" 
                             : goal.status === "in_progress" 
-                              ? "Em Progresso" 
-                              : "Não Iniciado"}
+                              ? "In Progress" 
+                              : "Not Started"}
                         </Badge>
                       </div>
                       {goal.description && (
@@ -477,7 +477,7 @@ export default function GoalsPage() {
                     </div>
                     <div className="flex items-center gap-4 self-end sm:self-auto shrink-0">
                       <span className="text-xs text-text-muted font-mono">
-                        {goalTasks.filter((t) => t.status === "completed").length}/{goalTasks.length} tarefas
+                        {goalTasks.filter((t) => t.status === "completed").length}/{goalTasks.length} tasks
                       </span>
                       {isExpanded ? (
                         <ChevronUp className="h-5 w-5 text-text-muted" />
@@ -498,7 +498,7 @@ export default function GoalsPage() {
                   <div className="border-t border-white/5 bg-slate-950/20 px-6 py-4 space-y-4 animate-[slide-down_0.2s_ease-out]">
                     <div className="flex items-center justify-between">
                       <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
-                        Tarefas de Execução Técnica
+                        Technical Execution Tasks
                       </h4>
                       <Button 
                         size="sm" 
@@ -510,14 +510,14 @@ export default function GoalsPage() {
                           setIsTaskModalOpen(true);
                         }}
                       >
-                        Nova Tarefa
+                        New Task
                       </Button>
                     </div>
 
                     <div className="divide-y divide-white/5">
                       {goalTasks.length === 0 ? (
                         <p className="text-xs text-text-muted py-4 text-center">
-                          Nenhuma tarefa técnica criada para este projeto.
+                          No technical tasks created for this project.
                         </p>
                       ) : (
                         goalTasks.map((task) => {
@@ -558,13 +558,13 @@ export default function GoalsPage() {
                                   {task.deadline && (
                                     <span className="flex items-center gap-1">
                                       <Calendar className="h-3.5 w-3.5" />
-                                      Prazo: {formatDate(task.deadline)}
+                                      Deadline: {formatDate(task.deadline)}
                                     </span>
                                   )}
                                   {task.assigned_agent && (
                                     <span className="flex items-center gap-1">
                                       <User className="h-3.5 w-3.5" />
-                                      Responsável: {task.assigned_agent}
+                                      Assigned to: {task.assigned_agent}
                                     </span>
                                   )}
                                 </div>
@@ -586,13 +586,13 @@ export default function GoalsPage() {
       <Dialog 
         open={isGoalModalOpen} 
         onClose={() => setIsGoalModalOpen(false)} 
-        title="Novo Projeto de Remediação"
+        title="New Remediation Project"
         maxWidth="max-w-lg"
       >
         <form onSubmit={handleCreateGoal} className="space-y-4">
           <Input 
-            label="Título da Meta" 
-            placeholder="Ex: Habilitar criptografia de backups"
+            label="Goal Title" 
+            placeholder="e.g. Enable backup encryption"
             value={newGoalTitle}
             onChange={(e) => setNewGoalTitle(e.target.value)}
             required
@@ -600,27 +600,27 @@ export default function GoalsPage() {
 
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-text-secondary">
-              Framework de Compliance
+              Compliance Framework
             </label>
             <select
               value={newGoalFramework}
               onChange={(e) => setNewGoalFramework(e.target.value)}
               className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-4 py-2.5 text-sm text-text-primary outline-none transition-all focus:border-primary/50"
             >
-              <option value="ISO-27001">ISO 27001:2022 (SGSI)</option>
+              <option value="ISO-27001">ISO 27001:2022 (ISMS)</option>
               <option value="SOC-2">SOC 2 Type II (Security)</option>
               <option value="TX-RAMP">TX-RAMP Level 2</option>
               <option value="NIST-800-53">NIST SP 800-53 R5</option>
-              <option value="LGPD">LGPD (Privacidade)</option>
+              <option value="LGPD">LGPD (Privacy)</option>
             </select>
           </div>
 
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-text-secondary">
-              Descrição
+              Description
             </label>
             <textarea
-              placeholder="Descreva o escopo e o propósito deste projeto de remediação..."
+              placeholder="Describe the scope and purpose of this remediation project..."
               value={newGoalDesc}
               onChange={(e) => setNewGoalDesc(e.target.value)}
               rows={3}
@@ -630,10 +630,10 @@ export default function GoalsPage() {
 
           <div className="flex justify-end gap-3 pt-3 border-t border-white/5">
             <Button variant="ghost" type="button" onClick={() => setIsGoalModalOpen(false)}>
-              Cancelar
+              Cancel
             </Button>
             <Button variant="primary" type="submit" loading={goalModalLoading}>
-              Criar Projeto
+              Create Project
             </Button>
           </div>
         </form>
@@ -643,13 +643,13 @@ export default function GoalsPage() {
       <Dialog 
         open={isTaskModalOpen} 
         onClose={() => setIsTaskModalOpen(false)} 
-        title="Adicionar Nova Tarefa Técnica"
+        title="Add New Technical Task"
         maxWidth="max-w-lg"
       >
         <form onSubmit={handleCreateTask} className="space-y-4">
           <Input 
-            label="Título da Tarefa" 
-            placeholder="Ex: Provisionar chaves KMS"
+            label="Task Title" 
+            placeholder="e.g. Provision KMS keys"
             value={newTaskTitle}
             onChange={(e) => setNewTaskTitle(e.target.value)}
             required
@@ -657,7 +657,7 @@ export default function GoalsPage() {
 
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-text-secondary">
-              Agente IA Responsável (Assigned Agent)
+              Assigned AI Agent
             </label>
             <select
               value={newTaskAgent}
@@ -672,7 +672,7 @@ export default function GoalsPage() {
           </div>
 
           <Input 
-            label="Prazo de Conclusão" 
+            label="Completion Deadline" 
             type="date"
             value={newTaskDeadline}
             onChange={(e) => setNewTaskDeadline(e.target.value)}
@@ -680,10 +680,10 @@ export default function GoalsPage() {
 
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-text-secondary">
-              Especificações Técnicas
+              Technical Specifications
             </label>
             <textarea
-              placeholder="Detalhamento técnico da tarefa de remediação..."
+              placeholder="Technical details of the remediation task..."
               value={newTaskDesc}
               onChange={(e) => setNewTaskDesc(e.target.value)}
               rows={3}
@@ -693,10 +693,10 @@ export default function GoalsPage() {
 
           <div className="flex justify-end gap-3 pt-3 border-t border-white/5">
             <Button variant="ghost" type="button" onClick={() => setIsTaskModalOpen(false)}>
-              Cancelar
+              Cancel
             </Button>
             <Button variant="primary" type="submit" loading={taskModalLoading}>
-              Salvar Tarefa
+              Save Task
             </Button>
           </div>
         </form>

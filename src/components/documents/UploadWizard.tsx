@@ -408,7 +408,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                               {selectedFile.name}
                             </p>
                             <p className="text-xs text-text-muted">
-                              {formatFileSize(selectedFile.size)} • Pronto para indexar
+                              {formatFileSize(selectedFile.size)} • Ready to index
                             </p>
                           </div>
                         ) : (

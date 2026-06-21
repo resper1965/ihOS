@@ -84,14 +84,14 @@ export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
               {effectiveScore !== null && (
                 <span className={`text-sm font-medium ${getScoreColor(effectiveScore)}`}>%</span>
               )}
-              <span className="ml-2 text-xs text-text-muted">Conformidade Geral (Conforme)</span>
+              <span className="ml-2 text-xs text-text-muted">Overall Compliance (Compliant)</span>
             </div>
 
             {/* Dual Phase Progress Bars */}
             <div className="mt-4 space-y-3">
               <div>
                 <div className="flex items-center justify-between text-[11px] mb-1">
-                  <span className="text-text-secondary font-medium">1. Políticas & Processos (ISMS)</span>
+                  <span className="text-text-secondary font-medium">1. Policies & Processes (ISMS)</span>
                   <span className="font-semibold text-emerald-400 tabular-nums">
                     {fw.ismsScore !== null ? `${fw.ismsScore}%` : "—"}
                   </span>
@@ -106,7 +106,7 @@ export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
 
               <div>
                 <div className="flex items-center justify-between text-[11px] mb-1">
-                  <span className="text-text-secondary font-medium">2. Evidências Técnicas (Operacional)</span>
+                  <span className="text-text-secondary font-medium">2. Technical Evidence (Operational)</span>
                   <span className="font-semibold text-cyan-400 tabular-nums">
                     {fw.evidenceScore !== null ? `${fw.evidenceScore}%` : "—"}
                   </span>
@@ -124,12 +124,12 @@ export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
             <div className="mt-4 pt-3 border-t border-white/5 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[10px]">
               <div className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
-                <span className="text-text-muted truncate">Conforme:</span>
+                <span className="text-text-muted truncate">Compliant:</span>
                 <span className="font-bold text-text-primary ml-auto tabular-nums">{fw.conformingCount ?? 0}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400/50" />
-                <span className="text-text-muted truncate">Parcial:</span>
+                <span className="text-text-muted truncate">Partial:</span>
                 <span className="font-bold text-text-primary ml-auto tabular-nums">{fw.partialCount ?? 0}</span>
               </div>
               <div className="flex items-center gap-1.5">

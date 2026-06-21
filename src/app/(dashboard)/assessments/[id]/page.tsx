@@ -187,14 +187,14 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           const description =
             missingArr.length > 0
               ? `[${ev.domain_code}] ${missingArr.join("; ")}`
-              : `Controle avaliado no domínio ${ev.domain_code}.`;
+              : `Control assessed in domain ${ev.domain_code}.`;
 
           return {
             code: ev.control_code ?? ev.scf_control_code ?? 'UNKNOWN',
             name: ev.control_name ?? ev.control_requirement ?? 'Unknown',
             description,
             status,
-            evidence: "Avaliado pela IA",
+            evidence: "Assessed by AI",
             needsReview: ev.needs_review ?? false,
           };
         });
@@ -257,13 +257,13 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
   function getStatusBadge(status: string) {
     switch (status) {
       case "compliant":
-        return <Badge variant="success">Conforme</Badge>;
+        return <Badge variant="success">Compliant</Badge>;
       case "non-compliant":
-        return <Badge variant="danger">Não Conforme</Badge>;
+        return <Badge variant="danger">Non-Compliant</Badge>;
       case "partial":
-        return <Badge variant="warning">Parcial</Badge>;
+        return <Badge variant="warning">Partial</Badge>;
       default:
-        return <Badge variant="neutral">Não Avaliado</Badge>;
+        return <Badge variant="neutral">Not Assessed</Badge>;
     }
   }
 
@@ -275,7 +275,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         className="inline-flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary transition-colors"
       >
         <ArrowLeft className="h-4 w-4" />
-        Voltar para Avaliações
+        Back to Assessments
       </Link>
 
       {/* Header Info */}
@@ -283,15 +283,15 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         <div>
           <h1 className="text-2xl font-bold sm:text-3xl">{resolved.name}</h1>
           <p className="mt-1 text-text-secondary">
-            Visão detalhada de controle, mapeamento e evidências do framework.
+            Detailed view of controls, mappings, and framework evidence.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="secondary" icon={<Upload className="h-4 w-4" />}>
-            Upload Evidência
+            Upload Evidence
           </Button>
           <Button variant="primary" icon={<Sparkles className="h-4 w-4" />}>
-            Rodar AI Auditor
+            Run AI Auditor
           </Button>
         </div>
       </div>
@@ -300,9 +300,9 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
         <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-400">
           <AlertCircle className="h-5 w-5 shrink-0" />
           <div className="flex-1">
-            <p className="font-semibold">Revisão de Evidências Necessária</p>
+            <p className="font-semibold">Evidence Review Required</p>
             <p className="mt-0.5 text-xs text-text-secondary">
-              Alguns controles desta avaliação dependem de políticas/documentos do ISMS que foram atualizados ou expiraram. Por favor, re-audite os controles destacados.
+              Some controls in this assessment depend on ISMS policies/documents that have been updated or expired. Please re-audit highlighted controls.
             </p>
           </div>
         </div>
@@ -314,19 +314,19 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
           <div className="mt-2">
             <span className="text-4xl font-extrabold text-text-primary">{resolved.score}%</span>
             <p className="mt-2 text-xs text-text-muted">
-              Score consolidado com base na cobertura de evidências do GRC Engine.
+              Consolidated score based on GRC Engine evidence coverage.
             </p>
           </div>
         </Card>
-        <Card title="Progresso Geral" icon={<CheckCircle2 className="h-5 w-5 text-primary" />}>
+        <Card title="Overall Progress" icon={<CheckCircle2 className="h-5 w-5 text-primary" />}>
           <div className="mt-2 space-y-4">
             <Progress value={resolved.progress} size="md" />
             <p className="text-xs text-text-muted">
-              {resolved.progress}% dos controles avaliados com evidência anexada.
+              {resolved.progress}% of assessed controls with attached evidence.
             </p>
           </div>
         </Card>
-        <Card title="Ações Rápidas" icon={<Sparkles className="h-5 w-5 text-warning" />}>
+        <Card title="Quick Actions" icon={<Sparkles className="h-5 w-5 text-warning" />}>
           <div className="flex flex-wrap gap-2 pt-2">
             <button className="rounded-lg bg-white/5 border border-white/5 hover:border-primary/20 px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary hover:bg-white/10 transition-all">
               Blast Radius
@@ -341,7 +341,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
       {/* Controls Section */}
       <div className="glass-card p-6 space-y-6">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <h2 className="text-lg font-semibold text-text-primary">Lista de Controles</h2>
+          <h2 className="text-lg font-semibold text-text-primary">Control List</h2>
           {/* Search */}
           <div className="relative w-full max-w-xs">
             <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
@@ -349,10 +349,10 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
             </div>
             <input
               type="text"
-              placeholder="Filtrar controles..."
+              placeholder="Filter controls..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              aria-label="Filtrar controles"
+              aria-label="Filter controls"
               className="w-full rounded-xl border border-border-glass bg-white/5 py-2 pl-9 pr-4 text-sm text-text-primary outline-none transition-all duration-300 focus:border-primary/50"
             />
           </div>
@@ -375,21 +375,21 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                   {control.evidence && (
                     <p className="text-xs text-text-muted flex items-center gap-1.5 mt-2">
                       <span className="h-1.5 w-1.5 rounded-full bg-accent" />
-                      Evidência: <code className="text-accent">{control.evidence}</code>
+                      Evidence: <code className="text-accent">{control.evidence}</code>
                     </p>
                   )}
                 </div>
               </div>
               <div className="shrink-0 flex items-center gap-3 self-end md:self-start">
                 {control.needsReview && (
-                  <Badge variant="warning" dot>Revisão Necessária</Badge>
+                  <Badge variant="warning" dot>Review Required</Badge>
                 )}
                 {getStatusBadge(control.status)}
               </div>
             </div>
           ))}
           {filteredControls.length === 0 && (
-            <p className="text-center py-6 text-sm text-text-muted">Nenhum controle encontrado.</p>
+            <p className="text-center py-6 text-sm text-text-muted">No controls found.</p>
           )}
         </div>
       </div>

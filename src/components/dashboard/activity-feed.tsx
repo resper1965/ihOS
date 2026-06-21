@@ -30,9 +30,9 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
   return (
     <div className="glass-card p-6">
       <div className="mb-5 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-text-primary">Atividades Recentes</h2>
+        <h2 className="text-lg font-semibold text-text-primary">Recent Activity</h2>
         <Link href="/compliance" className="text-sm text-primary transition-colors hover:text-primary-hover">
-          Ver todas
+          View all
         </Link>
       </div>
       <div className="space-y-1">

@@ -184,11 +184,11 @@ export async function assembleContext(
           .order('created_at', { ascending: false });
 
         if (notifications && notifications.length > 0) {
-          briefingContext = `\n\n## [PROACTIVE BRIEFING CONTEXT]\nVocê tem as seguintes notificações de conformidade não lidas sobre a organização. Informe o usuário amigavelmente no início de suas respostas:\n`;
+          briefingContext = `\n\n## [PROACTIVE BRIEFING CONTEXT]\nYou have the following unread compliance notifications about the organization. Inform the user in a friendly manner at the beginning of your response:\n`;
           notifications.forEach((n: any) => {
             briefingContext += `- [${n.type.toUpperCase()}] ${n.title}: ${n.content}\n`;
           });
-          briefingContext += `\nInstrução: Trate esses pontos de conformidade como proativos. Ajude o usuário a resolvê-los.\n`;
+          briefingContext += `\nInstruction: Treat these compliance items proactively. Help the user resolve them.\n`;
 
           // Mark them as read
           const notifIds = notifications.map((n: any) => n.id);
@@ -208,16 +208,16 @@ export async function assembleContext(
         .limit(3);
 
       if (corrections && corrections.length > 0) {
-        learningContext = `\n\n## [INSTRUCTIONS FROM USER CORRECTIONS]\nEvite repetir os seguintes desalinhamentos detectados em interações anteriores com o usuário:\n`;
+        learningContext = `\n\n## [INSTRUCTIONS FROM USER CORRECTIONS]\nAvoid repeating the following misalignments detected in previous user interactions:\n`;
         corrections.forEach((c: any) => {
-          learningContext += `- Correção do Usuário: "${c.user_correction}" (Evite responder como: "${c.agent_misaligned_response}")\n`;
+          learningContext += `- User Correction: "${c.user_correction}" (Avoid responding as: "${c.agent_misaligned_response}")\n`;
         });
       }
 
       // 3. Org State: Fetch active organizational maturity/state vars
       const orgStates = await getAllOrgStates(userId);
       if (orgStates && orgStates.length > 0) {
-        orgStateContext = `\n\n## [ORGANIZATIONAL STATE]\nConsidere as seguintes informações de contexto organizacional ativo em suas análises:\n`;
+        orgStateContext = `\n\n## [ORGANIZATIONAL STATE]\nConsider the following active organizational context information in your analysis:\n`;
         orgStates.forEach((os) => {
           orgStateContext += `- ${os.state_key}: ${JSON.stringify(os.state_value)}\n`;
         });
@@ -230,14 +230,14 @@ export async function assembleContext(
         .eq('user_id', userId);
 
       if (boundaries && boundaries.length > 0) {
-        autonomyContext = `\n\n## [AUTONOMY BOUNDARIES]\nVocê opera sob as seguintes regras estritas de autonomia de segurança. Respeite as restrições abaixo e peça autorização no chat ANTES de disparar ações YELLOW:\n`;
+        autonomyContext = `\n\n## [AUTONOMY BOUNDARIES]\nYou operate under the following strict security autonomy rules. Respect the restrictions below and ask for permission in the chat BEFORE triggering YELLOW actions:\n`;
         boundaries.forEach((b: any) => {
           const zoneExplanation = b.zone === 'green'
-            ? 'GREEN (Execução totalmente autônoma autorizada).'
+            ? 'GREEN (Fully autonomous execution authorized).'
             : b.zone === 'yellow'
-            ? 'YELLOW (Requer aprovação do usuário. Você DEVE perguntar ao usuário antes de chamar esta ferramenta e configurar confirmed=true apenas com consentimento explícito).'
-            : 'RED (PROIBIDO. Não execute sob nenhuma circunstância e responda explicando a restrição).';
-          autonomyContext += `- Ação "${b.action_type}": ${zoneExplanation}\n`;
+            ? 'YELLOW (Requires user approval. You MUST ask the user before calling this tool and set confirmed=true only with explicit consent).'
+            : 'RED (PROHIBITED. Do not execute under any circumstances and explain this restriction in your response).';
+          autonomyContext += `- Action "${b.action_type}": ${zoneExplanation}\n`;
         });
       }
     } catch (err) {

@@ -1,0 +1,32 @@
+name: Supabase RLS Security Testing
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test_db:
+    name: Database RLS Security tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Start Supabase Local Containers
+        run: |
+          supabase init
+          supabase start
+
+      - name: Run pgTap Database Tests
+        run: |
+          supabase test db --local

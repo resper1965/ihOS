@@ -13,16 +13,16 @@ function relativeTime(isoDate: string | null): string {
   if (!isoDate) return "";
   const diffMs = Date.now() - new Date(isoDate).getTime();
   const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "agora";
-  if (diffMin < 60) return `há ${diffMin} min`;
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
   const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `há ${diffHours}h`;
+  if (diffHours < 24) return `${diffHours}h ago`;
   const diffDays = Math.floor(diffHours / 24);
-  return `há ${diffDays}d`;
+  return `${diffDays}d ago`;
 }
 
 function truncateTitle(title: string | null): string {
-  if (!title) return "Nova Conversa";
+  if (!title) return "New Conversation";
   return title.length > 40 ? title.slice(0, 40) + "…" : title;
 }
 
@@ -172,7 +172,7 @@ export function ConversationList({
           <div className="flex flex-col items-center justify-center px-4 py-10">
             <MessageSquare className="mb-2 h-8 w-8 text-slate-600" />
             <p className="text-center text-sm text-text-muted">
-              Nenhuma conversa ainda. Clique em &quot;Nova Conversa&quot; para começar.
+              No conversations yet. Click &quot;New Conversation&quot; to start.
             </p>
           </div>
         ) : (

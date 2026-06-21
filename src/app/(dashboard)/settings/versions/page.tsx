@@ -67,7 +67,7 @@ function NewVersionForm({
       const data = await res.json();
       onCreated(data.version);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao criar versão");
+      setError(err instanceof Error ? err.message : "Error creating version");
     } finally {
       setIsSubmitting(false);
     }
@@ -78,10 +78,10 @@ function NewVersionForm({
       onSubmit={handleSubmit}
       className="mt-4 rounded-xl border border-primary/20 bg-primary/5 p-5"
     >
-      <h3 className="mb-4 text-sm font-semibold text-primary">Nova Versão</h3>
+      <h3 className="mb-4 text-sm font-semibold text-primary">New Version</h3>
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <label className="mb-1.5 block text-xs text-text-muted">Produto</label>
+          <label className="mb-1.5 block text-xs text-text-muted">Product</label>
           <input
             value={productName}
             onChange={(e) => setProductName(e.target.value)}
@@ -91,7 +91,7 @@ function NewVersionForm({
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs text-text-muted">Código da Versão</label>
+          <label className="mb-1.5 block text-xs text-text-muted">Version Code</label>
           <input
             value={versionCode}
             onChange={(e) => setVersionCode(e.target.value)}
@@ -120,7 +120,7 @@ function NewVersionForm({
           ) : (
             <Check className="h-4 w-4" />
           )}
-          Criar Versão
+          Create Version
         </button>
         <button
           type="button"
@@ -128,7 +128,7 @@ function NewVersionForm({
           className="flex items-center gap-1.5 text-sm text-text-muted hover:text-text-primary transition-colors"
         >
           <X className="h-4 w-4" />
-          Cancelar
+          Cancel
         </button>
       </div>
     </form>
@@ -204,7 +204,7 @@ function VersionRow({
             {isLoading ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
-              <>Ações <ChevronDown className="h-3 w-3" /></>
+              <>Actions <ChevronDown className="h-3 w-3" /></>
             )}
           </button>
 
@@ -215,7 +215,7 @@ function VersionRow({
                   onClick={() => patch({ status: "active" })}
                   className="w-full px-4 py-2.5 text-left text-xs text-emerald-400 hover:bg-white/5 transition-colors"
                 >
-                  ✅ Marcar como Ativa
+                  ✅ Set as Active
                 </button>
               )}
               {version.status !== "supported" && (
@@ -223,7 +223,7 @@ function VersionRow({
                   onClick={() => patch({ status: "supported" })}
                   className="w-full px-4 py-2.5 text-left text-xs text-primary hover:bg-white/5 transition-colors"
                 >
-                  🔵 Marcar como Suportada
+                  🔵 Set as Supported
                 </button>
               )}
               {version.status !== "deprecated" && (
@@ -231,7 +231,7 @@ function VersionRow({
                   onClick={() => patch({ status: "deprecated" })}
                   className="w-full px-4 py-2.5 text-left text-xs text-red-400 hover:bg-white/5 transition-colors"
                 >
-                  🗑️ Deprecar
+                  🗑️ Deprecate
                 </button>
               )}
             </div>
@@ -261,7 +261,7 @@ export default function VersionsPage() {
         setVersions(data.versions);
       }
     } catch {
-      setError("Falha ao carregar versões");
+      setError("Failed to load versions");
     } finally {
       setIsLoading(false);
     }
@@ -291,8 +291,8 @@ export default function VersionsPage() {
   return (
     <div className="w-full space-y-8">
       <PageTitleRegistrar
-        title="Gestão de Versões"
-        subtitle="Controle de escopo técnico do nCommand Lite"
+        title="Version Management"
+        subtitle="Technical scope control for nCommand Lite"
         icon={<Layers className="h-4 w-4 text-primary" />}
       />
 
@@ -303,7 +303,7 @@ export default function VersionsPage() {
             <Check className="h-5 w-5 text-emerald-400" />
           </div>
           <div>
-            <p className="text-xs text-text-muted">Versão Ativa no ihOS</p>
+            <p className="text-xs text-text-muted">Active Version in ihOS</p>
             <p className="text-lg font-bold text-white">
               {activeVersion.product_name}{" "}
               <span className="font-mono text-emerald-400">{activeVersion.version_code}</span>
@@ -316,9 +316,9 @@ export default function VersionsPage() {
       <section className="glass-card p-6">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-text-primary">Todas as Versões</h2>
+            <h2 className="text-lg font-semibold text-text-primary">All Versions</h2>
             <p className="text-xs text-text-muted mt-0.5">
-              {versions.length} versão{versions.length !== 1 ? "ões" : ""} cadastrada{versions.length !== 1 ? "s" : ""}
+              {versions.length} version{versions.length !== 1 ? "s" : ""} registered
             </p>
           </div>
           <button
@@ -326,7 +326,7 @@ export default function VersionsPage() {
             className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-accent px-4 py-2 text-sm font-medium text-white shadow-lg shadow-primary/20 hover:brightness-110 transition-all"
           >
             <Plus className="h-4 w-4" />
-            Nova Versão
+            New Version
           </button>
         </div>
 
@@ -347,7 +347,7 @@ export default function VersionsPage() {
           </div>
         ) : versions.length === 0 ? (
           <div className="py-12 text-center text-text-muted text-sm">
-            Nenhuma versão cadastrada ainda.
+            No versions registered yet.
           </div>
         ) : (
           <div>
@@ -360,19 +360,19 @@ export default function VersionsPage() {
 
       {/* Legend */}
       <section className="glass-card p-5">
-        <h3 className="mb-3 text-sm font-semibold text-text-primary">Legenda de Status</h3>
+        <h3 className="mb-3 text-sm font-semibold text-text-primary">Status Legend</h3>
         <div className="grid gap-2 sm:grid-cols-3 text-sm text-text-muted">
           <div className="flex items-center gap-2">
-            <Badge variant="success" dot>Ativa</Badge>
-            <span className="text-xs">Versão em uso no sistema</span>
+            <Badge variant="success" dot>Active</Badge>
+            <span className="text-xs">Version currently in use</span>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="info" dot>Suportada</Badge>
-            <span className="text-xs">Mantida mas não selecionada</span>
+            <Badge variant="info" dot>Supported</Badge>
+            <span className="text-xs">Maintained but not selected</span>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant="danger" dot>Depreciada</Badge>
-            <span className="text-xs">Fora de suporte</span>
+            <Badge variant="danger" dot>Deprecated</Badge>
+            <span className="text-xs">Out of support</span>
           </div>
         </div>
       </section>

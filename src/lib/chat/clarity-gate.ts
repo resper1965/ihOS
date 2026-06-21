@@ -4,6 +4,8 @@
 import { generateObject } from 'ai';
 import { openai } from '@/lib/chat/openai';
 import { z } from 'zod';
+import fs from 'fs';
+import path from 'path';
 
 // Define Zod schema for structured output validation
 export const ClarityIssueSchema = z.object({
@@ -25,21 +27,41 @@ export const ClarityGateResultSchema = z.object({
 export type ClarityIssue = z.infer<typeof ClarityIssueSchema>;
 export type ClarityGateResult = z.infer<typeof ClarityGateResultSchema>;
 
+let cachedPrompt: string | null = null;
+
+const DEFAULT_SYSTEM_PROMPT = `You are a Clarity Gate Expert Auditor (v2.1).
+Your mission is to perform an epistemic quality analysis on the provided document.
+You must evaluate the text based on 9 fundamental Verification Points to prevent RAG language model hallucinations:
+
+1. HYPOTHESIS vs FACT LABELING: Unproven hypothetical statements described as absolute facts without sources or markers.
+2. UNCERTAINTY MARKER ENFORCEMENT: Future projections or estimates without qualifiers (e.g., using "will have" instead of "is expected to", "projected to").
+3. ASSUMPTION VISIBILITY: Implicit assumptions affecting safety/operation that are not openly stated.
+4. AUTHORITATIVE UNVALIDATED DATA: Tables or data with precise metrics (e.g., 100%, 89%) without clear sources.
+5. DATA CONSISTENCY: Direct contradictions of values, dates, or facts within the same document.
+6. IMPLICIT CAUSATION: Cause-and-effect relationships suggested without associated scientific or empirical validation.
+7. FUTURE STATE AS PRESENT: Future plans or roadmaps described in the present tense as if they are already operational.
+8. TEMPORAL COHERENCE: Chronological inconsistencies of dates or obsolete temporal terms (e.g., "today", "currently" referring to old dates).
+9. EXTERNALLY VERIFIABLE CLAIMS: Specific prices, exact statistics, or competitor claims that require manual verification.
+
+Status Rules:
+- If there is ANY critical issue (such as tensing future states as present in an authoritative manner, severe data/date inconsistencies, or unproven safety claims), set clarityStatus to 'UNCLEAR' and hitlStatus to 'PENDING'.
+- If there are only warnings (WARNING) or verifiable claims (VERIFIABLE), set clarityStatus to 'CLEAR' but hitlStatus to 'PENDING' (as it requires human confirmation of the content).
+- hitlPendingCount must be the number of pending items and claims that require human confirmation (severities CRITICAL, WARNING, or VERIFIABLE).`;
+
+function getSystemPrompt(): string {
+  if (cachedPrompt) return cachedPrompt;
+  try {
+    const promptPath = path.join(process.cwd(), 'prompts', 'clarity_gate_v2_1.txt');
+    cachedPrompt = fs.readFileSync(promptPath, 'utf8');
+    return cachedPrompt;
+  } catch (err) {
+    console.error('[Clarity Gate] Failed to read prompt file, using default fallback:', err);
+    return DEFAULT_SYSTEM_PROMPT;
+  }
+}
+
 /**
  * Analyzes the given document text against the 9 Clarity Gate points.
- * 
- * Epistemic Checks:
- *  1. Hypothesis vs Fact labeling
- *  2. Uncertainty marker enforcement
- *  3. Assumption visibility
- *  4. Authoritative-looking unvalidated data
- * Data Quality Checks:
- *  5. Data consistency
- *  6. Implicit causation
- *  7. Future state as present
- * Verification Routing:
- *  8. Temporal coherence
- *  9. Externally verifiable claims
  */
 export async function verifyClarity(text: string): Promise<ClarityGateResult> {
   if (!text || !text.trim()) {
@@ -64,25 +86,8 @@ export async function verifyClarity(text: string): Promise<ClarityGateResult> {
     const response = await generateObject({
       model: openai('gpt-4o-mini'),
       schema: ClarityGateResultSchema,
-      system: `Você é um Auditor Especialista do Clarity Gate (v2.1).
-Sua missão é realizar uma análise de qualidade epistêmica no documento fornecido.
-Você deve avaliar o texto com base em 9 Pontos de Verificação fundamentais para evitar alucinações de modelos de linguagem (RAG):
-
-1. HYPOTHESIS vs FACT LABELING: Afirmações hipotéticas não comprovadas descritas como fatos absolutos sem fontes ou marcadores.
-2. UNCERTAINTY MARKER ENFORCEMENT: Projeções ou estimativas futuras sem qualificadores (ex: usar "terá" em vez de "é esperado que", "projetado para").
-3. ASSUMPTION VISIBILITY: Premissas implícitas que afetam a segurança/operação não declaradas abertamente.
-4. AUTHORITATIVE UNVALIDATED DATA: Tabelas ou dados com métricas precisas (ex: 100%, 89%) sem fontes claras.
-5. DATA CONSISTENCY: Contradições diretas de valores, datas ou fatos dentro do mesmo documento.
-6. IMPLICIT CAUSATION: Relações de causa-e-efeito sugeridas sem validação científica ou empírica associada.
-7. FUTURE STATE AS PRESENT: Planos futuros ou roteiros descritos no tempo presente como se já estivessem operacionais.
-8. TEMPORAL COHERENCE: Inconsistências cronológicas de datas ou termos temporais obsoletos (ex: "hoje", "atualmente" referindo-se a datas antigas).
-9. EXTERNALLY VERIFIABLE CLAIMS: Preços específicos, estatísticas exatas ou alegações de concorrentes que precisam de verificação manual.
-
-Regras de Status:
-- Se houver QUALQUER problema crítico (como aludir estado futuro no presente de forma autoritária, inconsistências graves de dados ou datas, ou afirmações de segurança não comprovadas), defina clarityStatus como 'UNCLEAR' e hitlStatus como 'PENDING'.
-- Se houver apenas avisos (WARNING) ou alegações verificáveis (VERIFIABLE), defina clarityStatus como 'CLEAR' mas hitlStatus como 'PENDING' (pois precisa de confirmação humana do conteúdo).
-- hitlPendingCount deve ser o número de pendências e alegações que requerem confirmação humana (severidades CRITICAL, WARNING ou VERIFIABLE).`,
-      prompt: `Analise o seguinte texto do documento corporativo:\n\n${text.slice(0, 50000)}`, // limit text size for token boundaries
+      system: getSystemPrompt(),
+      prompt: `Analyze the following corporate document text:\n\n${text.slice(0, 50000)}`, // limit text size for token boundaries
     });
 
     return response.object;
@@ -98,9 +103,9 @@ Regras de Status:
         {
           code: 'W-HC01',
           severity: 'WARNING',
-          message: `O serviço automático do Clarity Gate encontrou uma falha ao processar o texto: ${err instanceof Error ? err.message : String(err)}`,
-          fix: 'Prossiga com a revisão manual da qualidade epistêmica deste documento.',
-          location: 'Serviço do Sistema',
+          message: `The automatic Clarity Gate service encountered an error while processing the text: ${err instanceof Error ? err.message : String(err)}`,
+          fix: 'Proceed with a manual review of this document\'s epistemic quality.',
+          location: 'System Service',
         },
       ],
     };

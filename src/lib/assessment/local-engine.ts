@@ -286,14 +286,14 @@ export async function runLocalAssessment(
       const confidenceScore = Math.round((ismsNorm + evNorm) / 2);
 
       // Construct structured auditor notes
-      const ismsStatusStr = ismsCompliant ? 'CONFORME' : 'NÃO CONFORME';
-      const evStatusStr = evidenceCompliant ? 'CONFORME' : 'NÃO CONFORME';
-      let auditorNotes = `Auditoria de Duas Fases (Modo Auditor):\n`;
-      auditorNotes += `- Fase 1 (ISMS/Políticas): ${ismsStatusStr} (Score RRF: ${ismsPhase.score.toFixed(4)})\n`;
-      if (ismsPhase.found) auditorNotes += `  Documento: "${ismsPhase.docTitle}"\n`;
-      auditorNotes += `- Fase 2 (Evidência Técnica): ${evStatusStr} (Score RRF: ${evidencePhase.score.toFixed(4)})\n`;
-      if (evidencePhase.found) auditorNotes += `  Documento: "${evidencePhase.docTitle}"\n`;
-      auditorNotes += `Status Combinado: ${combinedStatus.toUpperCase()}`;
+      const ismsStatusStr = ismsCompliant ? 'COMPLIANT' : 'NON-COMPLIANT';
+      const evStatusStr = evidenceCompliant ? 'COMPLIANT' : 'NON-COMPLIANT';
+      let auditorNotes = `Dual-Phase Audit (Auditor Mode):\n`;
+      auditorNotes += `- Phase 1 (ISMS/Policies): ${ismsStatusStr} (RRF Score: ${ismsPhase.score.toFixed(4)})\n`;
+      if (ismsPhase.found) auditorNotes += `  Document: "${ismsPhase.docTitle}"\n`;
+      auditorNotes += `- Phase 2 (Technical Evidence): ${evStatusStr} (RRF Score: ${evidencePhase.score.toFixed(4)})\n`;
+      if (evidencePhase.found) auditorNotes += `  Document: "${evidencePhase.docTitle}"\n`;
+      auditorNotes += `Combined Status: ${combinedStatus.toUpperCase()}`;
 
       evaluations.push({
         controlId: control.id,

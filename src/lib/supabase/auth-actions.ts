@@ -21,7 +21,7 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
   const redirectTo = (formData.get("redirectTo") as string) || "/dashboard";
 
   if (!email || !password) {
-    return { error: "Preencha e-mail e senha." };
+    return { error: "Please enter your email and password." };
   }
 
   const supabase = await createClient();
@@ -33,10 +33,10 @@ export async function signIn(formData: FormData): Promise<AuthResult> {
 
   if (error) {
     if (error.message.includes("Invalid login credentials")) {
-      return { error: "E-mail ou senha incorretos." };
+      return { error: "Incorrect email or password." };
     }
     if (error.message.includes("Email not confirmed")) {
-      return { error: "Confirme seu e-mail antes de entrar." };
+      return { error: "Please confirm your email before signing in." };
     }
     return { error: error.message };
   }
@@ -54,15 +54,15 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
   const confirmPassword = formData.get("confirmPassword") as string | null;
 
   if (!email || !password || !confirmPassword) {
-    return { error: "Preencha todos os campos." };
+    return { error: "Please fill in all fields." };
   }
 
   if (password !== confirmPassword) {
-    return { error: "As senhas não coincidem." };
+    return { error: "Passwords do not match." };
   }
 
   if (password.length < 6) {
-    return { error: "A senha deve ter pelo menos 6 caracteres." };
+    return { error: "Password must be at least 6 characters long." };
   }
 
   const supabase = await createClient();
@@ -77,7 +77,7 @@ export async function signUp(formData: FormData): Promise<AuthResult> {
 
   if (error) {
     if (error.message.includes("already registered")) {
-      return { error: "Este e-mail já está cadastrado." };
+      return { error: "This email is already registered." };
     }
     return { error: error.message };
   }

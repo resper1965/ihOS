@@ -237,7 +237,7 @@ export function useQuestionnaire() {
 
       const approved = store.answers.filter((a) => a.status !== "rejected");
       if (approved.length === 0) {
-        fail("Nenhuma resposta aprovada para exportar.");
+        fail("No approved answers to export.");
         return;
       }
 
@@ -261,7 +261,7 @@ export function useQuestionnaire() {
 
       if (!promoRes.ok) {
         const body = await promoRes.json().catch(() => ({}));
-        throw new Error(body.error ?? `Erro na promoção (${promoRes.status})`);
+        throw new Error(body.error ?? `Promotion error (${promoRes.status})`);
       }
 
       const _promoResult: PromotionResult = await promoRes.json();
@@ -288,7 +288,7 @@ export function useQuestionnaire() {
 
       if (!dlRes.ok) {
         const body = await dlRes.json().catch(() => ({}));
-        throw new Error(body.error ?? `Erro no download (${dlRes.status})`);
+        throw new Error(body.error ?? `Download error (${dlRes.status})`);
       }
 
       // Trigger browser download
@@ -296,7 +296,7 @@ export function useQuestionnaire() {
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.download = store.fileName.replace(/\.[^.]+$/, "_respondido.xlsx");
+      link.download = store.fileName.replace(/\.[^.]+$/, "_completed.xlsx");
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -305,7 +305,7 @@ export function useQuestionnaire() {
       patch({ state: "complete", progress: 100 });
     } catch (err: unknown) {
       if (err instanceof DOMException && err.name === "AbortError") return;
-      fail(err instanceof Error ? err.message : "Erro desconhecido");
+      fail(err instanceof Error ? err.message : "Unknown error");
     }
   }, [store.answers, store.originalFileBase64, store.fileName, store.parseResult, patch, fail]);
 

@@ -450,7 +450,7 @@ async function checkAutonomy(
     );
 
     if (zone === 'red') {
-      return { allowed: false, error: 'Ação bloqueada pelas políticas de autonomia.' };
+      return { allowed: false, error: 'Action blocked by autonomy policies.' };
     }
 
     if (zone === 'yellow' && !confirmed) {
@@ -483,10 +483,10 @@ export const createGoal = tool({
         return {
           status: 'requires_approval',
           action: 'createGoal',
-          message: `A criação desta meta de remediação requer sua autorização. Deseja criar a meta "${input.title}"?`,
+          message: `Creating this remediation goal requires your authorization. Do you want to create the goal "${input.title}"?`,
         };
       }
-      return { status: 'error', message: autonomy.error || 'Ação bloqueada pelas regras de autonomia.' };
+      return { status: 'error', message: autonomy.error || 'Action blocked by autonomy rules.' };
     }
 
     try {
@@ -513,7 +513,7 @@ export const createGoal = tool({
       console.warn('[Tool:createGoal] Supabase unavailable:', (err as Error).message);
       return {
         status: 'error',
-        message: `Não foi possível criar a meta: ${(err as Error).message}`,
+        message: `Could not create goal: ${(err as Error).message}`,
         source: 'unavailable' as const,
       };
     }
@@ -569,10 +569,10 @@ export const updateGoalProgress = tool({
         return {
           status: 'requires_approval',
           action: 'updateGoalProgress',
-          message: `A atualização desta meta de remediação requer sua autorização. Deseja atualizar o progresso para ${input.progress}%?`,
+          message: `Updating this remediation goal requires your authorization. Do you want to update the progress to ${input.progress}%?`,
         };
       }
-      return { status: 'error', message: autonomy.error || 'Ação bloqueada pelas regras de autonomia.' };
+      return { status: 'error', message: autonomy.error || 'Action blocked by autonomy rules.' };
     }
 
     try {
@@ -593,7 +593,7 @@ export const updateGoalProgress = tool({
       console.warn('[Tool:updateGoalProgress] Supabase unavailable:', (err as Error).message);
       return {
         status: 'error',
-        message: `Não foi possível atualizar o progresso: ${(err as Error).message}`,
+        message: `Could not update progress: ${(err as Error).message}`,
         source: 'unavailable' as const,
       };
     }
@@ -621,10 +621,10 @@ export const createTask = tool({
         return {
           status: 'requires_approval',
           action: 'createTask',
-          message: `A criação desta tarefa requer sua autorização. Deseja criar a tarefa "${input.title}"?`,
+          message: `Creating this task requires your authorization. Do you want to create the task "${input.title}"?`,
         };
       }
-      return { status: 'error', message: autonomy.error || 'Ação bloqueada pelas regras de autonomia.' };
+      return { status: 'error', message: autonomy.error || 'Action blocked by autonomy rules.' };
     }
 
     try {
@@ -648,7 +648,7 @@ export const createTask = tool({
       console.warn('[Tool:createTask] Supabase unavailable:', (err as Error).message);
       return {
         status: 'error',
-        message: `Não foi possível criar a tarefa: ${(err as Error).message}`,
+        message: `Could not create task: ${(err as Error).message}`,
         source: 'unavailable' as const,
       };
     }
@@ -700,10 +700,10 @@ export const updateTaskStatus = tool({
         return {
           status: 'requires_approval',
           action: 'updateTaskStatus',
-          message: `A atualização desta tarefa requer sua autorização. Deseja alterar o status para "${input.status}"?`,
+          message: `Updating this task requires your authorization. Do you want to change the status to "${input.status}"?`,
         };
       }
-      return { status: 'error', message: autonomy.error || 'Ação bloqueada pelas regras de autonomia.' };
+      return { status: 'error', message: autonomy.error || 'Action blocked by autonomy rules.' };
     }
 
     try {
@@ -721,7 +721,7 @@ export const updateTaskStatus = tool({
       console.warn('[Tool:updateTaskStatus] Supabase unavailable:', (err as Error).message);
       return {
         status: 'error',
-        message: `Não foi possível atualizar o status: ${(err as Error).message}`,
+        message: `Could not update status: ${(err as Error).message}`,
         source: 'unavailable' as const,
       };
     }
@@ -766,7 +766,7 @@ export const recordUserCorrection = tool({
           conversation_id: convId,
           user_correction: input.userCorrection,
           agent_misaligned_response: input.agentMisalignedResponse,
-          learned_context: `Subject context captured on ${new Date().toLocaleDateString('pt-BR')}`,
+          learned_context: `Subject context captured on ${new Date().toLocaleDateString('en-US')}`,
         })
         .select()
         .single();

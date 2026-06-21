@@ -37,9 +37,9 @@ interface QuestionnaireReviewProps {
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function confidenceBadge(score: number) {
-  if (score > 80) return { variant: "success" as const, label: "Alta" };
-  if (score >= 50) return { variant: "warning" as const, label: "Média" };
-  return { variant: "danger" as const, label: "Baixa" };
+  if (score > 80) return { variant: "success" as const, label: "High" };
+  if (score >= 50) return { variant: "warning" as const, label: "Medium" };
+  return { variant: "danger" as const, label: "Low" };
 }
 
 function statusIcon(status: ReviewStatus) {
@@ -174,7 +174,7 @@ function ReviewRow({
                 onKeyDown={handleKeyDown}
                 rows={3}
                 className="w-full resize-y rounded-lg border border-primary/30 bg-bg-dark/50 px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-primary/60 focus:ring-1 focus:ring-primary/30"
-                placeholder="Editar resposta…"
+                placeholder="Edit answer..."
               />
               <div className="flex gap-2">
                 <button
@@ -182,14 +182,14 @@ function ReviewRow({
                   className="inline-flex items-center gap-1 rounded-lg bg-primary/20 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/30 transition-colors"
                 >
                   <Check className="h-3 w-3" />
-                  Salvar
+                  Save
                   <span className="text-text-muted ml-1">(Ctrl+Enter)</span>
                 </button>
                 <button
                   onClick={handleCancelEdit}
                   className="inline-flex items-center gap-1 rounded-lg bg-white/5 px-3 py-1 text-xs text-text-muted hover:bg-white/10 transition-colors"
                 >
-                  Cancelar
+                  Cancel
                 </button>
               </div>
             </div>
@@ -206,7 +206,7 @@ function ReviewRow({
               className="inline-flex items-center gap-1 text-xs text-text-muted hover:text-primary transition-colors"
             >
               <BookOpen className="h-3 w-3" />
-              {item.references.length} referência{item.references.length > 1 ? "s" : ""}
+              {item.references.length} reference{item.references.length > 1 ? "s" : ""}
               {showRefs ? (
                 <ChevronUp className="h-3 w-3" />
               ) : (
@@ -226,10 +226,10 @@ function ReviewRow({
             <span className="inline-flex items-center gap-1 text-xs text-text-muted">
               {statusIcon(item.status)}
               {item.status === "approved"
-                ? "Aprovada"
+                ? "Approved"
                 : item.status === "edited"
-                  ? "Editada"
-                  : "Rejeitada"}
+                  ? "Edited"
+                  : "Rejected"}
             </span>
           )}
         </div>
@@ -240,7 +240,7 @@ function ReviewRow({
             onClick={() => onSetStatus(item.questionId, "approved")}
             disabled={item.status === "approved"}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted transition-all hover:bg-emerald-500/15 hover:text-emerald-400 disabled:opacity-30"
-            title="Aprovar"
+            title="Approve"
           >
             <Check className="h-3.5 w-3.5" />
           </button>
@@ -251,7 +251,7 @@ function ReviewRow({
             }}
             disabled={isEditing}
             className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted transition-all hover:bg-amber-500/15 hover:text-amber-400 disabled:opacity-30"
-            title="Editar"
+            title="Edit"
           >
             <Edit3 className="h-3.5 w-3.5" />
           </button>
@@ -263,7 +263,7 @@ function ReviewRow({
               )
             }
             className="flex h-7 w-7 items-center justify-center rounded-lg text-text-muted transition-all hover:bg-red-500/15 hover:text-red-400"
-            title={item.status === "rejected" ? "Restaurar" : "Rejeitar"}
+            title={item.status === "rejected" ? "Restore" : "Reject"}
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -318,7 +318,7 @@ export function QuestionnaireReview({
             </div>
             <div>
               <h2 className="text-lg font-semibold text-text-primary">
-                Revisão de Questionário
+                Questionnaire Review
               </h2>
               {fileName && (
                 <p className="text-xs text-text-muted">{fileName}</p>
@@ -329,16 +329,16 @@ export function QuestionnaireReview({
           <div className="flex items-center gap-3">
             {/* Stats */}
             <div className="hidden items-center gap-2 sm:flex">
-              <Badge variant="success">{approvedCount} aprovadas</Badge>
-              <Badge variant="danger">{rejectedCount} rejeitadas</Badge>
-              <Badge variant="neutral">{pendingCount} pendentes</Badge>
+              <Badge variant="success">{approvedCount} approved</Badge>
+              <Badge variant="danger">{rejectedCount} rejected</Badge>
+              <Badge variant="neutral">{pendingCount} pending</Badge>
             </div>
 
             <button
               onClick={onClose}
               disabled={isProcessing}
               className="rounded-lg p-1.5 text-text-muted hover:bg-white/10 hover:text-text-primary transition-colors disabled:opacity-40"
-              aria-label="Fechar"
+              aria-label="Close"
             >
               <X className="h-5 w-5" />
             </button>
@@ -351,7 +351,7 @@ export function QuestionnaireReview({
             <div className="flex items-center gap-3 mb-2">
               <Loader2 className="h-4 w-4 animate-spin text-primary" />
               <span className="text-sm text-text-secondary">
-                {processingLabel ?? "Processando…"}
+                {processingLabel ?? "Processing..."}
               </span>
             </div>
             <Progress value={progress} size="sm" showPercentage />
@@ -375,7 +375,7 @@ export function QuestionnaireReview({
           {items.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-text-muted">
               <FileSpreadsheet className="mb-3 h-8 w-8 opacity-40" />
-              <p className="text-sm">Nenhuma questão encontrada.</p>
+              <p className="text-sm">No questions found.</p>
             </div>
           )}
         </div>
@@ -390,7 +390,7 @@ export function QuestionnaireReview({
               onClick={onApproveAll}
               disabled={isProcessing}
             >
-              Aprovar Todos
+              Approve All
             </Button>
             <Button
               variant="ghost"
@@ -399,7 +399,7 @@ export function QuestionnaireReview({
               onClick={onClose}
               disabled={isProcessing}
             >
-              Cancelar
+              Cancel
             </Button>
           </div>
 
@@ -411,7 +411,7 @@ export function QuestionnaireReview({
             disabled={isProcessing || approvedCount + items.filter((i) => i.status === "edited").length === 0}
             loading={isProcessing}
           >
-            Promover & Baixar ({approvedCount} respostas)
+            Promote & Download ({approvedCount} answers)
           </Button>
         </div>
       </div>

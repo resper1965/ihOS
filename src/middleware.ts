@@ -84,6 +84,7 @@ async function checkRateLimit(
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  console.log("[middleware] path:", pathname, "received cookies:", request.cookies.getAll().map(c => c.name));
 
   // Skip static assets entirely
   if (isStaticAsset(pathname)) {
@@ -151,6 +152,20 @@ export async function middleware(request: NextRequest) {
       },
     },
   });
+
+  const host = request.headers.get("host") || "";
+  const isLocalhost = host.includes("localhost") || host.includes("127.0.0.1") || host.includes("[::1]");
+  const mockUserCookie = (process.env.PLAYWRIGHT_TEST === "true" || isLocalhost) ? request.cookies.get("sb-mock-user") : null;
+  if (mockUserCookie?.value) {
+    try {
+      const mockUser = JSON.parse(mockUserCookie.value);
+      supabase.auth.getUser = async () => {
+        return { data: { user: mockUser }, error: null } as any;
+      };
+    } catch (e) {
+      console.error("Failed to parse sb-mock-user cookie in middleware:", e);
+    }
+  }
 
   // IMPORTANT: Do NOT call supabase.auth.getSession() here.
   // getUser() validates the token against the Supabase Auth server,

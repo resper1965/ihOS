@@ -92,19 +92,19 @@ function ComplianceReportPDF({
   generatedAt: string;
 }) {
   const data = snapshot.snapshot_data ?? {};
-  const framework = snapshot.framework_code ?? "Todos os Frameworks";
+  const framework = snapshot.framework_code ?? "All Frameworks";
   const type = snapshot.snapshot_type ?? "full_report";
 
   const typeLabel: Record<string, string> = {
-    scorecard: "Scorecard de Conformidade",
-    roi_path: "Caminho de ROI — Remediação",
-    domain_breakdown: "Análise por Domínio",
-    full_report: "Relatório Executivo Completo",
+    scorecard: "Compliance Scorecard",
+    roi_path: "ROI Path — Remediation",
+    domain_breakdown: "Domain Breakdown",
+    full_report: "Complete Executive Report",
   };
 
   return React.createElement(
     Document,
-    { title: `ihOS — ${typeLabel[type] ?? "Relatório"}`, author: "ihOS · Ionic Health" },
+    { title: `ihOS — ${typeLabel[type] ?? "Report"}`, author: "ihOS · Ionic Health" },
     React.createElement(
       Page,
       { size: "A4", style: styles.page },
@@ -114,28 +114,28 @@ function ComplianceReportPDF({
         View,
         { style: styles.headerBar },
         React.createElement(Text, { style: styles.brand }, "ihOS"),
-        React.createElement(Text, { style: styles.reportTitle }, typeLabel[type] ?? "Relatório"),
+        React.createElement(Text, { style: styles.reportTitle }, typeLabel[type] ?? "Report"),
         React.createElement(
           Text,
           { style: styles.reportMeta },
-          `Framework: ${framework}  ·  Gerado em: ${generatedAt}  ·  Ionic Health`
+          `Framework: ${framework}  ·  Generated at: ${generatedAt}  ·  Ionic Health`
         )
       ),
 
       // Summary section
-      React.createElement(Text, { style: styles.sectionTitle }, "Sumário Executivo"),
+      React.createElement(Text, { style: styles.sectionTitle }, "Executive Summary"),
       React.createElement(
         Text,
         { style: styles.paragraph },
         data.summary ??
-          `Este relatório apresenta a postura de conformidade atual para o framework ${framework}. ` +
-            `Os dados foram coletados automaticamente pelo sistema ihOS e refletem o estado mais recente das avaliações de evidências.`
+          `This report presents the current compliance posture for the ${framework} framework. ` +
+            `The data was automatically collected by the ihOS system and reflects the most recent state of evidence evaluations.`
       ),
 
       // Score section (if available)
       ...(data.overall_score !== undefined
         ? [
-            React.createElement(Text, { style: styles.sectionTitle }, "Score de Conformidade"),
+            React.createElement(Text, { style: styles.sectionTitle }, "Compliance Score"),
             React.createElement(
               View,
               { style: { flexDirection: "row", gap: 16, marginBottom: 12 } },
@@ -156,7 +156,7 @@ function ComplianceReportPDF({
                   { style: { fontSize: 24, fontFamily: "Helvetica-Bold", color: "#16a34a" } },
                   `${data.overall_score ?? 0}%`
                 ),
-                React.createElement(Text, { style: { fontSize: 8, color: "#4ade80" } }, "Score Geral")
+                React.createElement(Text, { style: { fontSize: 8, color: "#4ade80" } }, "Overall Score")
               )
             ),
           ]
@@ -165,16 +165,16 @@ function ComplianceReportPDF({
       // Gaps section (if available)
       ...(Array.isArray(data.gaps) && data.gaps.length > 0
         ? [
-            React.createElement(Text, { style: styles.sectionTitle }, "Gaps Identificados"),
+            React.createElement(Text, { style: styles.sectionTitle }, "Identified Gaps"),
             React.createElement(
               View,
               { style: styles.table },
               React.createElement(
                 View,
                 { style: styles.tableHeader },
-                React.createElement(Text, { style: [styles.tableHeaderCell, { flex: 1 }] }, "Controle"),
-                React.createElement(Text, { style: [styles.tableHeaderCell, { width: 80 }] }, "Domínio"),
-                React.createElement(Text, { style: [styles.tableHeaderCell, { width: 60 }] }, "Prioridade")
+                React.createElement(Text, { style: [styles.tableHeaderCell, { flex: 1 }] }, "Control"),
+                React.createElement(Text, { style: [styles.tableHeaderCell, { width: 80 }] }, "Domain"),
+                React.createElement(Text, { style: [styles.tableHeaderCell, { width: 60 }] }, "Priority")
               ),
               ...data.gaps.slice(0, 20).map((gap: any, i: number) =>
                 React.createElement(
@@ -192,7 +192,7 @@ function ComplianceReportPDF({
       // Raw data fallback
       ...(Object.keys(data).length > 0 && !data.gaps && !data.overall_score
         ? [
-            React.createElement(Text, { style: styles.sectionTitle }, "Dados do Snapshot"),
+            React.createElement(Text, { style: styles.sectionTitle }, "Snapshot Data"),
             React.createElement(
               Text,
               { style: styles.paragraph },
@@ -205,10 +205,10 @@ function ComplianceReportPDF({
       React.createElement(
         View,
         { style: styles.footer, fixed: true },
-        React.createElement(Text, { style: styles.footerText }, "ihOS · Ionic Health · Confidencial"),
+        React.createElement(Text, { style: styles.footerText }, "ihOS · Ionic Health · Confidential"),
         React.createElement(
           Text,
-          { style: styles.footerText, render: ({ pageNumber, totalPages }: any) => `Página ${pageNumber} de ${totalPages}` }
+          { style: styles.footerText, render: ({ pageNumber, totalPages }: any) => `Page ${pageNumber} of ${totalPages}` }
         )
       )
     )

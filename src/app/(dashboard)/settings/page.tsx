@@ -28,13 +28,13 @@ import { Badge } from "@/components/ui/badge";
 function getRoleLabel(role: string | undefined | null): string {
   switch (role) {
     case "admin":
-      return "Administrador";
+      return "Administrator";
     case "ionic_user":
-      return "Usuário Ionic";
+      return "Ionic User";
     case "client_user":
-      return "Usuário Cliente";
+      return "Client User";
     default:
-      return "Usuário";
+      return "User";
   }
 }
 
@@ -146,8 +146,8 @@ export default function SettingsPage() {
   return (
     <div className="w-full space-y-8">
       <PageTitleRegistrar
-        title="Configurações"
-        subtitle="Gerencie preferências e integrações da plataforma."
+        title="Settings"
+        subtitle="Manage preferences and integrations for the platform."
         icon={<Settings className="h-4 w-4 text-slate-400" />}
       />
 
@@ -155,7 +155,7 @@ export default function SettingsPage() {
       <section className="glass-card p-6">
         <div className="mb-4 flex items-center gap-2">
           <User className="h-5 w-5 text-primary" />
-          <h2 className="text-lg font-semibold text-text-primary">Perfil</h2>
+          <h2 className="text-lg font-semibold text-text-primary">Profile</h2>
         </div>
 
         {isLoading ? (
@@ -185,7 +185,7 @@ export default function SettingsPage() {
               className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-300 transition-all hover:bg-white/10 hover:text-white"
             >
               <LogOut className="h-4 w-4" />
-              Sair da conta
+              Sign Out
             </button>
           </div>
         )}
@@ -196,35 +196,35 @@ export default function SettingsPage() {
         <div className="mb-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-text-primary">Preferências</h2>
+            <h2 className="text-lg font-semibold text-text-primary">Preferences</h2>
           </div>
           {isSaving && (
             <span className="flex items-center gap-1.5 text-xs text-slate-400">
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              Salvando...
+              Saving...
             </span>
           )}
         </div>
 
         <div className="divide-y divide-white/5">
           <ToggleSwitch
-            label="Notificações por email"
-            description="Receba alertas e atualizações no seu e-mail"
+            label="Email Notifications"
+            description="Receive alerts and updates in your email"
             icon={Bell}
             checked={prefs.emailNotifications}
             onChange={(v) => setPref("emailNotifications", v)}
           />
           <ToggleSwitch
-            label="Modo escuro"
-            description="Tema escuro ativado por padrão"
+            label="Dark Mode"
+            description="Dark theme enabled by default"
             icon={Moon}
             checked={prefs.darkMode}
             disabled
             onChange={() => {}}
           />
           <ToggleSwitch
-            label="Alertas de compliance"
-            description="Notificações sobre mudanças em scores e gaps"
+            label="Compliance Alerts"
+            description="Notifications about changes in scores and gaps"
             icon={ShieldCheck}
             checked={prefs.complianceAlerts}
             onChange={(v) => setPref("complianceAlerts", v)}
@@ -237,17 +237,17 @@ export default function SettingsPage() {
         <section className="glass-card p-6">
           <div className="mb-4 flex items-center gap-2">
             <Layers className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-text-primary">Gestão de Versões</h2>
+            <h2 className="text-lg font-semibold text-text-primary">Version Management</h2>
           </div>
           <p className="mb-4 text-sm text-text-muted">
-            Crie, ative e gerencie versões do nCommand Lite para controle de escopo técnico.
+            Create, activate, and manage versions of nCommand Lite for technical scope control.
           </p>
           <Link
             href="/settings/versions"
             className="inline-flex items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-4 py-2.5 text-sm font-medium text-primary transition-all hover:bg-primary/20 hover:text-primary"
           >
             <Link2 className="h-4 w-4" />
-            Gerenciar Versões
+            Manage Versions
           </Link>
         </section>
       )}
@@ -257,24 +257,24 @@ export default function SettingsPage() {
         <div className="mb-4 flex items-center gap-2">
           <Plug className="h-5 w-5 text-primary" />
           <h2 className="text-lg font-semibold text-text-primary">
-            Integrações
+            Integrations
           </h2>
         </div>
 
         <div className="divide-y divide-white/5">
           <IntegrationRow
             name="Supabase"
-            status="Conectado"
+            status="Connected"
             icon={ExternalLink}
           />
           <IntegrationRow
             name="Standard GRC API"
-            status="Conectado"
+            status="Connected"
             icon={ExternalLink}
           />
           <IntegrationRow
             name="OpenAI"
-            status="Configurado"
+            status="Configured"
             icon={ExternalLink}
           />
         </div>
@@ -284,17 +284,17 @@ export default function SettingsPage() {
       <section className="glass-card border-red-500/30 p-6">
         <div className="mb-4 flex items-center gap-2">
           <LogOut className="h-5 w-5 text-red-400" />
-          <h2 className="text-lg font-semibold text-red-400">Zona de Perigo</h2>
+          <h2 className="text-lg font-semibold text-red-400">Danger Zone</h2>
         </div>
         <p className="mb-4 text-sm text-text-muted">
-          Ações irreversíveis. Tenha cuidado ao prosseguir.
+          Irreversible actions. Please proceed with caution.
         </p>
         <button
           onClick={() => signOut()}
           className="inline-flex items-center gap-2 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2.5 text-sm font-medium text-red-400 transition-all hover:bg-red-500/20 hover:text-red-300"
         >
           <LogOut className="h-4 w-4" />
-          Sair da Conta
+          Sign Out
         </button>
       </section>
     </div>

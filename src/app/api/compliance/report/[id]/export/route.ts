@@ -46,26 +46,26 @@ export async function GET(
     // 3. Build workbook using xlsx
     const wb = XLSX.utils.book_new();
 
-    // ABA 1: Visão Geral
+    // Tab 1: Overview
     const overviewData = [
-      ["Métrica", "Valor"],
-      ["Total de Controles Evaluados", snapshotData.summary?.total ?? 0],
-      ["Controles Conformes", snapshotData.summary?.compliant ?? 0],
-      ["Controles Não Conformes", snapshotData.summary?.nonCompliant ?? 0],
-      ["Taxa de Conformidade", `${snapshotData.summary?.complianceRate ?? 0}%`],
-      ["Pontuação Média de Confiança", snapshotData.summary?.avgConfidence ?? 0],
-      ["Data de Geração", new Date(snapshot.created_at || "").toLocaleString("pt-BR")],
-      ["Framework Principal", snapshot.framework_code || "Geral"],
+      ["Metric", "Value"],
+      ["Total Evaluated Controls", snapshotData.summary?.total ?? 0],
+      ["Compliant Controls", snapshotData.summary?.compliant ?? 0],
+      ["Non-Compliant Controls", snapshotData.summary?.nonCompliant ?? 0],
+      ["Compliance Rate", `${snapshotData.summary?.complianceRate ?? 0}%`],
+      ["Average Confidence Score", snapshotData.summary?.avgConfidence ?? 0],
+      ["Generation Date", new Date(snapshot.created_at || "").toLocaleString("en-US")],
+      ["Primary Framework", snapshot.framework_code || "General"],
     ];
     const wsOverview = XLSX.utils.aoa_to_sheet(overviewData);
-    XLSX.utils.book_append_sheet(wb, wsOverview, "Visão Geral");
+    XLSX.utils.book_append_sheet(wb, wsOverview, "Overview");
 
-    // ABA 2: Plano de Remediação (ROI Path)
+    // Tab 2: Remediation Plan (ROI Path)
     const roiHeader = [
-      "ID do Controle",
-      "Nome do Controle",
-      "Pontuação ROI (Prioridade)",
-      "Frameworks Mapeados",
+      "Control ID",
+      "Control Name",
+      "ROI Score (Priority)",
+      "Mapped Frameworks",
     ];
     const roiRows = (snapshotData.roiPath || []).map((item: any) => [
       item.controlId || item.code || "",
@@ -74,17 +74,17 @@ export async function GET(
       Array.isArray(item.frameworks) ? item.frameworks.join(", ") : item.frameworks || "",
     ]);
     const wsRoi = XLSX.utils.aoa_to_sheet([roiHeader, ...roiRows]);
-    XLSX.utils.book_append_sheet(wb, wsRoi, "Plano de Remediação");
+    XLSX.utils.book_append_sheet(wb, wsRoi, "Remediation Plan");
 
-    // ABA 3: Gaps de Evidências (Top Gaps)
+    // Tab 3: Evidence Gaps (Top Gaps)
     const gapHeader = [
-      "Código do Controle",
-      "Domínio",
-      "Nome do Controle",
-      "Gravidade",
-      "Confiança",
-      "Elementos Faltantes",
-      "Notas do Auditor",
+      "Control Code",
+      "Domain",
+      "Control Name",
+      "Severity",
+      "Confidence",
+      "Missing Elements",
+      "Auditor Notes",
     ];
     const gapRows = (snapshotData.topGaps || []).map((gap: any) => [
       gap.code || "",
@@ -96,7 +96,7 @@ export async function GET(
       gap.auditorNotes || "",
     ]);
     const wsGaps = XLSX.utils.aoa_to_sheet([gapHeader, ...gapRows]);
-    XLSX.utils.book_append_sheet(wb, wsGaps, "Gaps de Evidências");
+    XLSX.utils.book_append_sheet(wb, wsGaps, "Evidence Gaps");
 
     // 4. Generate Excel buffer
     const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" });
@@ -106,7 +106,7 @@ export async function GET(
       headers: {
         "Content-Type":
           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "Content-Disposition": `attachment; filename="Relatorio_Conformidade_${id}.xlsx"`,
+        "Content-Disposition": `attachment; filename="Compliance_Report_${id}.xlsx"`,
       },
     });
   } catch (error) {

@@ -98,9 +98,9 @@ export async function POST(req: Request) {
         confidence_score: evaluation.confidenceScore,
         missing_elements: evaluation.combinedStatus !== 'conforming'
           ? [
-              evaluation.combinedStatus === 'partial' ? 'Falta evidência técnica de implementação operacional' :
-              evaluation.combinedStatus === 'informal' ? 'Falta política ou procedimento formalizado no ISMS' :
-              'Falta política formalizada e evidência operacional'
+              evaluation.combinedStatus === 'partial' ? 'Missing technical evidence of operational implementation' :
+              evaluation.combinedStatus === 'informal' ? 'Missing formalized policy or procedure in ISMS' :
+              'Missing formalized policy and operational evidence'
             ]
           : null,
         auditor_notes: evaluation.auditorNotes || null,

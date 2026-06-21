@@ -6,11 +6,20 @@
 
 import { createClient } from "@/lib/supabase/server";
 import * as standardApi from "@/lib/standard-api/client";
+import { Redis } from "@upstash/redis";
+
+// ── Redis Setup ─────────────────────────────────────────────────────────────
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL || "";
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || "";
+const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
+
+const CACHE_KEY_SCORES = "ihos:framework_scores";
+const CACHE_TTL_SECONDS = 300; // 5 minutes
 
 // ---------------------------------------------------------------------------
 // Type exports (unchanged)
 // ---------------------------------------------------------------------------
-
+// ... (keep interface FrameworkScore and others)
 export interface FrameworkScore {
   code: string;
   name: string;
@@ -55,6 +64,7 @@ export interface DomainBreakdown {
   fullName: string;
   total: number;
   compliant: number;
+  default?: number; // compat placeholder
   rate: number;
   // 2-Phase addition:
   ismsCompliantCount: number;
@@ -108,6 +118,19 @@ const DOMAIN_FULL_NAMES: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 export async function getFrameworkScores(): Promise<FrameworkScore[]> {
+  // 1. Try serving from Redis cache first
+  if (redis) {
+    try {
+      const cached = await redis.get<FrameworkScore[]>(CACHE_KEY_SCORES);
+      if (cached && Array.isArray(cached)) {
+        console.log("[compliance-data] Serving framework scores from Redis cache");
+        return cached;
+      }
+    } catch (cacheErr) {
+      console.warn("[compliance-data] Redis read error:", cacheErr);
+    }
+  }
+
   try {
     const supabase = await createClient();
 
@@ -150,6 +173,16 @@ export async function getFrameworkScores(): Promise<FrameworkScore[]> {
             gapCount: (data?.gap_count as number) ?? null,
           });
         }
+        
+        // Cache result in Redis
+        if (redis) {
+          try {
+            await redis.set(CACHE_KEY_SCORES, results, { ex: CACHE_TTL_SECONDS });
+          } catch (cacheErr) {
+            console.warn("[compliance-data] Redis write error:", cacheErr);
+          }
+        }
+        
         return results;
       }
     }
@@ -175,7 +208,17 @@ export async function getFrameworkScores(): Promise<FrameworkScore[]> {
         }
       }
 
-      if (results.length > 0) return results;
+      if (results.length > 0) {
+        // Cache fallback results in Redis
+        if (redis) {
+          try {
+            await redis.set(CACHE_KEY_SCORES, results, { ex: CACHE_TTL_SECONDS });
+          } catch (cacheErr) {
+            console.warn("[compliance-data] Redis write error:", cacheErr);
+          }
+        }
+        return results;
+      }
     } catch {
       // Standard API unavailable
     }

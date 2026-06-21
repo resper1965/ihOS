@@ -120,7 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <button onClick={() => setSidebarOpen(!sidebarOpen)}
             className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border border-white/10 bg-[#1e293b] text-slate-400 shadow-md hover:text-white transition-all"
-            aria-label={sidebarOpen ? "Recolher menu" : "Expandir menu"}>
+            aria-label={sidebarOpen ? "Collapse menu" : "Expand menu"}>
             <ChevronLeft className={`h-3.5 w-3.5 transition-transform duration-300 ${sidebarOpen ? "" : "rotate-180"}`} />
           </button>
         </aside>
@@ -146,14 +146,14 @@ function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
   const { user, profile, isLoading } = useUser();
   const meta = useCurrentPageMeta();
 
-  const displayName = user?.email?.split("@")[0] ?? "Usuário";
+  const displayName = user?.email?.split("@")[0] ?? "User";
   const initials = user?.email ? user.email.split("@")[0].slice(0, 2).toUpperCase() : "??";
   const roleLabel = (() => {
     switch (profile?.role) {
-      case "admin": return "Administrador";
-      case "ionic_user": return "Usuário Ionic";
-      case "client_user": return "Usuário Cliente";
-      default: return "Usuário";
+      case "admin": return "Administrator";
+      case "ionic_user": return "Ionic User";
+      case "client_user": return "Client User";
+      default: return "User";
     }
   })();
 

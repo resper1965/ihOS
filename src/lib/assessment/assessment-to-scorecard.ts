@@ -5,6 +5,11 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { AssessmentResult, FrameworkScore } from './engine';
+import { Redis } from '@upstash/redis';
+
+const redisUrl = process.env.UPSTASH_REDIS_REST_URL || "";
+const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || "";
+const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
 
 const FRAMEWORK_ICONS: Record<string, string> = {
   'BR-LGPD': '🇧🇷',
@@ -188,6 +193,16 @@ export async function syncScorecard(
       user_id: null,
       metadata: null,
     });
+
+  // Invalidate Redis cache for framework scores
+  if (redis) {
+    try {
+      await redis.del("ihos:framework_scores");
+      console.log("[syncScorecard] Invalidated Redis cache for framework scores");
+    } catch (cacheErr) {
+      console.warn("[syncScorecard] Redis cache invalidation failed:", cacheErr);
+    }
+  }
 
   console.log(
     `[syncScorecard] Updated ${result.frameworkScores.length} framework scorecards + 'all' from assessment ${assessmentId}`,

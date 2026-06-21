@@ -28,17 +28,17 @@ export default function SignUpPage() {
           <img src="/ionic-icon.svg" alt="Ionic Health" className="h-12 w-12" />
         </div>
         <h1 className="text-2xl font-bold tracking-tight">
-          <span className="gradient-text">Criar Conta</span>
+          <span className="gradient-text">Create Account</span>
         </h1>
         <p className="mt-1 text-sm text-text-secondary">
-          Junte-se ao Ionic Health Operating System
+          Join the Ionic Health Operating System
         </p>
       </div>
 
       {success && (
         <div className="mb-5 rounded-xl border border-accent/30 bg-accent/10 px-4 py-4 text-sm text-accent">
-          <p className="font-medium">✓ Conta criada com sucesso!</p>
-          <p className="mt-1 opacity-80">Verifique seu e-mail para confirmar o cadastro.</p>
+          <p className="font-medium">✓ Account created successfully!</p>
+          <p className="mt-1 opacity-80">Check your email to confirm your registration.</p>
         </div>
       )}
 
@@ -58,12 +58,12 @@ export default function SignUpPage() {
               type="email"
               required
               autoComplete="email"
-              placeholder="voce@ionichealth.com"
+              placeholder="you@ionichealth.com"
               className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-text-primary outline-none transition-all placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="password" className="block text-sm font-medium text-text-secondary">Senha</label>
+            <label htmlFor="password" className="block text-sm font-medium text-text-secondary">Password</label>
             <input
               id="password"
               name="password"
@@ -71,12 +71,12 @@ export default function SignUpPage() {
               required
               minLength={6}
               autoComplete="new-password"
-              placeholder="Mínimo 6 caracteres"
+              placeholder="Minimum 6 characters"
               className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-text-primary outline-none transition-all placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
             />
           </div>
           <div className="space-y-2">
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-text-secondary">Confirmar Senha</label>
+            <label htmlFor="confirmPassword" className="block text-sm font-medium text-text-secondary">Confirm Password</label>
             <input
               id="confirmPassword"
               name="confirmPassword"
@@ -84,7 +84,7 @@ export default function SignUpPage() {
               required
               minLength={6}
               autoComplete="new-password"
-              placeholder="Repita a senha"
+              placeholder="Repeat password"
               className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-text-primary outline-none transition-all placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -93,14 +93,14 @@ export default function SignUpPage() {
             disabled={isPending}
             className="w-full rounded-xl bg-gradient-to-r from-primary to-accent py-3 text-sm font-semibold text-white shadow-lg shadow-primary/25 transition-all hover:shadow-xl hover:brightness-110 active:scale-[0.98] disabled:opacity-60"
           >
-            {isPending ? "Criando conta…" : "Cadastrar"}
+            {isPending ? "Creating account..." : "Sign Up"}
           </button>
         </form>
       )}
 
       <p className="mt-6 text-center text-sm text-text-muted">
-        Já tem conta?{" "}
-        <Link href="/login" className="font-medium text-primary hover:text-primary-hover">Entrar</Link>
+        Already have an account?{" "}
+        <Link href="/login" className="font-medium text-primary hover:text-primary-hover">Sign In</Link>
       </p>
     </div>
   );

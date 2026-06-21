@@ -14,12 +14,12 @@ function relativeTime(isoDate: string | null): string {
   if (!isoDate) return "";
   const diffMs = Date.now() - new Date(isoDate).getTime();
   const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "agora";
-  if (diffMin < 60) return `há ${diffMin} min`;
+  if (diffMin < 1) return "just now";
+  if (diffMin < 60) return `${diffMin}m ago`;
   const diffHours = Math.floor(diffMin / 60);
-  if (diffHours < 24) return `há ${diffHours}h`;
+  if (diffHours < 24) return `${diffHours}h ago`;
   const diffDays = Math.floor(diffHours / 24);
-  return `há ${diffDays}d`;
+  return `${diffDays}d ago`;
 }
 
 function notificationIcon(type: AgentNotification["type"]) {
@@ -142,7 +142,7 @@ export function NotificationsDropdown() {
           if (!open) fetchNotifications();
         }}
         className="relative rounded-xl p-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
-        aria-label="Notificações"
+        aria-label="Notifications"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
@@ -160,14 +160,14 @@ export function NotificationsDropdown() {
         <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-white/10 bg-[#1e293b]/95 shadow-2xl backdrop-blur-xl sm:w-96">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-            <h3 className="text-sm font-semibold text-white">Notificações</h3>
+            <h3 className="text-sm font-semibold text-white">Notifications</h3>
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
                 className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-primary hover:bg-white/5 transition-colors"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
-                Marcar todos como lidos
+                Mark all as read
               </button>
             )}
           </div>
@@ -189,7 +189,7 @@ export function NotificationsDropdown() {
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center px-4 py-10">
                 <Bell className="mb-2 h-8 w-8 text-slate-600" />
-                <p className="text-sm text-text-muted">Nenhuma notificação</p>
+                <p className="text-sm text-text-muted">No notifications</p>
               </div>
             ) : (
               <div className="p-1">

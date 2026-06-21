@@ -24,9 +24,9 @@ export function ClarityReport({ report }: ClarityReportProps) {
       <div className="rounded-xl bg-red-500/10 border border-red-500/20 p-4 flex gap-3">
         <AlertCircle className="h-5 w-5 text-red-400 shrink-0 mt-0.5" />
         <div className="text-left">
-          <h4 className="font-bold text-red-400 text-sm">Alerta do Clarity Gate</h4>
+          <h4 className="font-bold text-red-400 text-sm">Clarity Gate Warning</h4>
           <p className="text-xs text-slate-300 mt-1">
-            O documento possui problemas de qualidade epistêmica ou alegações não comprovadas. Recomendamos corrigi-los antes de indexar.
+            The document contains epistemic quality issues or unproven claims. We recommend fixing them before indexing.
           </p>
         </div>
       </div>
@@ -42,7 +42,7 @@ export function ClarityReport({ report }: ClarityReportProps) {
             </div>
             <p className="text-xs text-text-primary font-medium">{issue.message}</p>
             <p className="text-[11px] text-emerald-400 bg-emerald-500/5 rounded p-1.5 border border-emerald-500/10">
-              <strong>Sugestão:</strong> {issue.fix}
+              <strong>Suggestion:</strong> {issue.fix}
             </p>
           </div>
         ))}

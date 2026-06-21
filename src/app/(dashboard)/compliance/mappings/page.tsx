@@ -91,26 +91,26 @@ export default function MappingsPage() {
 
       const contentType = res.headers.get("content-type") ?? "";
       if (!contentType.includes("application/json")) {
-        throw new Error(`Servidor retornou ${res.status} — rota de sync não encontrada. Verifique o deploy.`);
+        throw new Error(`Server returned ${res.status} — sync route not found. Check deployment.`);
       }
 
       const data = await res.json();
       if (data.success) {
         setSyncResult({
           success: true,
-          message: `Sincronização concluída! ${data.controls_synced} controles do SCF atualizados para a versão ${data.scf_version}.`
+          message: `Synchronization complete! ${data.controls_synced} SCF controls updated to version ${data.scf_version}.`
         });
         fetchMappings();
       } else {
         setSyncResult({
           success: false,
-          message: `Erro: ${data.error}`
+          message: `Error: ${data.error}`
         });
       }
     } catch (err) {
       setSyncResult({
         success: false,
-        message: err instanceof Error ? err.message : "Erro de rede ao conectar com o serviço de sincronização."
+        message: err instanceof Error ? err.message : "Network error connecting to sync service."
       });
     } finally {
       setSyncing(false);
@@ -136,7 +136,7 @@ export default function MappingsPage() {
 
       const contentType = res.headers.get("content-type") ?? "";
       if (!contentType.includes("application/json")) {
-        throw new Error(`Servidor retornou ${res.status} — rota de upload não encontrada. Verifique o deploy.`);
+        throw new Error(`Server returned ${res.status} — upload route not found. Check deployment.`);
       }
 
       const data = await res.json();
@@ -144,20 +144,20 @@ export default function MappingsPage() {
       if (data.success) {
         setUploadResult({
           success: true,
-          message: `Sucesso! Importados ${data.imported_count} mapeamentos de controles com sucesso.`
+          message: `Success! Imported ${data.imported_count} control mappings successfully.`
         });
         setUploadFile(null);
         fetchMappings();
       } else {
         setUploadResult({
           success: false,
-          message: `Erro na importação: ${data.error}`
+          message: `Import error: ${data.error}`
         });
       }
     } catch (err) {
       setUploadResult({
         success: false,
-        message: err instanceof Error ? err.message : "Erro de rede ao enviar o arquivo."
+        message: err instanceof Error ? err.message : "Network error uploading file."
       });
     } finally {
       setUploading(false);
@@ -180,8 +180,8 @@ export default function MappingsPage() {
   return (
     <div className="w-full space-y-8">
       <PageTitleRegistrar
-        title="Mapeamento GRC / SCF"
-        subtitle="Sincronize e gerencie controles do Secure Controls Framework com seus frameworks de compliance."
+        title="GRC / SCF Mapping"
+        subtitle="Synchronize and manage Secure Controls Framework controls with your compliance frameworks."
         icon={<Database className="h-4 w-4 text-cyan-400" />}
       />
       <div className="flex justify-end">
@@ -191,7 +191,7 @@ export default function MappingsPage() {
             onClick={() => setIsUploadOpen(true)}
             icon={<Upload className="h-4 w-4" />}
           >
-            Importar Mapeamentos
+            Import Mappings
           </Button>
           <Button
             variant="primary"
@@ -199,7 +199,7 @@ export default function MappingsPage() {
             disabled={syncing}
             icon={<RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />}
           >
-            {syncing ? "Sincronizando..." : "Sincronizar SCF"}
+            {syncing ? "Synchronizing..." : "Synchronize SCF"}
           </Button>
         </div>
       </div>
@@ -213,7 +213,7 @@ export default function MappingsPage() {
         }`}>
           {syncResult.success ? <CheckCircle2 className="h-5 w-5 shrink-0" /> : <AlertCircle className="h-5 w-5 shrink-0" />}
           <div className="flex-1">
-            <p className="font-semibold">{syncResult.success ? "Sincronização OK" : "Falha na Sincronização"}</p>
+            <p className="font-semibold">{syncResult.success ? "Sync Successful" : "Sync Failed"}</p>
             <p className="mt-0.5 text-xs text-text-secondary">{syncResult.message}</p>
           </div>
           <button onClick={() => setSyncResult(null)} className="text-text-muted hover:text-text-primary">
@@ -230,7 +230,7 @@ export default function MappingsPage() {
           </div>
           <div>
             <p className="text-2xl font-bold text-text-primary">{mappings.length}</p>
-            <p className="text-xs text-text-muted">Total de Controles Mapeados</p>
+            <p className="text-xs text-text-muted">Total Mapped Controls</p>
           </div>
         </div>
 
@@ -242,7 +242,7 @@ export default function MappingsPage() {
             <p className="text-2xl font-bold text-text-primary">
               {new Set(mappings.map(m => m.framework_code)).size}
             </p>
-            <p className="text-xs text-text-muted">Frameworks Correlacionados</p>
+            <p className="text-xs text-text-muted">Correlated Frameworks</p>
           </div>
         </div>
 
@@ -252,7 +252,7 @@ export default function MappingsPage() {
           </div>
           <div>
             <p className="text-sm font-semibold text-text-primary">SCF v2026.1</p>
-            <p className="text-xs text-text-muted">Motor GRC Ativo</p>
+            <p className="text-xs text-text-muted">Active GRC Engine</p>
           </div>
         </div>
       </div>
@@ -281,7 +281,7 @@ export default function MappingsPage() {
           </div>
           <Input
             type="text"
-            placeholder="Buscar controle ou mapeamento..."
+            placeholder="Search control or mapping..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -293,13 +293,13 @@ export default function MappingsPage() {
       {loading ? (
         <div className="glass-card p-12 text-center">
           <RefreshCw className="mx-auto h-8 w-8 animate-spin text-primary" />
-          <p className="mt-4 text-sm text-text-secondary">Carregando catálogo de mapeamento...</p>
+          <p className="mt-4 text-sm text-text-secondary">Loading mapping catalog...</p>
         </div>
       ) : filteredMappings.length === 0 ? (
         <div className="glass-card p-12 text-center">
           <ShieldCheck className="mx-auto h-12 w-12 text-text-muted" />
-          <p className="mt-4 text-sm font-semibold text-text-primary">Nenhum mapeamento encontrado</p>
-          <p className="mt-1 text-xs text-text-secondary">Tente alterar os termos de busca ou filtros.</p>
+          <p className="mt-4 text-sm font-semibold text-text-primary">No mappings found</p>
+          <p className="mt-1 text-xs text-text-secondary">Try changing search terms or filters.</p>
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-white/5 bg-white/5">
@@ -308,16 +308,16 @@ export default function MappingsPage() {
               <thead>
                 <tr className="border-b border-white/5 bg-white/5 text-xs font-semibold uppercase tracking-wider text-text-secondary">
                   <th className="px-6 py-4">Framework</th>
-                  <th className="px-6 py-4">ID do Controle</th>
-                  <th className="px-6 py-4">Mapeado para SCF</th>
-                  <th className="px-6 py-4">Descrição do Controle SCF</th>
+                  <th className="px-6 py-4">Control ID</th>
+                  <th className="px-6 py-4">Mapped to SCF</th>
+                  <th className="px-6 py-4">SCF Control Description</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-sm">
                 {filteredMappings.map((item) => (
                   <tr key={item.id} className="transition-colors hover:bg-white/[0.02]">
                     <td className="whitespace-nowrap px-6 py-4">
-                      <Badge variant="info" className="font-semibold">{item.framework_code}</Badge>
+                       <Badge variant="info" className="font-semibold">{item.framework_code}</Badge>
                     </td>
                     <td className="whitespace-nowrap px-6 py-4 font-mono font-medium text-text-primary">
                       {item.target_control_id}
@@ -332,10 +332,10 @@ export default function MappingsPage() {
                     </td>
                     <td className="px-6 py-4 max-w-md">
                       <p className="font-medium text-text-primary">
-                        {item.scf_controls?.control_name || "Mapeamento Pendente"}
+                        {item.scf_controls?.control_name || "Pending Mapping"}
                       </p>
                       <p className="mt-0.5 text-xs text-text-secondary line-clamp-2">
-                        {item.scf_controls?.description || "Sem descrição disponível."}
+                        {item.scf_controls?.description || "No description available."}
                       </p>
                     </td>
                   </tr>
@@ -354,7 +354,7 @@ export default function MappingsPage() {
           setUploadFile(null);
           setUploadResult(null);
         }}
-        title="Importar Mapeamentos Customizados"
+        title="Import Custom Mappings"
         maxWidth="max-w-md"
       >
         <form onSubmit={handleUploadSubmit} className="space-y-6 mt-4">
@@ -364,13 +364,13 @@ export default function MappingsPage() {
               accept=".csv,.json"
               onChange={(e) => setUploadFile(e.target.files?.[0] || null)}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-              aria-label="Selecionar arquivo de mapeamento"
+              aria-label="Select mapping file"
             />
             <FileSpreadsheet className="mx-auto h-10 w-10 text-text-muted" />
             <p className="mt-3 text-sm font-semibold text-text-primary">
-              {uploadFile ? uploadFile.name : "Arraste ou clique para selecionar"}
+              {uploadFile ? uploadFile.name : "Drag or click to select"}
             </p>
-            <p className="mt-1 text-xs text-text-secondary">Suporta arquivos CSV ou JSON contendo colunas/chaves</p>
+            <p className="mt-1 text-xs text-text-secondary">Supports CSV or JSON files containing columns/keys</p>
             <p className="text-[10px] text-text-muted font-mono mt-0.5">framework_code, target_control_id, scf_control_code</p>
           </div>
 
@@ -391,10 +391,10 @@ export default function MappingsPage() {
               setUploadFile(null);
               setUploadResult(null);
             }}>
-              Fechar
+              Close
             </Button>
             <Button type="submit" variant="primary" disabled={!uploadFile || uploading}>
-              {uploading ? "Importando..." : "Importar"}
+              {uploading ? "Importing..." : "Import"}
             </Button>
           </div>
         </form>

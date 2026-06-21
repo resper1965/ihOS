@@ -118,10 +118,10 @@ async function getRecentActivity() {
         const diffMs = Date.now() - created.getTime();
         const diffMin = Math.floor(diffMs / 60_000);
         let time: string;
-        if (diffMin < 1) time = "agora";
-        else if (diffMin < 60) time = `há ${diffMin} min`;
-        else if (diffMin < 1440) time = `há ${Math.floor(diffMin / 60)}h`;
-        else time = `há ${Math.floor(diffMin / 1440)}d`;
+        if (diffMin < 1) time = "just now";
+        else if (diffMin < 60) time = `${diffMin}m ago`;
+        else if (diffMin < 1440) time = `${Math.floor(diffMin / 60)}h ago`;
+        else time = `${Math.floor(diffMin / 1440)}d ago`;
 
         // Map notification type to activity type
         const typeMap: Record<string, "assessment" | "analysis" | "document" | "review" | "score"> = {
@@ -166,21 +166,21 @@ export default async function DashboardPage() {
       bgColor: "bg-primary/10",
     },
     {
-      label: "Documentos Analisados",
+      label: "Analyzed Documents",
       value: stats.documents,
       icon: FileText,
       color: "text-accent",
       bgColor: "bg-accent/10",
     },
     {
-      label: "Avaliações Ativas",
+      label: "Active Assessments",
       value: stats.assessments,
       icon: ClipboardCheck,
       color: "text-warning",
       bgColor: "bg-warning/10",
     },
     {
-      label: "Score de Compliance",
+      label: "Compliance Score",
       value: stats.score,
       icon: TrendingUp,
       color: "text-accent",
@@ -192,8 +192,8 @@ export default async function DashboardPage() {
     <div className="w-full space-y-8">
       <OnboardingGate />
       <PageTitleRegistrar
-        title={<>Bem-vindo ao <span className="text-emerald-400">ihOS</span></>}
-        subtitle="Sua visão consolidada de compliance e governança."
+        title={<>Welcome to <span className="text-emerald-400">ihOS</span></>}
+        subtitle="Your consolidated view of compliance and governance."
         icon={<LayoutDashboard className="h-4 w-4 text-primary" />}
       />
 

@@ -33,15 +33,15 @@ export function VersionSwitcher() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-white transition-all hover:bg-white/10 hover:border-primary/30"
-        aria-label="Selecionar versão do produto"
+        aria-label="Select product version"
       >
         <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-primary/10">
           <Layers className="h-3.5 w-3.5 text-primary" />
         </div>
         <div className="flex flex-col items-start leading-tight">
-          <span className="text-[10px] uppercase tracking-wider text-slate-400">Escopo Técnico</span>
+          <span className="text-[10px] uppercase tracking-wider text-slate-400">Technical Scope</span>
           <span className="font-medium truncate max-w-[120px]">
-            {activeVersion ? `${activeVersion.product_name} ${activeVersion.version_code}` : "SGSI Geral / Global"}
+            {activeVersion ? `${activeVersion.product_name} ${activeVersion.version_code}` : "General / Global ISMS"}
           </span>
         </div>
         <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
@@ -51,8 +51,8 @@ export function VersionSwitcher() {
       {isOpen && (
         <div className="absolute right-0 top-full z-50 mt-2 w-72 overflow-hidden rounded-xl border border-white/10 bg-[#1e293b]/95 shadow-xl backdrop-blur-xl animate-in fade-in slide-in-from-top-2 duration-200">
           <div className="border-b border-white/10 px-4 py-2.5 bg-white/[0.01]">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Selecionar Contexto de Auditoria</h4>
-            <p className="text-[10px] text-text-muted mt-0.5">Isola as evidências de RAG e os scores da versão correspondente.</p>
+            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Select Audit Context</h4>
+            <p className="text-[10px] text-text-muted mt-0.5">Isolates RAG evidence and scores of the corresponding version.</p>
           </div>
 
           <div className="p-1 space-y-1 max-h-80 overflow-y-auto">
@@ -69,10 +69,10 @@ export function VersionSwitcher() {
               }`}
             >
               <div className="flex items-center justify-between font-semibold">
-                <span>SGSI Geral / Global</span>
-                <span className="rounded bg-slate-500/20 px-1 py-0.5 text-[8px] uppercase tracking-wider text-slate-300">Organização</span>
+                <span>General / Global ISMS</span>
+                <span className="rounded bg-slate-500/20 px-1 py-0.5 text-[8px] uppercase tracking-wider text-slate-300">Organization</span>
               </div>
-              <p className="text-[10px] text-slate-400">Políticas corporativas de segurança (ISO 27001, RH, etc.)</p>
+              <p className="text-[10px] text-slate-400">Corporate security policies (ISO 27001, HR, etc.)</p>
             </button>
 
             {/* List product versions */}
@@ -104,7 +104,7 @@ export function VersionSwitcher() {
                     </span>
                   </div>
                   <p className="text-[10px] text-slate-400">
-                    Documentação técnica e evidências desta versão
+                    Technical documentation and evidence for this version
                   </p>
                 </button>
               );

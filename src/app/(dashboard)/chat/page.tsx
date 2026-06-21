@@ -103,11 +103,11 @@ export default function ChatPage() {
     questionnaire.state === "downloading";
 
   const processingLabels: Record<string, string> = {
-    uploading: "Enviando arquivo…",
-    parsing: "Analisando questões…",
-    generating: "Gerando respostas com IA…",
-    promoting: "Salvando na base de conhecimento…",
-    downloading: "Preparando download…",
+    uploading: "Uploading file...",
+    parsing: "Analyzing questions...",
+    generating: "Generating answers with AI...",
+    promoting: "Saving to knowledge base...",
+    downloading: "Preparing download...",
   };
 
   const isEmpty = messages.length === 0;
@@ -135,8 +135,8 @@ export default function ChatPage() {
               <span className="gradient-text">ihOS AI</span>
             </h2>
             <p className="mb-8 max-w-md text-center text-sm text-text-secondary">
-              Assistente de compliance inteligente. Pergunte sobre frameworks,
-              gaps, documentos ou peça análises detalhadas.
+              Intelligent compliance assistant. Ask about frameworks,
+              gaps, documents, or request detailed analyses.
             </p>
 
             {/* Suggestion chips */}
@@ -212,7 +212,7 @@ export default function ChatPage() {
           <div className="flex items-center gap-3 rounded-xl border border-emerald-500/20 bg-emerald-950/20 px-4 py-3">
             <FileSpreadsheet className="h-4 w-4 text-emerald-400" />
             <span className="text-sm text-emerald-400">
-              Questionário exportado com sucesso!
+              Questionnaire exported successfully!
             </span>
             <button
               onClick={handleRemoveFile}
@@ -255,7 +255,7 @@ export default function ChatPage() {
             accept={ACCEPTED_FILE_TYPES}
             onChange={handleFileChange}
             className="hidden"
-            aria-label="Upload de questionário"
+            aria-label="Upload questionnaire"
           />
 
           {/* Paperclip button */}
@@ -264,7 +264,7 @@ export default function ChatPage() {
             onClick={handleFileButtonClick}
             disabled={isQuestionnaireProcessing}
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-text-muted transition-all duration-200 hover:bg-white/5 hover:text-primary active:scale-95 disabled:opacity-40"
-            title="Enviar questionário (.xlsx, .csv, .pdf)"
+            title="Upload questionnaire (.xlsx, .csv, .pdf)"
           >
             <Paperclip className="h-4 w-4" />
           </button>
@@ -274,8 +274,8 @@ export default function ChatPage() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Pergunte sobre compliance, frameworks, gaps…"
-            aria-label="Mensagem do chat"
+            placeholder="Ask about compliance, frameworks, gaps..."
+            aria-label="Chat message"
             rows={1}
             className="flex-1 resize-none bg-transparent px-2 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted"
             style={{ maxHeight: "120px" }}
@@ -293,7 +293,7 @@ export default function ChatPage() {
           </button>
         </form>
         <p className="mt-2 text-center text-xs text-text-muted">
-          ihOS AI pode cometer erros. Verifique informações importantes.
+          ihOS AI can make mistakes. Verify important information.
         </p>
       </div>
 
