@@ -206,7 +206,7 @@ export default function ScrmsPage() {
         <div className="glass-card flex flex-col items-center justify-center p-12 text-center">
           <AlertTriangle className="h-16 w-16 text-warning mb-4" />
           <h3 className="text-xl font-bold">No Active Program</h3>
-          <p className="text-text-muted mt-2 max-w-md">
+          <p className="text-slate-300 mt-2 max-w-md">
             Please run the SCRMS GRC engine calibration script (`run_scrms_calibration.py`) on your backend database to seed the active program baseline.
           </p>
         </div>
@@ -217,7 +217,7 @@ export default function ScrmsPage() {
             <Info className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
             <div>
               <h4 className="font-semibold text-sm text-emerald-400">SCRMS Methodology (Compliance vs Security)</h4>
-              <p className="text-xs text-text-muted mt-1 leading-relaxed">
+              <p className="text-xs text-slate-200 mt-1 leading-relaxed">
                 Compliance frameworks set the floor (**MCR - Minimum Compliance Requirements**). SCRMS evaluates gaps using your RAG knowledge base and calculates risk-driven controls (**DSR - Discretionary Security Requirements**) to form your ultimate **MSR (Minimum Security Requirements)** baseline.
               </p>
             </div>
@@ -229,29 +229,29 @@ export default function ScrmsPage() {
               <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
                 <ShieldCheck className="h-12 w-12 text-primary" />
               </div>
-              <h4 className="text-sm font-semibold text-text-muted">MCR Coverage</h4>
+              <h4 className="text-sm font-semibold text-slate-300">MCR Coverage</h4>
               <p className="text-3xl font-extrabold text-primary mt-2">
-                {stats?.accepted_mcr} <span className="text-lg font-normal text-text-muted">/ {stats?.total_mcr}</span>
+                {stats?.accepted_mcr} <span className="text-lg font-normal text-slate-300">/ {stats?.total_mcr}</span>
               </p>
-              <p className="text-xs text-text-muted mt-2">Mandatory compliance baseline (ISO 27001)</p>
+              <p className="text-xs text-slate-200 mt-2">Mandatory compliance baseline (ISO 27001)</p>
             </div>
-
+ 
             <div className="glass-card p-5 relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
                 <Target className="h-12 w-12 text-amber-400" />
               </div>
-              <h4 className="text-sm font-semibold text-text-muted">DSR Recommendations</h4>
+              <h4 className="text-sm font-semibold text-slate-300">DSR Recommendations</h4>
               <p className="text-3xl font-extrabold text-amber-400 mt-2">
-                {stats?.accepted_dsr} <span className="text-lg font-normal text-text-muted">/ {stats?.total_dsr}</span>
+                {stats?.accepted_dsr} <span className="text-lg font-normal text-slate-300">/ {stats?.total_dsr}</span>
               </p>
-              <p className="text-xs text-text-muted mt-2">{stats?.pending_dsr} pending reviews, {stats?.rejected_dsr} rejected</p>
+              <p className="text-xs text-slate-200 mt-2">{stats?.pending_dsr} pending reviews, {stats?.rejected_dsr} rejected</p>
             </div>
 
             <div className="glass-card p-5 relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
                 <Layers className="h-12 w-12 text-emerald-400" />
               </div>
-              <h4 className="text-sm font-semibold text-text-muted">MSR Score (MCR + DSR)</h4>
+              <h4 className="text-sm font-semibold text-slate-300">MSR Score (MCR + DSR)</h4>
               <p className="text-3xl font-extrabold text-emerald-400 mt-2">
                 {calculateMsrScore()}%
               </p>
@@ -264,7 +264,7 @@ export default function ScrmsPage() {
             </div>
 
             <div className="glass-card p-5 relative overflow-hidden">
-              <h4 className="text-sm font-semibold text-text-muted">PPTDF Scoping (Accepted)</h4>
+              <h4 className="text-sm font-semibold text-slate-300">PPTDF Scoping (Accepted)</h4>
               <div className="grid grid-cols-5 gap-1 text-center mt-3">
                 <div className="bg-white/5 rounded p-1 group relative cursor-help">
                   <Users className="h-3.5 w-3.5 mx-auto text-sky-400" />
@@ -298,7 +298,7 @@ export default function ScrmsPage() {
           {/* Calibration Progress bar */}
           {activeTab === "PENDING" && (
             <div className="glass-card p-5 mb-6 space-y-3 bg-white/[0.01]">
-              <div className="flex justify-between items-center text-xs font-semibold text-text-secondary">
+              <div className="flex justify-between items-center text-xs font-semibold text-slate-200">
                 <span>Recommendations Calibration Status</span>
                 <span>{controls.filter(c => c.classification === "DSR" && c.status !== "pending_review").length} of {controls.filter(c => c.classification === "DSR").length} reviewed ({controls.filter(c => c.classification === "DSR").length > 0 ? Math.round((controls.filter(c => c.classification === "DSR" && c.status !== "pending_review").length / controls.filter(c => c.classification === "DSR").length) * 100) : 0}%)</span>
               </div>
@@ -319,10 +319,10 @@ export default function ScrmsPage() {
                 <button
                   key={tab}
                   onClick={() => { setActiveTab(tab); setPptdfFilter(null); }}
-                  className={`px-4 py-2 rounded-lg text-xs font-semibold transition-all ${
+                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
                     activeTab === tab 
                       ? "bg-primary text-white shadow-sm" 
-                      : "text-slate-400 hover:text-white"
+                      : "text-slate-300 hover:text-white hover:bg-white/5"
                   }`}
                 >
                   {tab === "PENDING" && `Pending Recommendations (${controls.filter(c => c.classification === "DSR" && c.status === "pending_review").length})`}
@@ -337,7 +337,7 @@ export default function ScrmsPage() {
               <div className="flex items-center gap-1.5 bg-slate-800/40 p-1 border border-white/5 rounded-xl">
                 <button 
                   onClick={() => setPptdfFilter(null)}
-                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${!pptdfFilter ? "bg-white/10 text-white" : "text-slate-400 hover:text-white"}`}
+                  className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all ${!pptdfFilter ? "bg-white/10 text-white" : "text-slate-300 hover:text-white hover:bg-white/5"}`}
                 >
                   All Scopes
                 </button>
@@ -345,8 +345,8 @@ export default function ScrmsPage() {
                   <button
                     key={scope}
                     onClick={() => setPptdfFilter(scope)}
-                    className={`px-3 py-1.5 rounded-lg text-[10px] font-bold transition-all ${
-                      pptdfFilter === scope ? "bg-primary/20 text-primary" : "text-slate-400 hover:text-white"
+                    className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all ${
+                      pptdfFilter === scope ? "bg-primary/20 text-primary" : "text-slate-300 hover:text-white hover:bg-white/5"
                     }`}
                   >
                     {scope}
@@ -408,8 +408,8 @@ export default function ScrmsPage() {
                         )}
                       </div>
                       
-                      <h3 className="font-bold text-sm text-text-primary">{c.control_name}</h3>
-                      <p className="text-xs text-text-muted leading-relaxed">{c.description}</p>
+                      <h3 className="font-extrabold text-sm text-text-primary">{c.control_name}</h3>
+                      <p className="text-xs text-slate-200 leading-relaxed font-medium">{c.description}</p>
                       
                       {/* Rejection / Risk acceptance note */}
                       {c.status === "rejected" && c.rejection_rationale && (
@@ -434,17 +434,17 @@ export default function ScrmsPage() {
                         <div className="space-y-2.5 bg-white/[0.02] p-3 rounded-lg border border-white/5 mt-2">
                           {/* DSR Factors detail */}
                           {c.classification === "DSR" && c.dsr_factors && (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] text-slate-400">
-                              <div><span className="font-bold text-slate-300">Coverage Gap:</span> {c.dsr_factors.domain_coverage_gap}%</div>
-                              <div><span className="font-bold text-slate-300">Relevance:</span> {c.dsr_factors.industry_relevance}%</div>
-                              <div><span className="font-bold text-slate-300">Risk Factor:</span> {c.dsr_factors.risk_appetite_factor}%</div>
-                              <div><span className="font-bold text-slate-300">Maturity:</span> {c.dsr_factors.maturity_alignment}%</div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] text-slate-200">
+                              <div><span className="font-bold text-slate-100">Coverage Gap:</span> {c.dsr_factors.domain_coverage_gap}%</div>
+                              <div><span className="font-bold text-slate-100">Relevance:</span> {c.dsr_factors.industry_relevance}%</div>
+                              <div><span className="font-bold text-slate-100">Risk Factor:</span> {c.dsr_factors.risk_appetite_factor}%</div>
+                              <div><span className="font-bold text-slate-100">Maturity:</span> {c.dsr_factors.maturity_alignment}%</div>
                             </div>
                           )}
 
                           {/* PPTDF Tags */}
                           <div className="flex flex-wrap gap-1.5 items-center">
-                            <span className="text-[10px] font-bold text-slate-500">Asset Vectors:</span>
+                            <span className="text-[10px] font-extrabold text-slate-300">Asset Vectors:</span>
                             {c.pptdf_scope.map((scope) => (
                               <Badge key={scope} variant="neutral" className="text-[9px] px-1.5 py-0">
                                 {scope}
@@ -512,10 +512,10 @@ export default function ScrmsPage() {
       >
         <div className="space-y-4">
           <div className="space-y-2">
-            <p className="text-xs text-text-muted leading-relaxed">
+            <p className="text-xs text-slate-200 leading-relaxed font-semibold">
               You are rejecting the recommended control <strong>{rejectingControl?.control_code}</strong> ({rejectingControl?.control_name}).
             </p>
-            <p className="text-[10px] text-red-400/80 italic leading-relaxed">
+            <p className="text-[10px] text-red-300 font-semibold italic leading-relaxed">
               *TX-RAMP / ISO 27001 requires documenting a formal risk acceptance rationale if a recommended security control is not implemented.*
             </p>
           </div>
