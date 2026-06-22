@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { ChevronDown, ChevronUp, ChevronsUpDown } from "lucide-react";
 import type { GapItem } from "@/lib/data/compliance-data";
+import { HelpTooltip } from "./help-tooltip";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -231,22 +232,28 @@ export function GapTable({ gaps }: GapTableProps) {
                 />
               </th>
               <th className="px-4 py-3 text-left">
-                <SortHeader
-                  label="Status"
-                  field="status"
-                  currentField={sortField}
-                  currentDir={sortDir}
-                  onSort={handleSort}
-                />
+                <div className="flex items-center gap-1.5">
+                  <SortHeader
+                    label="Status"
+                    field="status"
+                    currentField={sortField}
+                    currentDir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <HelpTooltip content="Gravidade da lacuna (Critical/High/Medium/Low) baseada no impacto regulatório e na ausência de controles." />
+                </div>
               </th>
               <th className="px-4 py-3 text-left">
-                <SortHeader
-                  label="Confidence"
-                  field="confidence"
-                  currentField={sortField}
-                  currentDir={sortDir}
-                  onSort={handleSort}
-                />
+                <div className="flex items-center gap-1.5">
+                  <SortHeader
+                    label="Confidence"
+                    field="confidence"
+                    currentField={sortField}
+                    currentDir={sortDir}
+                    onSort={handleSort}
+                  />
+                  <HelpTooltip content="Certeza estatística da IA (0-100%) na resposta, calculada a partir da precisão das evidências e políticas encontradas." />
+                </div>
               </th>
               <th className="w-10 px-4 py-3" />
             </tr>

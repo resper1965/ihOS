@@ -194,6 +194,7 @@ export default function MappingsPage() {
             Import Mappings
           </Button>
           <Button
+            id="mappings-sync-button"
             variant="primary"
             onClick={handleSync}
             disabled={syncing}
@@ -280,6 +281,7 @@ export default function MappingsPage() {
             <Search className="h-4 w-4 text-text-muted" />
           </div>
           <Input
+            id="mappings-search-input"
             type="text"
             placeholder="Search control or mapping..."
             value={search}

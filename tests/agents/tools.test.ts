@@ -95,8 +95,11 @@ describe('complianceScore tool', () => {
   it('falls back to Standard API when cache is empty (LGPD)', async () => {
     // No cached snapshot
     mockSupabaseAdmin.maybeSingle.mockResolvedValue({ data: null, error: null });
-    // No document_chunks with scf_controls
-    mockSupabaseAdmin.not.mockResolvedValue({ data: [], error: null });
+    // Return some document_chunks with scf_controls to trigger API call
+    mockSupabaseAdmin.not.mockResolvedValue({
+      data: [{ scf_controls: ['PRI-01', 'PRI-02'] }],
+      error: null,
+    });
 
     (standardApi.complianceScore as any).mockResolvedValue({
       score: 65,

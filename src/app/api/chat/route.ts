@@ -4,7 +4,8 @@
 
 import { z } from 'zod';
 import { streamText, stepCountIs } from 'ai';
-import { openai } from '@/lib/chat/openai';
+import { getOpenAI } from '@/lib/chat/openai';
+
 import { assembleContext } from '@/lib/context/assembler';
 import { getToolsForProfile } from '@/lib/agents/tool-registry';
 import { getAITelemetry } from '@/lib/chat/ai-telemetry';
@@ -109,8 +110,11 @@ export async function POST(req: Request) {
     { userId, productVersionId, salesChannel }
   );
 
+  const openai = await getOpenAI();
+
   const result = streamText({
     model: openai('gpt-4o'),
+
     system: context.systemPrompt,
     messages: messages as any,
     tools: await getToolsForProfile(context.profile.id, userId ?? 'anonymous', true) as any,

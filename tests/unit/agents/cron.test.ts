@@ -166,6 +166,6 @@ describe('GRC Agentic Evolution Cron Triggers Route', () => {
     // Validate that document_expired alert was generated
     const expiredAlert = json.alerts_generated.find((a: any) => a.type === 'document_expired');
     expect(expiredAlert).toBeDefined();
-    expect(expiredAlert.title).toBe('Documento de Conformidade Expirado');
+    expect(expiredAlert.title).toBe('Compliance Document Expired');
   });
 });

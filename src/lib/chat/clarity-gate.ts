@@ -2,7 +2,8 @@
 // Core Clarity Gate analyzer service using Vercel AI SDK and OpenAI.
 
 import { generateObject } from 'ai';
-import { openai } from '@/lib/chat/openai';
+import { getOpenAI } from '@/lib/chat/openai';
+
 import { z } from 'zod';
 import fs from 'fs';
 import path from 'path';
@@ -83,12 +84,14 @@ export async function verifyClarity(text: string): Promise<ClarityGateResult> {
   }
 
   try {
+    const openai = await getOpenAI();
     const response = await generateObject({
       model: openai('gpt-4o-mini'),
       schema: ClarityGateResultSchema,
       system: getSystemPrompt(),
       prompt: `Analyze the following corporate document text:\n\n${text.slice(0, 50000)}`, // limit text size for token boundaries
     });
+
 
     return response.object;
   } catch (err) {

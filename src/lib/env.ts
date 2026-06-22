@@ -27,7 +27,8 @@ const serverEnvSchema = z.object({
     .refine(
       (val) => val.startsWith('sk-') || val.startsWith('vck_'),
       'OPENAI_API_KEY must start with "sk-" or "vck_"'
-    ),
+    )
+    .optional(),
 
   OPENAI_BASE_URL: z
     .string()
@@ -41,7 +42,9 @@ const serverEnvSchema = z.object({
 
   STANDARD_GRC_API_KEY: z
     .string()
-    .min(10, 'STANDARD_GRC_API_KEY looks too short'),
+    .min(10, 'STANDARD_GRC_API_KEY looks too short')
+    .optional(),
+
 
   STANDARD_GRC_TENANT_ID: z
     .string()

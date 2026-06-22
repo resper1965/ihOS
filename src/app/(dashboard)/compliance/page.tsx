@@ -103,7 +103,7 @@ export default async function CompliancePage() {
       </div>
 
       {/* Compliance Scorecard */}
-      <section>
+      <section id="compliance-scorecards">
         <div className="mb-4 flex items-center gap-2">
           <h2 className="text-lg font-semibold text-text-primary">
             Framework Scores
@@ -124,12 +124,12 @@ export default async function CompliancePage() {
       </section>
 
       {/* Top Gaps Table */}
-      <section>
+      <section id="compliance-gaps-table">
         <GapTable gaps={topGaps} />
       </section>
 
       {/* ROI Priority Path */}
-      <section>
+      <section id="remediation-roi-card">
         <RoiPriority items={roiPath} />
       </section>
 

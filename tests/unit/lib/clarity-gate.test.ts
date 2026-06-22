@@ -58,17 +58,17 @@ describe('verifyClarity', () => {
     expect(result.issues[0].code).toBe('POINT-9');
   });
 
-  it('falls back gracefully to CLEAR status with warning when generateObject fails', async () => {
+  it('falls back gracefully to UNCLEAR status with error when generateObject fails', async () => {
     (generateObject as any).mockRejectedValue(new Error('OpenAI API Timeout'));
 
     const result = await verifyClarity('Some document content to analyze.');
 
     expect(generateObject).toHaveBeenCalled();
-    expect(result.clarityStatus).toBe('CLEAR'); // Safe default fallback
-    expect(result.hitlStatus).toBe('REVIEWED_WITH_EXCEPTIONS');
+    expect(result.clarityStatus).toBe('UNCLEAR'); // Safe default fallback
+    expect(result.hitlStatus).toBe('PENDING');
     expect(result.issues).toHaveLength(1);
-    expect(result.issues[0].code).toBe('W-HC01');
-    expect(result.issues[0].severity).toBe('WARNING');
+    expect(result.issues[0].code).toBe('E-SYS01');
+    expect(result.issues[0].severity).toBe('CRITICAL');
     expect(result.issues[0].message).toContain('OpenAI API Timeout');
   });
 });

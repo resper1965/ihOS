@@ -156,7 +156,7 @@ describe('Agent Goals & Tasks Tools', () => {
 
       expect(result).toHaveProperty('status', 'requires_approval');
       expect(result).toHaveProperty('action', 'createGoal');
-      expect(result.message).toContain('autorização');
+      expect(result.message).toContain('authorization');
     });
 
     it('returns created goal when confirmed is true', async () => {
@@ -198,7 +198,7 @@ describe('Agent Goals & Tasks Tools', () => {
       )) as any;
 
       expect(result).toHaveProperty('status', 'requires_approval');
-      expect(result.message).toContain('autorização');
+      expect(result.message).toContain('authorization');
     });
 
     it('returns updated goal when confirmed is true', async () => {
@@ -222,7 +222,7 @@ describe('Agent Goals & Tasks Tools', () => {
       )) as any;
 
       expect(result).toHaveProperty('status', 'requires_approval');
-      expect(result.message).toContain('autorização');
+      expect(result.message).toContain('authorization');
     });
 
     it('returns created task when confirmed is true', async () => {
@@ -262,7 +262,7 @@ describe('Agent Goals & Tasks Tools', () => {
       )) as any;
 
       expect(result).toHaveProperty('status', 'requires_approval');
-      expect(result.message).toContain('autorização');
+      expect(result.message).toContain('authorization');
     });
 
     it('returns updated task when confirmed is true', async () => {

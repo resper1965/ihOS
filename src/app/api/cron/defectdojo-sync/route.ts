@@ -64,7 +64,7 @@ export async function GET(req: Request) {
       const mapped = mapFindingToControls(finding);
 
       upsertRows.push({
-        external_id: finding.id,
+        dd_finding_id: finding.id,
         title: finding.title,
         description: finding.description,
         severity: finding.severity,
@@ -76,12 +76,10 @@ export async function GET(req: Request) {
         cvssv3: finding.cvssv3,
         risk_accepted: finding.risk_accepted,
         sla_days_remaining: finding.sla_days_remaining,
-        iso_controls: mapped.controlCodes,
-        soc_criteria: mapped.socCriteria,
-        nist_controls: mapped.nistControls,
-        compliance_impact: mapped.complianceImpact,
-        evidence_text: mapped.evidenceText,
-        product_id: productId,
+        mapped_iso_controls: mapped.controlCodes,
+        mapped_soc_criteria: mapped.socCriteria,
+        mapped_nist_controls: mapped.nistControls,
+        dd_created_at: finding.created,
         synced_at: now,
       });
     }
@@ -89,7 +87,7 @@ export async function GET(req: Request) {
     if (upsertRows.length > 0) {
       const { error: upsertError } = await supabase
         .from('defectdojo_findings')
-        .upsert(upsertRows, { onConflict: 'external_id' });
+        .upsert(upsertRows, { onConflict: 'dd_finding_id' });
 
       if (upsertError) {
         throw new Error(`Supabase upsert failed: ${upsertError.message}`);

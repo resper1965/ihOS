@@ -4,7 +4,8 @@
 
 import { NextResponse } from 'next/server';
 import { embed } from 'ai';
-import { openai } from '@/lib/chat/openai';
+import { getOpenAI } from '@/lib/chat/openai';
+
 import { createClient } from '@/lib/supabase/server';
 import type {
   PromotionPayload,
@@ -47,7 +48,10 @@ export async function POST(req: Request) {
     let chunksInserted = 0;
     let correctionsWritten = 0;
 
+    const openai = await getOpenAI();
+
     for (const item of items) {
+
       const combinedText = `Q: ${item.questionText}\nA: ${item.finalAnswer}`;
 
       // 1. Generate embedding for the combined Q+A text

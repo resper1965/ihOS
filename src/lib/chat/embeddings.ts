@@ -1,9 +1,5 @@
-// src/lib/chat/embeddings.ts
-// Centralized embedding generation service using OpenAI text-embedding-3-small
-// via the Vercel AI SDK. All RAG and document ingestion should use these helpers.
-
 import { embed, embedMany } from 'ai';
-import { openai } from '@/lib/chat/openai';
+import { getOpenAI } from '@/lib/chat/openai';
 
 const EMBEDDING_MODEL = 'text-embedding-3-small';
 const MAX_BATCH_SIZE = 100;
@@ -15,6 +11,7 @@ const MAX_BATCH_SIZE = 100;
  * @throws Error if the embedding API call fails.
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
+  const openai = await getOpenAI();
   const { embedding } = await embed({
     model: openai.embedding(EMBEDDING_MODEL),
     value: text,
@@ -32,6 +29,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
   if (texts.length === 0) return [];
 
+  const openai = await getOpenAI();
   const results: number[][] = [];
 
   for (let i = 0; i < texts.length; i += MAX_BATCH_SIZE) {
@@ -45,3 +43,4 @@ export async function generateEmbeddings(texts: string[]): Promise<number[][]> {
 
   return results;
 }
+

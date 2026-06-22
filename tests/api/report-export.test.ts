@@ -213,7 +213,7 @@ describe('Compliance Report API Endpoints', () => {
 
       expect(res.status).toBe(200);
       expect(res.headers.get('Content-Type')).toContain('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-      expect(res.headers.get('Content-Disposition')).toContain('filename="Relatorio_Conformidade_123.xlsx"');
+      expect(res.headers.get('Content-Disposition')).toContain('filename="Compliance_Report_123.xlsx"');
 
       const arrayBuffer = await res.arrayBuffer();
       expect(arrayBuffer.byteLength).toBeGreaterThan(0);

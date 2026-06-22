@@ -4,7 +4,8 @@
 
 import { NextResponse } from 'next/server';
 import { embed, generateText } from 'ai';
-import { openai } from '@/lib/chat/openai';
+import { getOpenAI } from '@/lib/chat/openai';
+
 import { createClient } from '@/lib/supabase/server';
 import type {
   ExtractedQuestion,
@@ -25,9 +26,11 @@ async function processQuestion(
   supabase: Awaited<ReturnType<typeof createClient>>,
   productVersionId?: string,
 ): Promise<GeneratedAnswer> {
+  const openai = await getOpenAI();
   // 1. Generate embedding for the question text
   const { embedding } = await embed({
     model: openai.embedding('text-embedding-3-small'),
+
     value: question.text,
   });
 

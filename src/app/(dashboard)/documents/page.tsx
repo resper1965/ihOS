@@ -127,6 +127,7 @@ export default function DocumentsPage() {
             Refresh
           </Button>
           <Button
+            id="document-upload-btn"
             variant="primary"
             icon={<Upload className="h-4 w-4" />}
             onClick={() => setIsWizardOpen(true)}
@@ -161,7 +162,7 @@ export default function DocumentsPage() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/5 w-fit">
+      <div id="document-filter-tabs" className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/5 w-fit">
         {TABS.map((tab) => (
           <button
             key={tab.key}
@@ -184,15 +185,17 @@ export default function DocumentsPage() {
       </div>
 
       {/* Extracted Document Table Component */}
-      <DocumentTable 
-        documents={filteredByTab}
-        loading={loading}
-        versions={versions}
-        activeVersion={activeVersion}
-        onDelete={handleDelete}
-        deletingId={deletingId}
-        onRefresh={fetchDocuments}
-      />
+      <div id="document-list-table">
+        <DocumentTable 
+          documents={filteredByTab}
+          loading={loading}
+          versions={versions}
+          activeVersion={activeVersion}
+          onDelete={handleDelete}
+          deletingId={deletingId}
+          onRefresh={fetchDocuments}
+        />
+      </div>
 
       {/* Extracted Upload Wizard Component */}
       <UploadWizard 

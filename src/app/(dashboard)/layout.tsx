@@ -24,13 +24,16 @@ import { NotificationsDropdown } from "@/components/dashboard/notifications-drop
 import { VersionProvider } from "@/lib/context/version-context";
 import { VersionSwitcher } from "@/components/dashboard/version-switcher";
 import { PageTitleProvider, useCurrentPageMeta } from "@/lib/context/page-title-context";
+import { HelpProvider, useHelp } from "@/lib/context/help-context";
+import { HelpSidebar } from "@/components/dashboard/help-sidebar";
+import { HelpCircle } from "lucide-react";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/", icon: LayoutDashboard },
   { label: "Compliance", href: "/compliance", icon: ShieldCheck },
+  { label: "SCRMS (MSR)", href: "/compliance/scrms", icon: Target },
   { label: "GRC Mapping", href: "/compliance/mappings", icon: Database },
   { label: "Chat", href: "/chat", icon: MessageSquare },
-  { label: "Goals", href: "/goals", icon: Target },
   { label: "Assessments", href: "/assessments", icon: ClipboardCheck },
   { label: "Documents", href: "/documents", icon: FileText },
   { label: "Reports", href: "/reports", icon: BarChart3 },
@@ -69,8 +72,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <VersionProvider>
       <PageTitleProvider>
-      <div className="flex h-screen overflow-hidden bg-bg-dark">
-        {/* Sidebar */}
+        <HelpProvider>
+          <div className="flex h-screen overflow-hidden bg-bg-dark">
+            {/* Sidebar */}
         <aside className={`glass-surface relative flex flex-col transition-all duration-300 ease-in-out ${sidebarOpen ? "w-64" : "w-20"}`}>
           <div className="flex h-16 items-center gap-3 border-b border-white/10 px-5">
             {sidebarOpen ? (
@@ -132,6 +136,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <main className="flex-1 overflow-y-auto p-6">{children}</main>
         </div>
       </div>
+      <HelpSidebar />
+      </HelpProvider>
       </PageTitleProvider>
     </VersionProvider>
   );
@@ -192,6 +198,8 @@ function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
         <div className="h-6 w-px bg-white/10" />
         <NotificationsDropdown />
         <div className="h-6 w-px bg-white/10" />
+        <HelpTrigger />
+        <div className="h-6 w-px bg-white/10" />
 
         <div className="relative">
           <button onClick={() => setShowUserMenu(!showUserMenu)}
@@ -232,5 +240,19 @@ function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
         </div>
       </div>
     </header>
+  );
+}
+
+function HelpTrigger() {
+  const { toggleHelp } = useHelp();
+  return (
+    <button
+      onClick={toggleHelp}
+      className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white transition-colors"
+      aria-label="Abrir Ajuda"
+      title="Central de Ajuda"
+    >
+      <HelpCircle className="h-4.5 w-4.5" />
+    </button>
   );
 }

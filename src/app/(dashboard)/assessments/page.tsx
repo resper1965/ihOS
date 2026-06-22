@@ -476,6 +476,7 @@ export default function AssessmentsPage() {
         </div>
 
         <Button
+          id="run-assessment-btn"
           variant="primary"
           icon={<Plus className="h-4 w-4" />}
           onClick={() => setModalOpen(true)}
@@ -529,7 +530,7 @@ export default function AssessmentsPage() {
 
       {/* Assessment Cards */}
       {!loading && filtered.length > 0 && (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+        <div id="assessments-history-list" className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {filtered.map((item) => {
             const overallScore = getOverallScore(item);
             const progress =
