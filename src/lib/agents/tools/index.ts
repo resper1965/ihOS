@@ -85,7 +85,16 @@ export const complianceScore = tool({
         }
 
         if (implementedControls.length === 0) {
-          implementedControls = ["GOV-01", "GOV-02", "PRI-01", "PRI-02", "PRI-05", "DCH-01", "DCH-06"];
+          return {
+            framework: input.framework,
+            overallScore: 0,
+            controlsTotal: 0,
+            controlsMet: 0,
+            controlsPartial: 0,
+            controlsNotMet: 0,
+            lastAssessedAt: new Date().toISOString(),
+            note: 'No implemented controls found in the knowledge base. Upload compliance documents first.',
+          };
         }
 
         const result = await standardApi.complianceScore({
@@ -183,7 +192,15 @@ export const crossCoverage = tool({
       }
 
       if (implementedControls.length === 0) {
-        implementedControls = ["GOV-01", "GOV-02", "PRI-01", "PRI-02", "PRI-05", "DCH-01", "DCH-06"];
+        return {
+          sourceFramework: input.sourceFramework,
+          targetFramework: input.targetFramework,
+          coveragePercentage: 0,
+          overlappingControls: 0,
+          mappings: [],
+          gaps: [],
+          note: 'No implemented controls found in the knowledge base. Upload compliance documents first.',
+        };
       }
 
       const result = await standardApi.crossCoverage({
@@ -445,6 +462,7 @@ async function checkAutonomy(
 
     const zone = boundary?.zone ?? (
       actionType === 'create_goal' ? 'yellow' :
+      actionType === 'update_goal_progress' ? 'yellow' :
       actionType === 'update_task_status' ? 'yellow' :
       actionType === 'send_alert' ? 'green' : 'yellow'
     );
@@ -563,7 +581,7 @@ export const updateGoalProgress = tool({
     confirmed: z.boolean().optional().describe('Must be set to true to bypass autonomy boundaries'),
   }),
   execute: async (input) => {
-    const autonomy = await checkAutonomy('create_goal', input.confirmed);
+    const autonomy = await checkAutonomy('update_goal_progress', input.confirmed);
     if (!autonomy.allowed) {
       if (autonomy.requiresApproval) {
         return {

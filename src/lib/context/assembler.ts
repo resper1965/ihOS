@@ -159,6 +159,7 @@ export async function assembleContext(
   let learningContext = '';
   let orgStateContext = '';
   let autonomyContext = '';
+  let pendingNotifIds: string[] = [];
 
   const userId = options?.userId;
   if (userId) {
@@ -190,12 +191,8 @@ export async function assembleContext(
           });
           briefingContext += `\nInstruction: Treat these compliance items proactively. Help the user resolve them.\n`;
 
-          // Mark them as read
-          const notifIds = notifications.map((n: any) => n.id);
-          await supabase
-            .from('agent_notifications')
-            .update({ read: true })
-            .in('id', notifIds);
+          // Defer mark-as-read to onFinish in route.ts for reliable delivery
+          pendingNotifIds = notifications.map((n: any) => n.id);
         }
       }
 
@@ -264,6 +261,7 @@ export async function assembleContext(
       tenantId: options?.tenantId,
       userId: options?.userId,
       timestamp: new Date().toISOString(),
+      pendingNotificationIds: pendingNotifIds,
     },
   };
 }

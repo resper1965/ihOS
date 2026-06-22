@@ -33,13 +33,15 @@ async function processQuestion(
 
   // 2. Retrieve matching document chunks via Supabase RPC
   const { data: matchedChunks, error: rpcError } = await (supabase as any).rpc(
-    'match_documents',
+    'match_documents_hybrid',
     {
+      query_text: question.text,
       query_embedding: embedding,
       match_threshold: RAG_MATCH_THRESHOLD,
       match_count: RAG_MATCH_COUNT,
       filter_framework: null,
       filter_version_id: productVersionId || null,
+      filter_categories: null,
     },
   );
 

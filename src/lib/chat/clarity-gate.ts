@@ -93,18 +93,18 @@ export async function verifyClarity(text: string): Promise<ClarityGateResult> {
     return response.object;
   } catch (err) {
     console.error('[Clarity Gate] Analysis failed:', err);
-    // Graceful fallback to avoid breaking the application pipeline
+    // SAFE fallback: mark as UNCLEAR and require human review
     return {
-      clarityStatus: 'CLEAR', // Fallback defaults to clear to not block uploads if API fails
-      hitlStatus: 'REVIEWED_WITH_EXCEPTIONS',
-      hitlPendingCount: 0,
-      pointsPassed: [1, 2, 3, 4, 5, 6, 7, 8, 9],
+      clarityStatus: 'UNCLEAR',
+      hitlStatus: 'PENDING',
+      hitlPendingCount: 1,
+      pointsPassed: [],
       issues: [
         {
-          code: 'W-HC01',
-          severity: 'WARNING',
-          message: `The automatic Clarity Gate service encountered an error while processing the text: ${err instanceof Error ? err.message : String(err)}`,
-          fix: 'Proceed with a manual review of this document\'s epistemic quality.',
+          code: 'E-SYS01',
+          severity: 'CRITICAL',
+          message: `Automatic Clarity Gate analysis failed: ${err instanceof Error ? err.message : String(err)}. The document could not be verified automatically.`,
+          fix: 'This document requires manual epistemic quality review before it can be trusted in the knowledge base.',
           location: 'System Service',
         },
       ],

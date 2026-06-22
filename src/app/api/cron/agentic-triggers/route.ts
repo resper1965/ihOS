@@ -2,6 +2,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import * as standardApi from '@/lib/standard-api/client';
+import { routeNotification, type NotificationSeverity } from '@/lib/integrations/notification-router';
 
 export async function GET(req: Request) {
   try {
@@ -89,8 +90,16 @@ export async function GET(req: Request) {
         );
 
         if (toInsert.length > 0) {
-          await supabase.from('agent_notifications').insert(toInsert);
           for (const n of toInsert) {
+            const daysOverdue = Math.floor((now.getTime() - new Date(n.content.match(/due on (.+?)\./)?.[1] || '').getTime()) / (1000 * 60 * 60 * 24));
+            const severity: NotificationSeverity = n.title.includes('Overdue') ? (daysOverdue > 14 ? 'critical' : 'high') : 'medium';
+            await routeNotification({
+              userId: n.user_id,
+              type: n.type,
+              title: n.title,
+              content: n.content,
+              severity,
+            });
             alertsGenerated.push({ userId: n.user_id, type: n.type, title: n.title });
           }
         }
@@ -158,8 +167,15 @@ export async function GET(req: Request) {
         );
 
         if (toInsert.length > 0) {
-          await supabase.from('agent_notifications').insert(toInsert);
           for (const n of toInsert) {
+            const severity: NotificationSeverity = n.title.includes('Expired') ? 'critical' : 'high';
+            await routeNotification({
+              userId: n.user_id,
+              type: n.type,
+              title: n.title,
+              content: n.content,
+              severity,
+            });
             alertsGenerated.push({ userId: n.user_id, type: n.type, title: n.title });
           }
         }
@@ -280,9 +296,17 @@ export async function GET(req: Request) {
       }
     }
 
-    // Batch insert all score-change notifications
     if (scoreNotifications.length > 0) {
-      await supabase.from('agent_notifications').insert(scoreNotifications);
+      for (const n of scoreNotifications) {
+        const severity: NotificationSeverity = n.title.includes('Decrease') ? 'high' : 'info';
+        await routeNotification({
+          userId: n.user_id,
+          type: n.type,
+          title: n.title,
+          content: n.content,
+          severity,
+        });
+      }
     }
 
     // Batch upsert all org state scores
@@ -363,8 +387,14 @@ export async function GET(req: Request) {
         );
 
         if (toInsert.length > 0) {
-          await supabase.from('agent_notifications').insert(toInsert);
           for (const n of toInsert) {
+            await routeNotification({
+              userId: n.user_id,
+              type: n.type,
+              title: n.title,
+              content: n.content,
+              severity: 'high' as NotificationSeverity,
+            });
             alertsGenerated.push({ userId: n.user_id, type: n.type, title: n.title });
           }
         }

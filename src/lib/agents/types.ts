@@ -81,6 +81,7 @@ export interface AssembledContext {
     tenantId?: string;
     userId?: string;
     timestamp: string;
+    pendingNotificationIds?: string[];
   };
 }
 

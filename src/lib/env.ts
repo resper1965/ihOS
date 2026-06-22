@@ -57,6 +57,27 @@ const serverEnvSchema = z.object({
       return true;
     }, 'CRON_SECRET is required in production environment'),
 
+  // ── Composio ────────────────────────────────────────────────────────────
+  COMPOSIO_API_KEY: z
+    .string()
+    .min(10, 'COMPOSIO_API_KEY looks too short')
+    .optional(),
+
+  // ── DefectDojo ─────────────────────────────────────────────────────────
+  DEFECTDOJO_BASE_URL: z
+    .string()
+    .url('DEFECTDOJO_BASE_URL must be a valid URL')
+    .optional(),
+
+  DEFECTDOJO_API_KEY: z
+    .string()
+    .min(10, 'DEFECTDOJO_API_KEY looks too short')
+    .optional(),
+
+  DEFECTDOJO_PRODUCT_ID: z
+    .coerce.number()
+    .optional(),
+
   // ── Node ──────────────────────────────────────────────────────────────
   NODE_ENV: z
     .enum(['development', 'production', 'test'])

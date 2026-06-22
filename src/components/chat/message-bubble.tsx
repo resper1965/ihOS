@@ -1,7 +1,8 @@
+import type { UIMessage } from "ai";
 import { Bot, User, Wrench } from "lucide-react";
 
 interface MessageBubbleProps {
-  message: any;
+  message: UIMessage;
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
@@ -56,7 +57,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             );
           }
           return null;
-        }) ?? <span className="whitespace-pre-wrap">{message.content}</span>}
+        }) ?? <span className="whitespace-pre-wrap">{message.parts?.filter((p): p is { type: 'text'; text: string } => p.type === 'text').map(p => p.text).join('') ?? ''}</span>}
       </div>
 
       {/* User Avatar */}

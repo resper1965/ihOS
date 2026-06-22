@@ -2,30 +2,40 @@
 // Next.js API route for the ihOS AI chat system
 // Uses Vercel AI SDK streamText with tool calling + Supabase persistence
 
+import { z } from 'zod';
 import { streamText, stepCountIs } from 'ai';
 import { openai } from '@/lib/chat/openai';
 import { assembleContext } from '@/lib/context/assembler';
-import { agentTools } from '@/lib/agents/tools';
+import { getToolsForProfile } from '@/lib/agents/tool-registry';
+import { getAITelemetry } from '@/lib/chat/ai-telemetry';
 import { createClient } from '@/lib/supabase/server';
 import {
   createConversation,
   saveMessage,
 } from '@/lib/chat/persistence';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
+
+const ChatRequestSchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(['user', 'assistant', 'system']),
+    content: z.string().optional(),
+    parts: z.array(z.any()).optional(),
+  })).min(1, 'At least one message is required'),
+  conversationId: z.string().uuid().optional(),
+  productVersionId: z.string().uuid().optional(),
+});
 
 export async function POST(req: Request) {
-  const body = await req.json();
-
-  const {
-    messages,
-    conversationId: incomingConversationId,
-    productVersionId,
-  }: {
-    messages: Array<{ role: 'user' | 'assistant' | 'system'; content?: string; parts?: any[] }>;
-    conversationId?: string;
-    productVersionId?: string;
-  } = body;
+  const rawBody = await req.json();
+  const parseResult = ChatRequestSchema.safeParse(rawBody);
+  if (!parseResult.success) {
+    return new Response(
+      JSON.stringify({ error: 'Invalid request body', details: parseResult.error.issues }),
+      { status: 400, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+  const { messages, conversationId: incomingConversationId, productVersionId } = parseResult.data;
 
   const lastUserMessage = [...messages].reverse().find((m) => m.role === 'user');
 
@@ -54,9 +64,9 @@ export async function POST(req: Request) {
   // Auth & Persistence
   let conversationId = incomingConversationId ?? '';
   let userId: string | undefined;
+  const supabase = await createClient();
 
   try {
-    const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 
     if (user) {
@@ -78,18 +88,37 @@ export async function POST(req: Request) {
     if (!conversationId) conversationId = crypto.randomUUID();
   }
 
+  // Derive salesChannel from user profile
+  let salesChannel: 'B2B_GEHC' | 'B2B_DIRECT' | null = null;
+  if (userId) {
+    try {
+      const { data: userProfile } = await (supabase as any)
+        .from('profiles')
+        .select('sales_channel')
+        .eq('id', userId)
+        .single();
+      if (userProfile?.sales_channel) {
+        salesChannel = userProfile.sales_channel as 'B2B_GEHC' | 'B2B_DIRECT';
+      }
+    } catch { /* non-blocking */ }
+  }
+
   const context = await assembleContext(
     conversationId,
     userMessageText,
-    { userId, productVersionId }
+    { userId, productVersionId, salesChannel }
   );
 
   const result = streamText({
     model: openai('gpt-4o'),
     system: context.systemPrompt,
     messages: messages as any,
-    tools: agentTools,
-    stopWhen: stepCountIs(10),
+    tools: await getToolsForProfile(context.profile.id, userId ?? 'anonymous', true) as any,
+    stopWhen: stepCountIs(context.profile.maxSteps),
+    experimental_telemetry: getAITelemetry(`chat-${context.profile.id}`, {
+      agentProfile: context.profile.id,
+      conversationId,
+    }),
 
     onStepFinish: async ({ toolCalls }) => {
       if (toolCalls && toolCalls.length > 0) {
@@ -112,6 +141,19 @@ export async function POST(req: Request) {
         }
       } catch (err) {
         console.error('[Chat] Failed to persist assistant message:', err);
+      }
+
+      // Mark briefing notifications as read after successful delivery
+      if (context.metadata.pendingNotificationIds?.length) {
+        try {
+          const notifSupabase = await createClient();
+          await (notifSupabase as any)
+            .from('agent_notifications')
+            .update({ read: true })
+            .in('id', context.metadata.pendingNotificationIds);
+        } catch (notifErr) {
+          console.warn('[Chat] Failed to mark notifications as read:', notifErr);
+        }
       }
     },
   });
