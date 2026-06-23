@@ -92,6 +92,27 @@ export default function ScrmsPage() {
   const [deltas, setDeltas] = useState<ProductDelta[]>([]);
   const [ismsStats, setIsmsStats] = useState<IsmsStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [calibrating, setCalibrating] = useState(false);
+
+  const handleRecalibrate = async () => {
+    setCalibrating(true);
+    try {
+      const res = await fetch("/api/compliance/scrms", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        fetchData();
+      } else {
+        alert(`Error: ${data.error || "Failed to recalibrate"}`);
+      }
+    } catch (err) {
+      console.error("Error recalibrating:", err);
+      alert("Failed to connect to the recalibration service.");
+    } finally {
+      setCalibrating(false);
+    }
+  };
   
   // Filtering & Search
   const [search, setSearch] = useState("");
@@ -224,11 +245,31 @@ export default function ScrmsPage() {
           <AlertTriangle className="h-16 w-16 text-warning mb-4" />
           <h3 className="text-xl font-bold">No Active Program</h3>
           <p className="text-slate-300 mt-2 max-w-md">
-            Please run the SCRMS GRC engine calibration script (`run_scrms_calibration.py`) on your backend database to seed the active program baseline.
+            Please click the button below to initialize and calibrate the SCRMS GRC engine for your database.
           </p>
+          <Button 
+            onClick={handleRecalibrate}
+            disabled={calibrating}
+            className="mt-6 bg-primary hover:bg-primary-hover text-bg-dark font-semibold flex items-center gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${calibrating ? "animate-spin" : ""}`} />
+            {calibrating ? "Calibrating..." : "Calibrate & Seed Baseline"}
+          </Button>
         </div>
       ) : (
         <>
+          {/* Manual Recalibration Action Button */}
+          <div className="flex justify-end mb-4">
+            <Button
+              onClick={handleRecalibrate}
+              disabled={calibrating}
+              className="bg-slate-800 hover:bg-slate-700 text-primary border border-primary/20 flex items-center gap-2 font-semibold"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${calibrating ? "animate-spin" : ""}`} />
+              {calibrating ? "Recalibrating..." : "Recalibrate Engine"}
+            </Button>
+          </div>
+
           {/* SCRMS Methodology & Core ISMS Status Banner */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div className="md:col-span-2 glass-card border-l-4 border-emerald-400 bg-emerald-500/5 p-4 flex gap-3 items-start">

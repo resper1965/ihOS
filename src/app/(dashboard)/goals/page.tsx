@@ -380,12 +380,12 @@ export default function GoalsPage() {
               aria-label="Filtrar por framework"
               className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-3 py-2 text-sm text-text-primary outline-none transition-all focus:border-primary/50"
             >
-              <option value="all">Todos Frameworks</option>
-              <option value="ISO-27001">ISO 27001</option>
-              <option value="SOC-2">SOC 2</option>
-              <option value="ISO-27701">ISO 27701</option>
-              <option value="NIST-800-53">NIST 800-53</option>
-              <option value="LGPD">LGPD</option>
+              <option value="all" className="bg-[#1e293b] text-white">Todos Frameworks</option>
+              <option value="ISO-27001" className="bg-[#1e293b] text-white">ISO 27001</option>
+              <option value="SOC-2" className="bg-[#1e293b] text-white">SOC 2</option>
+              <option value="ISO-27701" className="bg-[#1e293b] text-white">ISO 27701</option>
+              <option value="NIST-800-53" className="bg-[#1e293b] text-white">NIST 800-53</option>
+              <option value="LGPD" className="bg-[#1e293b] text-white">LGPD</option>
             </select>
           </div>
           <div className="flex-1 md:w-44">
@@ -395,10 +395,10 @@ export default function GoalsPage() {
               aria-label="Filter by status"
               className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-3 py-2 text-sm text-text-primary outline-none transition-all focus:border-primary/50"
             >
-              <option value="all">All Statuses</option>
-              <option value="not_started">Not Started</option>
-              <option value="in_progress">In Progress</option>
-              <option value="completed">Completed</option>
+              <option value="all" className="bg-[#1e293b] text-white">All Statuses</option>
+              <option value="not_started" className="bg-[#1e293b] text-white">Not Started</option>
+              <option value="in_progress" className="bg-[#1e293b] text-white">In Progress</option>
+              <option value="completed" className="bg-[#1e293b] text-white">Completed</option>
             </select>
           </div>
         </div>
@@ -607,11 +607,11 @@ export default function GoalsPage() {
               onChange={(e) => setNewGoalFramework(e.target.value)}
               className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-4 py-2.5 text-sm text-text-primary outline-none transition-all focus:border-primary/50"
             >
-              <option value="ISO-27001">ISO 27001:2022 (ISMS)</option>
-              <option value="SOC-2">SOC 2 Type II (Security)</option>
-              <option value="ISO-27701">ISO 27701:2019 (Privacy)</option>
-              <option value="NIST-800-53">NIST SP 800-53 R5</option>
-              <option value="LGPD">LGPD (Privacy)</option>
+              <option value="ISO-27001" className="bg-[#1e293b] text-white">ISO 27001:2022 (ISMS)</option>
+              <option value="SOC-2" className="bg-[#1e293b] text-white">SOC 2 Type II (Security)</option>
+              <option value="ISO-27701" className="bg-[#1e293b] text-white">ISO 27701:2019 (Privacy)</option>
+              <option value="NIST-800-53" className="bg-[#1e293b] text-white">NIST SP 800-53 R5</option>
+              <option value="LGPD" className="bg-[#1e293b] text-white">LGPD (Privacy)</option>
             </select>
           </div>
 
@@ -664,10 +664,10 @@ export default function GoalsPage() {
               onChange={(e) => setNewTaskAgent(e.target.value)}
               className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-4 py-2.5 text-sm text-text-primary outline-none transition-all focus:border-primary/50"
             >
-              <option value="Compliance Agent">Compliance Agent</option>
-              <option value="Privacy Agent">Privacy Agent</option>
-              <option value="SOC Agent">SOC Agent</option>
-              <option value="Document Agent">Document Agent</option>
+              <option value="Compliance Agent" className="bg-[#1e293b] text-white">Compliance Agent</option>
+              <option value="Privacy Agent" className="bg-[#1e293b] text-white">Privacy Agent</option>
+              <option value="SOC Agent" className="bg-[#1e293b] text-white">SOC Agent</option>
+              <option value="Document Agent" className="bg-[#1e293b] text-white">Document Agent</option>
             </select>
           </div>
 

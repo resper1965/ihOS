@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { triggerGrcRecalibration } from "@/lib/assessment/grc-trigger";
 
 export const dynamic = "force-dynamic";
 
@@ -156,6 +157,63 @@ export async function GET() {
 
   } catch (err: any) {
     console.error("[api/scrms] GET error:", err);
+    return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
+  }
+}
+
+export async function POST() {
+  try {
+    const supabase = await createClient();
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Verify role (admin or ionic_user)
+    const { data: profile } = await (supabase as any)
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role !== "admin" && profile?.role !== "ionic_user") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
+    }
+
+    // 1. Fetch active baseline to get product_version_id
+    const { data: baseline } = await (supabase as any)
+      .from("msr_baselines")
+      .select("product_version_id")
+      .eq("status", "active")
+      .limit(1)
+      .maybeSingle();
+
+    let productVersionId = baseline?.product_version_id;
+
+    if (!productVersionId) {
+      // Fallback: fetch first product version if no active baseline exists yet
+      const { data: fallbackVersion } = await supabase
+        .from("product_versions")
+        .select("id")
+        .limit(1)
+        .maybeSingle();
+
+      productVersionId = fallbackVersion?.id;
+    }
+
+    if (!productVersionId) {
+      return NextResponse.json({ error: "No product version found to calibrate." }, { status: 400 });
+    }
+
+    console.log(`[Manual Recalibration] Triggered by ${user.id} for version ${productVersionId}`);
+    
+    // Await the recalibration so the UI receives success once it is fully done
+    await triggerGrcRecalibration(productVersionId, user.id);
+
+    return NextResponse.json({ success: true, message: "Recalibration completed successfully." });
+  } catch (err: any) {
+    console.error("[api/scrms] POST error:", err);
     return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
   }
 }

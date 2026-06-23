@@ -7,6 +7,9 @@ import { chunkDocument } from '@/lib/chat/chunker';
 import { generateEmbeddings } from '@/lib/chat/embeddings';
 import { resolveFileType, extractText } from '@/lib/chat/document-extractor';
 import { verifyClarity } from '@/lib/chat/clarity-gate';
+import { extractDeltasFromDocument } from '@/lib/assessment/delta-extractor';
+import { triggerGrcRecalibration } from '@/lib/assessment/grc-trigger';
+import { createAdminClient } from '@/lib/supabase/admin';
 
 export const maxDuration = 120;
 
@@ -211,6 +214,39 @@ export async function POST(req: Request) {
       .from('compliance_documents')
       .update({ total_chunks: chunks.length })
       .eq('id', documentId);
+
+    // ── 10. Background Recalibration & Delta Extraction ───────────────────
+    if (productVersionId) {
+      (async () => {
+        try {
+          console.log(`[Background Pipeline] Extracting deltas for doc ${documentId}...`);
+          const extractedDeltas = await extractDeltasFromDocument(text);
+          if (extractedDeltas && extractedDeltas.length > 0) {
+            console.log(`[Background Pipeline] Found ${extractedDeltas.length} deltas. Upserting...`);
+            const adminSupabase = createAdminClient();
+            const deltaRows = extractedDeltas.map((d) => ({
+              product_version_id: productVersionId,
+              feature_slug: d.feature_slug,
+              description: d.description,
+              affected_components: d.affected_components,
+              risk_level: d.risk_level,
+            }));
+            
+            const { error: deltaError } = await (adminSupabase as any)
+              .from('product_version_deltas')
+              .upsert(deltaRows, { onConflict: 'product_version_id,feature_slug' });
+              
+            if (deltaError) {
+              console.error('[Background Pipeline] Failed to upsert deltas:', deltaError.message);
+            }
+          }
+          
+          await triggerGrcRecalibration(productVersionId, user.id);
+        } catch (bgErr) {
+          console.error('[Background Pipeline] Failed to process document updates:', bgErr);
+        }
+      })();
+    }
 
     return NextResponse.json(
       {

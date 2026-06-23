@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Lato } from "next/font/google";
 import "./globals.css";
 
-const plusJakartaSans = Plus_Jakarta_Sans({
+const lato = Lato({
   variable: "--font-sans",
+  weight: ["100", "300", "400", "700", "900"],
   subsets: ["latin"],
   display: "swap",
 });
@@ -21,7 +22,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${plusJakartaSans.variable} dark`}>
+    <html lang="pt-BR" className={`${lato.variable} dark`}>
       <head>
         <script
           dangerouslySetInnerHTML={{
