@@ -237,83 +237,115 @@ export default function ScrmsPage() {
       />
 
       {loading ? (
+        /* ── Loading State ── */
         <div className="flex h-64 items-center justify-center">
-          <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+          <div className="flex flex-col items-center gap-3">
+            <RefreshCw className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-text-muted">Loading security baseline…</p>
+          </div>
         </div>
+
       ) : !baseline ? (
-        <div className="glass-card flex flex-col items-center justify-center p-12 text-center">
-          <AlertTriangle className="h-16 w-16 text-warning mb-4" />
-          <h3 className="text-xl font-bold">No Active Program</h3>
-          <p className="text-slate-300 mt-2 max-w-md">
-            Please click the button below to initialize and calibrate the SCRMS GRC engine for your database.
-          </p>
-          <Button 
+        /* ── Empty State: No Program ── */
+        <div className="glass-card flex flex-col items-center justify-center gap-4 p-16 text-center">
+          <div className="rounded-2xl bg-warning/10 p-5">
+            <AlertTriangle className="h-12 w-12 text-warning" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-text-primary">No Active Security Program</h3>
+            <p className="mt-2 max-w-md text-sm text-text-muted">
+              Initialize the SCRMS engine to generate your Minimum Security Requirements baseline from the SCF catalogue.
+            </p>
+          </div>
+          <Button
             onClick={handleRecalibrate}
             disabled={calibrating}
-            className="mt-6 bg-primary hover:bg-primary-hover text-bg-dark font-semibold flex items-center gap-2"
+            className="mt-2 bg-primary hover:bg-primary-hover text-bg-dark font-semibold flex items-center gap-2 px-6 py-2.5"
           >
             <RefreshCw className={`h-4 w-4 ${calibrating ? "animate-spin" : ""}`} />
-            {calibrating ? "Calibrating..." : "Calibrate & Seed Baseline"}
+            {calibrating ? "Calibrating…" : "Calibrate & Seed Baseline"}
           </Button>
         </div>
+
       ) : (
         <>
-          {/* Manual Recalibration Action Button */}
-          <div className="flex justify-end mb-4">
+          {/* ── Top Action Bar ── */}
+          <div className="flex items-center justify-between">
+            {/* Methodology pill */}
+            <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/5 px-4 py-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-400 shrink-0" />
+              <span className="text-xs font-semibold text-emerald-400">
+                SCRMS Core + Release Delta active
+              </span>
+              {ismsStats && (
+                <span className="ml-2 text-xs text-text-muted">
+                  · ISMS Core: <strong className="text-sky-400">{ismsStats.implemented}/{ismsStats.total}</strong> inherited
+                </span>
+              )}
+            </div>
+
             <Button
               onClick={handleRecalibrate}
               disabled={calibrating}
-              className="bg-slate-800 hover:bg-slate-700 text-primary border border-primary/20 flex items-center gap-2 font-semibold"
+              className="flex items-center gap-2 rounded-xl border border-primary/20 bg-white/5 px-4 py-2 text-sm font-semibold text-primary hover:bg-white/10 transition-all"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${calibrating ? "animate-spin" : ""}`} />
-              {calibrating ? "Recalibrating..." : "Recalibrate Engine"}
+              {calibrating ? "Recalibrating…" : "Recalibrate Engine"}
             </Button>
           </div>
 
-          {/* SCRMS Methodology & Core ISMS Status Banner */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div className="md:col-span-2 glass-card border-l-4 border-emerald-400 bg-emerald-500/5 p-4 flex gap-3 items-start">
-              <Info className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
-              <div>
-                <h4 className="font-semibold text-sm text-emerald-400">SCRMS Core + Release Delta Methodology</h4>
-                <p className="text-xs text-slate-200 mt-1 leading-relaxed">
-                  Compliance is validated against the global **ISMS Core** baseline (inherited organizational policies), while the release audit focuses strictly on the **technical differences** introduced by this version.
-                </p>
-              </div>
+          {/* ── Methodology Explainer ── */}
+          <div className="glass-card p-5 flex gap-4 items-start border-l-4 border-emerald-500/60">
+            <div className="mt-0.5 rounded-xl bg-emerald-500/10 p-2 shrink-0">
+              <Info className="h-5 w-5 text-emerald-400" />
             </div>
-            {ismsStats && (
-              <div className="glass-card border-l-4 border-sky-400 bg-sky-500/5 p-4 flex flex-col justify-between">
-                <div className="flex justify-between items-center text-xs font-semibold text-sky-400">
-                  <span>Inherited Global ISMS Core</span>
-                  <span>{ismsStats.implemented} / {ismsStats.total}</span>
-                </div>
-                <p className="text-[10px] text-slate-300 mt-1">Validated organizational change procedures.</p>
-                <div className="w-full bg-slate-800 rounded-full h-1 mt-2">
-                  <div 
-                    className="bg-sky-400 h-1 rounded-full" 
-                    style={{ width: `${(ismsStats.implemented / (ismsStats.total || 1)) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-            )}
+            <div className="space-y-1">
+              <h4 className="text-sm font-bold text-text-primary">
+                How SCRMS Works
+              </h4>
+              <p className="text-sm text-text-muted leading-relaxed max-w-3xl">
+                Controls are split into two categories:{" "}
+                <span className="font-semibold text-text-primary">MCR (Mandatory Controls)</span> — your non-negotiable ISO 27001 baseline — and{" "}
+                <span className="font-semibold text-text-primary">DSR (Dynamic Recommendations)</span> — AI-scored controls specific to your product's risk profile and this release's technical changes.
+                Accept or reject each DSR to build your final{" "}
+                <span className="font-semibold text-emerald-400">MSR (Minimum Security Requirements)</span>.
+              </p>
+            </div>
           </div>
 
-          {/* Version Deltas (Technical Diff) */}
+          {/* ── Active Technical Deltas ── */}
           {deltas.length > 0 && (
-            <div className="glass-card p-4 space-y-2 bg-amber-500/[0.01] border-amber-500/20 border">
-              <h4 className="text-xs font-bold text-amber-400 tracking-wider uppercase">Active Technical Release Deltas (v2.2.x)</h4>
+            <div className="glass-card p-5 space-y-4 border border-amber-500/15">
+              <div className="flex items-center gap-2">
+                <div className="rounded-lg bg-amber-500/10 p-1.5">
+                  <AlertTriangle className="h-4 w-4 text-amber-400" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-amber-400">Active Release Deltas</h4>
+                  <p className="text-xs text-text-muted">Technical changes in this release that triggered new DSR recommendations</p>
+                </div>
+              </div>
               <div className="flex flex-wrap gap-3">
                 {deltas.map((delta) => (
-                  <div key={delta.feature_slug} className="bg-slate-900/60 border border-white/5 rounded-xl p-3 text-xs flex flex-col justify-between max-w-sm flex-1 min-w-[250px]">
-                    <div className="flex justify-between items-center mb-1">
-                      <span className="font-extrabold text-slate-100">{delta.feature_slug}</span>
-                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${delta.risk_level === "high" ? "bg-red-500/10 text-red-400 border border-red-500/10" : "bg-amber-500/10 text-amber-400 border border-amber-500/10"}`}>{delta.risk_level} risk</span>
+                  <div
+                    key={delta.feature_slug}
+                    className="flex-1 min-w-[240px] max-w-sm rounded-xl border border-white/8 bg-white/[0.03] p-4 space-y-2"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-bold text-text-primary">{delta.feature_slug}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                        delta.risk_level === "high"
+                          ? "bg-red-500/10 text-red-400 border-red-500/15"
+                          : "bg-amber-500/10 text-amber-400 border-amber-500/15"
+                      }`}>
+                        {delta.risk_level} risk
+                      </span>
                     </div>
-                    <p className="text-[11px] text-slate-300 leading-normal">{delta.description}</p>
-                    <div className="mt-2 pt-1.5 border-t border-white/5 flex gap-1 items-center">
-                      <span className="text-[9px] font-semibold text-slate-400">Impacted Components:</span>
+                    <p className="text-xs text-text-muted leading-relaxed">{delta.description}</p>
+                    <div className="flex flex-wrap gap-1 pt-1 border-t border-white/5">
+                      <span className="text-[10px] font-semibold text-text-muted mr-1">Impacts:</span>
                       {delta.affected_components.map((comp) => (
-                        <Badge key={comp} variant="neutral" className="text-[8px] px-1 py-0">{comp}</Badge>
+                        <Badge key={comp} variant="neutral" className="text-[9px] px-1.5 py-0">{comp}</Badge>
                       ))}
                     </div>
                   </div>
@@ -322,281 +354,368 @@ export default function ScrmsPage() {
             </div>
           )}
 
-          {/* Stats Summary cards */}
+          {/* ── Stats Cards ── */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="glass-card p-5 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-                <ShieldCheck className="h-12 w-12 text-primary" />
+
+            {/* MCR Coverage */}
+            <div className="glass-card group relative overflow-hidden p-5 cursor-default">
+              <div className="absolute right-4 top-4 opacity-[0.07] transition-transform duration-300 group-hover:scale-110 group-hover:opacity-[0.12]">
+                <ShieldCheck className="h-16 w-16 text-primary" />
               </div>
-              <h4 className="text-sm font-semibold text-slate-300">MCR Coverage</h4>
-              <p className="text-3xl font-extrabold text-primary mt-2">
-                {stats?.accepted_mcr} <span className="text-lg font-normal text-slate-300">/ {stats?.total_mcr}</span>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">MCR Coverage</p>
+              <p className="mt-3 text-4xl font-extrabold tabular-nums text-primary">
+                {stats?.accepted_mcr}
+                <span className="ml-1 text-xl font-normal text-text-muted">/ {stats?.total_mcr}</span>
               </p>
-              <p className="text-xs text-slate-200 mt-2">Mandatory compliance baseline (ISO 27001)</p>
-            </div>
- 
-            <div className="glass-card p-5 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-                <Target className="h-12 w-12 text-amber-400" />
+              <p className="mt-2 text-xs text-text-muted">Mandatory ISO 27001 controls</p>
+              <div className="mt-3 h-1 rounded-full bg-white/5">
+                <div
+                  className="h-1 rounded-full bg-primary transition-all duration-700"
+                  style={{ width: `${stats?.total_mcr ? ((stats.accepted_mcr / stats.total_mcr) * 100) : 0}%` }}
+                />
               </div>
-              <h4 className="text-sm font-semibold text-slate-300">DSR Recommendations</h4>
-              <p className="text-3xl font-extrabold text-amber-400 mt-2">
-                {stats?.accepted_dsr} <span className="text-lg font-normal text-slate-300">/ {stats?.total_dsr}</span>
-              </p>
-              <p className="text-xs text-slate-200 mt-2">{stats?.pending_dsr} pending reviews, {stats?.rejected_dsr} rejected</p>
             </div>
 
-            <div className="glass-card p-5 relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
-                <Layers className="h-12 w-12 text-emerald-400" />
+            {/* DSR Recommendations */}
+            <div className="glass-card group relative overflow-hidden p-5 cursor-default">
+              <div className="absolute right-4 top-4 opacity-[0.07] transition-transform duration-300 group-hover:scale-110 group-hover:opacity-[0.12]">
+                <Target className="h-16 w-16 text-amber-400" />
               </div>
-              <h4 className="text-sm font-semibold text-slate-300">MSR Score (MCR + DSR)</h4>
-              <p className="text-3xl font-extrabold text-emerald-400 mt-2">
-                {calculateMsrScore()}%
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">DSR Accepted</p>
+              <p className="mt-3 text-4xl font-extrabold tabular-nums text-amber-400">
+                {stats?.accepted_dsr}
+                <span className="ml-1 text-xl font-normal text-text-muted">/ {stats?.total_dsr}</span>
               </p>
-              <div className="w-full bg-slate-800 rounded-full h-1.5 mt-3">
-                <div 
-                  className="bg-emerald-400 h-1.5 rounded-full transition-all duration-500" 
+              <div className="mt-2 flex gap-3 text-xs text-text-muted">
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-amber-400/60 inline-block" />
+                  {stats?.pending_dsr} pending
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="h-1.5 w-1.5 rounded-full bg-red-400/60 inline-block" />
+                  {stats?.rejected_dsr} rejected
+                </span>
+              </div>
+            </div>
+
+            {/* MSR Score */}
+            <div className="glass-card group relative overflow-hidden p-5 cursor-default">
+              <div className="absolute right-4 top-4 opacity-[0.07] transition-transform duration-300 group-hover:scale-110 group-hover:opacity-[0.12]">
+                <Layers className="h-16 w-16 text-emerald-400" />
+              </div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted">MSR Score</p>
+              <p className="mt-3 text-4xl font-extrabold tabular-nums text-emerald-400">
+                {calculateMsrScore()}
+                <span className="text-xl font-normal text-text-muted">%</span>
+              </p>
+              <p className="mt-1 text-xs text-text-muted">Combined MCR + DSR compliance</p>
+              <div className="mt-3 h-2 rounded-full bg-white/5">
+                <div
+                  className="h-2 rounded-full bg-emerald-400 transition-all duration-700"
                   style={{ width: `${calculateMsrScore()}%` }}
-                ></div>
+                />
               </div>
             </div>
 
-            <div className="glass-card p-5 relative overflow-hidden">
-              <h4 className="text-sm font-semibold text-slate-300">PPTDF Scoping (Accepted)</h4>
-              <div className="grid grid-cols-5 gap-1 text-center mt-3">
-                <div className="bg-white/5 rounded p-1 group relative cursor-help">
-                  <Users className="h-3.5 w-3.5 mx-auto text-sky-400" />
-                  <span className="text-[10px] font-bold mt-1 block">{stats?.pptdf.People}</span>
-                  <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-black text-white text-[9px] p-1 rounded z-20 whitespace-nowrap">People</div>
-                </div>
-                <div className="bg-white/5 rounded p-1 group relative cursor-help">
-                  <FileText className="h-3.5 w-3.5 mx-auto text-emerald-400" />
-                  <span className="text-[10px] font-bold mt-1 block">{stats?.pptdf.Process}</span>
-                  <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-black text-white text-[9px] p-1 rounded z-20 whitespace-nowrap">Process</div>
-                </div>
-                <div className="bg-white/5 rounded p-1 group relative cursor-help">
-                  <Cpu className="h-3.5 w-3.5 mx-auto text-amber-400" />
-                  <span className="text-[10px] font-bold mt-1 block">{stats?.pptdf.Technology}</span>
-                  <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-black text-white text-[9px] p-1 rounded z-20 whitespace-nowrap">Technology</div>
-                </div>
-                <div className="bg-white/5 rounded p-1 group relative cursor-help">
-                  <HardDrive className="h-3.5 w-3.5 mx-auto text-purple-400" />
-                  <span className="text-[10px] font-bold mt-1 block">{stats?.pptdf.Data}</span>
-                  <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-black text-white text-[9px] p-1 rounded z-20 whitespace-nowrap">Data</div>
-                </div>
-                <div className="bg-white/5 rounded p-1 group relative cursor-help">
-                  <Home className="h-3.5 w-3.5 mx-auto text-rose-400" />
-                  <span className="text-[10px] font-bold mt-1 block">{stats?.pptdf.Facilities}</span>
-                  <div className="hidden group-hover:block absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-black text-white text-[9px] p-1 rounded z-20 whitespace-nowrap">Facilities</div>
-                </div>
+            {/* PPTDF Breakdown */}
+            <div className="glass-card p-5 cursor-default">
+              <p className="text-xs font-semibold uppercase tracking-widest text-text-muted mb-4">
+                Accepted — by Scope
+              </p>
+              <div className="grid grid-cols-5 gap-2">
+                {[
+                  { label: "People", icon: Users, value: stats?.pptdf.People, color: "text-sky-400", bg: "bg-sky-400/10" },
+                  { label: "Process", icon: FileText, value: stats?.pptdf.Process, color: "text-emerald-400", bg: "bg-emerald-400/10" },
+                  { label: "Tech", icon: Cpu, value: stats?.pptdf.Technology, color: "text-amber-400", bg: "bg-amber-400/10" },
+                  { label: "Data", icon: HardDrive, value: stats?.pptdf.Data, color: "text-purple-400", bg: "bg-purple-400/10" },
+                  { label: "Facility", icon: Home, value: stats?.pptdf.Facilities, color: "text-rose-400", bg: "bg-rose-400/10" },
+                ].map(({ label, icon: Icon, value, color, bg }) => (
+                  <div key={label} className={`flex flex-col items-center gap-1 rounded-xl ${bg} p-2`} title={label}>
+                    <Icon className={`h-4 w-4 ${color}`} />
+                    <span className={`text-sm font-bold tabular-nums ${color}`}>{value ?? 0}</span>
+                    <span className="text-[9px] font-medium text-text-muted leading-tight text-center">{label}</span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
 
-          {/* Calibration Progress bar */}
-          {activeTab === "PENDING" && (
-            <div className="glass-card p-5 mb-6 space-y-3 bg-white/[0.01]">
-              <div className="flex justify-between items-center text-xs font-semibold text-slate-200">
-                <span>Recommendations Calibration Status</span>
-                <span>{controls.filter(c => c.classification === "DSR" && c.status !== "pending_review").length} of {controls.filter(c => c.classification === "DSR").length} reviewed ({controls.filter(c => c.classification === "DSR").length > 0 ? Math.round((controls.filter(c => c.classification === "DSR" && c.status !== "pending_review").length / controls.filter(c => c.classification === "DSR").length) * 100) : 0}%)</span>
+          {/* ── Review Progress Bar ── */}
+          {activeTab === "PENDING" && stats && stats.total_dsr > 0 && (
+            <div className="glass-card p-5 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-semibold text-text-primary">Review Progress</span>
+                <span className="tabular-nums font-bold text-text-muted">
+                  {controls.filter(c => c.classification === "DSR" && c.status !== "pending_review").length}
+                  {" / "}
+                  {controls.filter(c => c.classification === "DSR").length} reviewed
+                  {" · "}
+                  <span className="text-primary">
+                    {controls.filter(c => c.classification === "DSR").length > 0
+                      ? Math.round((controls.filter(c => c.classification === "DSR" && c.status !== "pending_review").length / controls.filter(c => c.classification === "DSR").length) * 100)
+                      : 0}%
+                  </span>
+                </span>
               </div>
-              <Progress 
-                value={controls.filter(c => c.classification === "DSR" && c.status !== "pending_review").length} 
-                max={controls.filter(c => c.classification === "DSR").length || 1} 
-                showPercentage={false} 
-                size="sm" 
+              <Progress
+                value={controls.filter(c => c.classification === "DSR" && c.status !== "pending_review").length}
+                max={controls.filter(c => c.classification === "DSR").length || 1}
+                showPercentage={false}
+                size="sm"
               />
             </div>
           )}
 
-          {/* Filters & Tabs panel */}
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          {/* ── Filters & Tabs ── */}
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             {/* Tabs */}
-            <div className="flex bg-slate-800/40 p-1.5 rounded-xl border border-white/5 self-start">
-              {(["PENDING", "BASELINE"] as const).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => { setActiveTab(tab); setPptdfFilter(null); }}
-                  className={`px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                    activeTab === tab 
-                      ? "bg-primary text-white shadow-sm" 
-                      : "text-slate-300 hover:text-white hover:bg-white/5"
-                  }`}
-                >
-                  {tab === "PENDING" && `Pending Recommendations (${controls.filter(c => c.classification === "DSR" && c.status === "pending_review").length})`}
-                  {tab === "BASELINE" && "Active Security Baseline (MSR)"}
-                </button>
-              ))}
-            </div>
-
-
-            {/* PPTDF & Search Filter Row */}
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-1.5 bg-slate-800/40 p-1 border border-white/5 rounded-xl">
-                <button 
-                  onClick={() => setPptdfFilter(null)}
-                  className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all ${!pptdfFilter ? "bg-white/10 text-white" : "text-slate-300 hover:text-white hover:bg-white/5"}`}
-                >
-                  All Scopes
-                </button>
-                {["People", "Process", "Technology", "Data", "Facilities"].map((scope) => (
+            <div className="flex bg-white/[0.04] p-1 rounded-xl border border-white/8 self-start gap-1">
+              {(["PENDING", "BASELINE"] as const).map((tab) => {
+                const count = tab === "PENDING"
+                  ? controls.filter(c => c.classification === "DSR" && c.status === "pending_review").length
+                  : controls.filter(c => c.classification === "MCR" || c.status === "accepted").length;
+                return (
                   <button
-                    key={scope}
-                    onClick={() => setPptdfFilter(scope)}
-                    className={`px-3 py-1.5 rounded-lg text-[11px] font-extrabold transition-all ${
-                      pptdfFilter === scope ? "bg-primary/20 text-primary" : "text-slate-300 hover:text-white hover:bg-white/5"
+                    key={tab}
+                    onClick={() => { setActiveTab(tab); setPptdfFilter(null); }}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all duration-200 cursor-pointer ${
+                      activeTab === tab
+                        ? "bg-primary text-white shadow-md shadow-primary/20"
+                        : "text-text-muted hover:text-text-primary hover:bg-white/5"
                     }`}
                   >
-                    {scope}
+                    {tab === "PENDING" ? "Pending Review" : "Active Baseline (MSR)"}
+                    <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-extrabold tabular-nums ${
+                      activeTab === tab ? "bg-white/20 text-white" : "bg-white/8 text-text-muted"
+                    }`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Scope + Search */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* PPTDF scope pills */}
+              <div className="flex items-center gap-1 bg-white/[0.04] p-1 border border-white/8 rounded-xl">
+                <button
+                  onClick={() => setPptdfFilter(null)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    !pptdfFilter
+                      ? "bg-primary/15 text-primary"
+                      : "text-text-muted hover:text-text-primary hover:bg-white/5"
+                  }`}
+                >
+                  All
+                </button>
+                {[
+                  { label: "People", icon: Users },
+                  { label: "Process", icon: FileText },
+                  { label: "Technology", icon: Cpu },
+                  { label: "Data", icon: HardDrive },
+                  { label: "Facilities", icon: Home },
+                ].map(({ label, icon: Icon }) => (
+                  <button
+                    key={label}
+                    onClick={() => setPptdfFilter(label)}
+                    title={label}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      pptdfFilter === label
+                        ? "bg-primary/15 text-primary"
+                        : "text-text-muted hover:text-text-primary hover:bg-white/5"
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">{label}</span>
                   </button>
                 ))}
               </div>
 
-              <div className="relative w-full max-w-xs sm:w-64">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+              {/* Search */}
+              <div className="relative w-56">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
                 <Input
-                  placeholder="Search code, name..."
+                  placeholder="Search controls…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 bg-slate-800/40 border-white/5"
+                  className="pl-9 h-9 bg-white/[0.04] border-white/8 text-sm placeholder:text-text-muted"
                 />
               </div>
             </div>
           </div>
 
-          {/* Controls list */}
-          <div className="space-y-4">
+          {/* ── Control Cards ── */}
+          <div className="space-y-3">
             {filteredControls.length === 0 ? (
-              <div className="glass-card text-center p-8 text-text-muted">
-                {activeTab === "PENDING" 
-                  ? "All recommendations have been reviewed! Your baseline is calibrated. 🎉"
-                  : "No controls match the selected filters."}
+              <div className="glass-card flex flex-col items-center gap-3 p-12 text-center">
+                <div className="rounded-2xl bg-emerald-500/10 p-4">
+                  <CheckCircle2 className="h-10 w-10 text-emerald-400" />
+                </div>
+                <p className="text-base font-semibold text-text-primary">
+                  {activeTab === "PENDING"
+                    ? "All recommendations reviewed"
+                    : "No controls match the filters"}
+                </p>
+                <p className="text-sm text-text-muted max-w-xs">
+                  {activeTab === "PENDING"
+                    ? "Your security baseline is fully calibrated. No pending DSR decisions remain."
+                    : "Try clearing the scope filter or search term."}
+                </p>
               </div>
             ) : (
               filteredControls.map((c) => {
                 const isHighPriority = c.classification === "DSR" && c.dsr_score >= 75;
-                const isMedPriority = c.classification === "DSR" && c.dsr_score >= 50 && c.dsr_score < 75;
-                const isLowPriority = c.classification === "DSR" && c.dsr_score < 50;
+                const isMedPriority  = c.classification === "DSR" && c.dsr_score >= 50 && c.dsr_score < 75;
+                const isLowPriority  = c.classification === "DSR" && c.dsr_score < 50;
+                const isExpanded = expandedControlId === c.id;
+
+                // Border accent by status
+                const borderClass =
+                  c.status === "accepted" ? "border-l-2 border-l-emerald-500/60" :
+                  c.status === "rejected" ? "border-l-2 border-l-red-500/60" :
+                  "border-l-2 border-l-white/10";
 
                 return (
-                  <div key={c.id} className="glass-card hover-glow p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all duration-300">
-                    <div className="space-y-2 max-w-3xl w-full">
+                  <div
+                    key={c.id}
+                    className={`glass-card p-5 flex flex-col md:flex-row md:items-start gap-5 transition-all duration-200 ${borderClass} hover:bg-white/[0.03]`}
+                  >
+                    {/* Left: content */}
+                    <div className="flex-1 min-w-0 space-y-2.5">
+
+                      {/* Code + badges row */}
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-extrabold text-sm text-primary tracking-wider">{c.control_code}</span>
-                        
-                        {c.classification === "MCR" ? (
-                          <Badge variant="info">MCR Compliance</Badge>
-                        ) : (
-                          <>
-                            {isHighPriority && <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/10">High Priority</span>}
-                            {isMedPriority && <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/10">Medium Priority</span>}
-                            {isLowPriority && <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-slate-500/10 text-slate-400 border border-slate-500/10">Low Priority</span>}
-                          </>
-                        )}
-                        
-                        {c.dsr_factors?.delta_impact_boost && c.dsr_factors.delta_impact_boost > 0 && (
-                          <Badge variant="warning" className="text-[9px] px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/10">
-                            DIF Triggered (+{c.dsr_factors.delta_impact_boost} pts)
-                          </Badge>
-                        )}
+                        <span className="font-mono text-sm font-extrabold text-primary tracking-wider">
+                          {c.control_code}
+                        </span>
+
+                        {c.classification === "MCR"
+                          ? <Badge variant="info" className="text-[10px]">Mandatory (MCR)</Badge>
+                          : <>
+                              {isHighPriority && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/15">
+                                  <AlertTriangle className="h-2.5 w-2.5" /> High Priority
+                                </span>
+                              )}
+                              {isMedPriority && (
+                                <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/15">
+                                  Medium Priority
+                                </span>
+                              )}
+                              {isLowPriority && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white/5 text-text-muted border border-white/8">
+                                  Low Priority
+                                </span>
+                              )}
+                              {c.dsr_factors?.delta_impact_boost && c.dsr_factors.delta_impact_boost > 0 && (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/15">
+                                  +{c.dsr_factors.delta_impact_boost} pts (Release Delta)
+                                </span>
+                              )}
+                            </>
+                        }
 
                         {c.status === "accepted" && (
-                          <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                            <CheckCircle2 className="h-3 w-3" /> Scoped in MSR
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/15">
+                            <CheckCircle2 className="h-3 w-3" /> In MSR Baseline
                           </span>
                         )}
                         {c.status === "rejected" && (
-                          <span className="flex items-center gap-1 text-[10px] text-red-400 font-bold bg-red-500/10 px-2 py-0.5 rounded-full">
-                            <XCircle className="h-3 w-3" /> Risk Accepted (Rejected)
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-500/10 text-red-400 border border-red-500/15">
+                            <XCircle className="h-3 w-3" /> Risk Accepted
                           </span>
                         )}
                       </div>
-                      
-                      <h3 className="font-extrabold text-sm text-text-primary">{c.control_name}</h3>
-                      <p className="text-xs text-slate-200 leading-relaxed font-medium">{c.description}</p>
-                      
-                      {/* Rejection / Risk acceptance note */}
+
+                      {/* Title */}
+                      <h3 className="text-sm font-bold text-text-primary leading-snug">{c.control_name}</h3>
+
+                      {/* Description */}
+                      <p className="text-sm text-text-muted leading-relaxed">{c.description}</p>
+
+                      {/* Rejection rationale */}
                       {c.status === "rejected" && c.rejection_rationale && (
-                        <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-2.5 mt-2">
-                          <p className="text-[10px] font-bold text-red-400">Risk Acceptance Rationale:</p>
-                          <p className="text-xs text-slate-400 italic mt-0.5">"{c.rejection_rationale}"</p>
+                        <div className="rounded-xl bg-red-500/5 border border-red-500/15 p-3 space-y-1">
+                          <p className="text-xs font-bold text-red-400">Risk Acceptance Rationale</p>
+                          <p className="text-xs text-text-muted italic">"{c.rejection_rationale}"</p>
                         </div>
                       )}
 
-                      {/* Expandable Details Wrapper */}
-                      <div className="pt-1 flex items-center justify-between">
-                        <button
-                          onClick={() => setExpandedControlId(expandedControlId === c.id ? null : c.id)}
-                          className="text-[10px] text-primary hover:underline font-semibold flex items-center gap-1 focus:outline-none"
-                        >
-                          <Info className="h-3 w-3" />
-                          {expandedControlId === c.id ? "Hide details" : "Show implementation scope & math"}
-                        </button>
-                      </div>
+                      {/* Expand toggle */}
+                      <button
+                        onClick={() => setExpandedControlId(isExpanded ? null : c.id)}
+                        className="flex items-center gap-1.5 text-xs font-semibold text-primary/70 hover:text-primary transition-colors cursor-pointer"
+                      >
+                        <Info className="h-3.5 w-3.5" />
+                        {isExpanded ? "Hide details" : "View implementation scope & scoring"}
+                      </button>
 
-                      {expandedControlId === c.id && (
-                        <div className="space-y-2.5 bg-white/[0.02] p-3 rounded-lg border border-white/5 mt-2">
-                          {/* DSR Factors detail */}
+                      {/* Expanded details */}
+                      {isExpanded && (
+                        <div className="rounded-xl bg-white/[0.02] border border-white/8 p-4 space-y-3 mt-1">
                           {c.classification === "DSR" && c.dsr_factors && (
-                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[10px] text-slate-200">
-                              <div><span className="font-bold text-slate-100">Coverage Gap:</span> {c.dsr_factors.domain_coverage_gap}%</div>
-                              <div><span className="font-bold text-slate-100">Relevance:</span> {c.dsr_factors.industry_relevance}%</div>
-                              <div><span className="font-bold text-slate-100">Risk Factor:</span> {c.dsr_factors.risk_appetite_factor}%</div>
-                              <div><span className="font-bold text-slate-100">Maturity:</span> {c.dsr_factors.maturity_alignment}%</div>
+                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                              {[
+                                { label: "Coverage Gap", value: c.dsr_factors.domain_coverage_gap },
+                                { label: "Industry Relevance", value: c.dsr_factors.industry_relevance },
+                                { label: "Risk Appetite", value: c.dsr_factors.risk_appetite_factor },
+                                { label: "Maturity Alignment", value: c.dsr_factors.maturity_alignment },
+                              ].map(({ label, value }) => (
+                                <div key={label} className="space-y-1">
+                                  <p className="text-[10px] font-semibold text-text-muted">{label}</p>
+                                  <p className="text-sm font-bold text-text-primary tabular-nums">{value}%</p>
+                                </div>
+                              ))}
                             </div>
                           )}
-
-                          {/* PPTDF Tags */}
-                          <div className="flex flex-wrap gap-1.5 items-center">
-                            <span className="text-[10px] font-extrabold text-slate-300">Asset Vectors:</span>
-                            {c.pptdf_scope.map((scope) => (
-                              <Badge key={scope} variant="neutral" className="text-[9px] px-1.5 py-0">
-                                {scope}
-                              </Badge>
-                            ))}
-                          </div>
+                          {c.pptdf_scope.length > 0 && (
+                            <div className="flex flex-wrap gap-1.5 items-center pt-2 border-t border-white/5">
+                              <span className="text-[10px] font-semibold text-text-muted">Asset Vectors:</span>
+                              {c.pptdf_scope.map((scope) => (
+                                <Badge key={scope} variant="neutral" className="text-[9px] px-1.5 py-0">{scope}</Badge>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
 
-                    {/* Actions (Only editable for DSR recommendations) */}
+                    {/* Right: Actions */}
                     {c.classification === "DSR" && (
-                      <div className="flex items-center gap-2 shrink-0 self-end md:self-center">
+                      <div className="flex flex-row md:flex-col items-center gap-2 shrink-0 self-end md:self-start pt-1">
                         {c.status !== "accepted" && (
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             onClick={() => handleAccept(c.id)}
-                            className="bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-1"
+                            className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-lg font-semibold text-xs px-3 py-2 cursor-pointer transition-all"
                           >
-                            <Check className="h-3 w-3" /> Accept DSR
+                            <Check className="h-3.5 w-3.5" /> Accept DSR
                           </Button>
                         )}
                         {c.status !== "rejected" && (
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant="danger"
                             onClick={() => setRejectingControl(c)}
-                            className="flex items-center gap-1"
+                            className="flex items-center gap-1.5 rounded-lg font-semibold text-xs px-3 py-2 cursor-pointer transition-all"
                           >
-                            <X className="h-3 w-3" /> Reject
+                            <X className="h-3.5 w-3.5" /> Reject
                           </Button>
                         )}
                         {(c.status === "accepted" || c.status === "rejected") && (
-                          <Button 
-                            size="sm" 
-                            variant="ghost"
+                          <button
                             onClick={() => {
                               fetch(`/api/compliance/scrms/controls/${c.id}`, {
                                 method: "PATCH",
                                 headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ status: "pending_review" })
+                                body: JSON.stringify({ status: "pending_review" }),
                               }).then(() => fetchData());
                             }}
-                            className="text-slate-400 hover:text-white"
+                            className="text-xs text-text-muted hover:text-text-primary underline underline-offset-2 cursor-pointer transition-colors"
                           >
-                            Reset Control
-                          </Button>
+                            Reset
+                          </button>
                         )}
                       </div>
                     )}
@@ -605,48 +724,51 @@ export default function ScrmsPage() {
               })
             )}
           </div>
-
         </>
       )}
 
-      {/* Reject Modal / Risk Acceptance Dialog */}
-      <Dialog 
-        open={rejectingControl !== null} 
+      {/* ── Risk Acceptance Dialog ── */}
+      <Dialog
+        open={rejectingControl !== null}
         onClose={() => setRejectingControl(null)}
         title="Risk Acceptance Review"
       >
         <div className="space-y-4">
-          <div className="space-y-2">
-            <p className="text-xs text-slate-200 leading-relaxed font-semibold">
-              You are rejecting the recommended control <strong>{rejectingControl?.control_code}</strong> ({rejectingControl?.control_name}).
+          <div className="rounded-xl bg-red-500/5 border border-red-500/15 p-4 space-y-1.5">
+            <p className="text-sm font-semibold text-text-primary">
+              Rejecting{" "}
+              <span className="font-mono text-red-400">{rejectingControl?.control_code}</span>{" "}
+              — {rejectingControl?.control_name}
             </p>
-            <p className="text-[10px] text-red-300 font-semibold italic leading-relaxed">
-              *ISO 27001 requires documenting a formal risk acceptance rationale if a recommended security control is not implemented.*
+            <p className="text-xs text-text-muted leading-relaxed">
+              ISO 27001 requires a formal risk acceptance rationale whenever a recommended control is not implemented.
+              This will be recorded in your audit trail.
             </p>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-400">Describe Risk Acceptance Rationale:</label>
+          <div className="space-y-2">
+            <label className="text-xs font-bold text-text-muted">Risk Acceptance Rationale</label>
             <textarea
               value={rationale}
               onChange={(e) => setRationale(e.target.value)}
-              placeholder="e.g. Workstations are fully offline and blocked via host firewall, rendering remote endpoint monitoring controls not applicable..."
+              placeholder="e.g. Workstations are fully offline and blocked via host firewall, rendering remote endpoint monitoring controls not applicable…"
               rows={4}
-              className="w-full text-xs bg-slate-900 border border-white/10 rounded-xl p-3 text-text-primary focus:outline-none focus:border-red-500"
+              className="w-full resize-none rounded-xl bg-white/[0.03] border border-white/10 p-3 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:border-red-500/50 transition-colors"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-2">
-            <Button variant="ghost" size="sm" onClick={() => setRejectingControl(null)}>
+          <div className="flex justify-end gap-2 pt-1">
+            <Button variant="ghost" size="sm" onClick={() => setRejectingControl(null)} className="cursor-pointer">
               Cancel
             </Button>
-            <Button 
-              variant="danger" 
-              size="sm" 
+            <Button
+              variant="danger"
+              size="sm"
               onClick={handleRejectSubmit}
               disabled={!rationale.trim() || submittingReject}
+              className="cursor-pointer"
             >
-              {submittingReject ? "Submitting..." : "Reject Control"}
+              {submittingReject ? "Submitting…" : "Confirm Risk Acceptance"}
             </Button>
           </div>
         </div>
