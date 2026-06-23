@@ -68,26 +68,58 @@ function RunAssessmentModal({
   onClose,
   onComplete,
   productVersionId,
+  frameworks,
+  loadingFrameworks,
 }: {
   open: boolean;
   onClose: () => void;
   onComplete: () => void;
   productVersionId?: string | null;
+  frameworks: Array<{ framework_code: string; framework_name: string }>;
+  loadingFrameworks: boolean;
 }) {
   const [mode, setMode] = useState<"quick" | "deep">("quick");
   const [salesChannel, setSalesChannel] = useState<string>("all");
-  const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>(
-    DEFAULT_FRAMEWORKS.map((f) => f.id)
-  );
+  const [frameworkSearch, setFrameworkSearch] = useState("");
+  const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>([
+    "ISO 27001 2022",
+    "AICPA TSC 2017:2022 (used for SOC 2)",
+    "US HIPAA Administrative Simplification 2013",
+    "NIST 800-53 R5",
+    "ISO 27701  2025",
+    "US FedRAMP R5 (moderate)",
+  ]);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const toggleFramework = (id: string) => {
+  const toggleFramework = (code: string) => {
     setSelectedFrameworks((prev) =>
-      prev.includes(id) ? prev.filter((f) => f !== id) : [...prev, id]
+      prev.includes(code) ? prev.filter((f) => f !== code) : [...prev, code]
     );
+  };
+
+  const filteredFrameworks = frameworks.filter((fw) => {
+    const term = frameworkSearch.toLowerCase();
+    return (
+      (fw.framework_code || "").toLowerCase().includes(term) ||
+      (fw.framework_name || "").toLowerCase().includes(term)
+    );
+  });
+
+  const resolveFwName = (id: string) => {
+    const match = frameworks.find((f) => f.framework_code === id);
+    if (match) return match.framework_name;
+    const oldMapping: Record<string, string> = {
+      iso27001: "ISO/IEC 27001:2022",
+      soc2: "SOC 2 Type II",
+      hipaa: "HIPAA",
+      nist_800_53: "NIST 800-53",
+      iso27701: "ISO/IEC 27701:2019",
+      fedramp: "FedRAMP",
+    };
+    return oldMapping[id] || id;
   };
 
   const handleRun = async () => {
@@ -226,32 +258,68 @@ function RunAssessmentModal({
               <label className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-2 block">
                 Target Frameworks
               </label>
-              <div className="grid grid-cols-2 gap-2">
-                {DEFAULT_FRAMEWORKS.map((fw) => (
-                  <button
-                    key={fw.id}
-                    onClick={() => toggleFramework(fw.id)}
-                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-all ${
-                      selectedFrameworks.includes(fw.id)
-                        ? "border-primary/40 bg-primary/10 text-primary"
-                        : "border-border-glass bg-white/5 text-text-secondary hover:bg-white/[0.07]"
-                    }`}
-                  >
-                    <div
-                      className={`h-3 w-3 rounded-sm border ${
-                        selectedFrameworks.includes(fw.id)
-                          ? "border-primary bg-primary"
-                          : "border-text-muted"
-                      }`}
-                    >
-                      {selectedFrameworks.includes(fw.id) && (
-                        <CheckCircle2 className="h-3 w-3 text-white" />
-                      )}
-                    </div>
-                    {fw.name}
-                  </button>
-                ))}
+
+              {/* Framework Search Input */}
+              <div className="relative mb-3">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                  <Search className="h-3.5 w-3.5 text-text-muted" />
+                </div>
+                <input
+                  type="text"
+                  placeholder="Search all 272 SCF standard frameworks..."
+                  value={frameworkSearch}
+                  onChange={(e) => setFrameworkSearch(e.target.value)}
+                  className="w-full rounded-xl border border-border-glass bg-white/5 py-2 pl-9 pr-4 text-xs text-text-primary outline-none transition-all focus:border-primary/50 focus:bg-white/[0.07] focus:ring-1 focus:ring-primary/20"
+                />
               </div>
+
+              {loadingFrameworks ? (
+                <div className="flex items-center gap-2 py-8 justify-center text-text-muted text-xs">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  Loading SCF standard frameworks...
+                </div>
+              ) : (
+                <div className="max-h-56 overflow-y-auto border border-border-glass rounded-xl p-3 bg-white/5 space-y-2">
+                  {filteredFrameworks.length === 0 ? (
+                    <div className="text-center py-6 text-xs text-text-muted">
+                      No matching frameworks found.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {filteredFrameworks.map((fw) => {
+                        const isSelected = selectedFrameworks.includes(fw.framework_code);
+                        return (
+                          <button
+                            key={fw.framework_code}
+                            type="button"
+                            onClick={() => toggleFramework(fw.framework_code)}
+                            className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs transition-all ${
+                              isSelected
+                                ? "border-primary/40 bg-primary/10 text-primary font-medium"
+                                : "border-border-glass bg-white/5 text-text-secondary hover:bg-white/[0.07]"
+                            }`}
+                          >
+                            <div
+                              className={`h-3.5 w-3.5 rounded-sm border shrink-0 flex items-center justify-center ${
+                                isSelected
+                                  ? "border-primary bg-primary"
+                                  : "border-text-muted"
+                              }`}
+                            >
+                              {isSelected && (
+                                <CheckCircle2 className="h-2.5 w-2.5 text-white" />
+                              )}
+                            </div>
+                            <span className="truncate" title={fw.framework_name}>
+                              {fw.framework_name}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Error */}
@@ -318,14 +386,14 @@ function RunAssessmentModal({
                 Framework Scores
               </h3>
               {result.frameworkScores?.map((fs: any) => {
-                const fw = DEFAULT_FRAMEWORKS.find((f) => f.id === fs.frameworkId);
+                const fwName = resolveFwName(fs.frameworkId);
                 return (
                   <div
                     key={fs.frameworkId}
                     className="flex items-center justify-between rounded-lg bg-white/5 px-4 py-2.5"
                   >
                     <span className="text-sm text-text-primary">
-                      {fw?.name || fs.frameworkId}
+                      {fwName}
                     </span>
                     <div className="flex items-center gap-3">
                       <span className="text-xs text-text-muted">
@@ -372,6 +440,34 @@ export default function AssessmentsPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [evidenceMap, setEvidenceMap] = useState<Record<string, EvidenceEvaluation[]>>({});
   const [evidenceLoading, setEvidenceLoading] = useState<string | null>(null);
+  const [frameworks, setFrameworks] = useState<Array<{ framework_code: string; framework_name: string }>>([]);
+
+  useEffect(() => {
+    fetch("/api/compliance/frameworks")
+      .then((res) => res.json())
+      .then((json) => {
+        if (json.success && Array.isArray(json.data)) {
+          setFrameworks(json.data);
+        }
+      })
+      .catch((err) => console.error("Error loading frameworks:", err));
+  }, []);
+
+  const resolveFrameworkName = useCallback((id: string) => {
+    const match = frameworks.find((f) => f.framework_code === id);
+    if (match) return match.framework_name;
+    
+    // Fallback mapping for older database records
+    const oldMapping: Record<string, string> = {
+      iso27001: 'ISO/IEC 27001:2022',
+      soc2: 'SOC 2 Type II',
+      hipaa: 'HIPAA',
+      nist_800_53: 'NIST 800-53',
+      iso27701: 'ISO/IEC 27701:2019',
+      fedramp: 'FedRAMP',
+    };
+    return oldMapping[id] || id;
+  }, [frameworks]);
 
   const toggleExpand = useCallback(async (assessmentId: string) => {
     if (expandedId === assessmentId) {
@@ -600,9 +696,7 @@ export default function AssessmentsPage() {
                   {item.framework_scores && item.framework_scores.length > 0 && (
                     <div className="mt-4 flex flex-wrap gap-2">
                       {item.framework_scores.map((fs) => {
-                        const fw = DEFAULT_FRAMEWORKS.find(
-                          (f) => f.id === fs.frameworkId
-                        );
+                        const fwName = resolveFrameworkName(fs.frameworkId);
                         return (
                           <span
                             key={fs.frameworkId}
@@ -614,7 +708,7 @@ export default function AssessmentsPage() {
                                 : "bg-red-500/10 text-red-400"
                             }`}
                           >
-                            {fw?.name || fs.frameworkId}: {fs.score}%
+                            {fwName}: {fs.score}%
                           </span>
                         );
                       })}
@@ -760,6 +854,8 @@ export default function AssessmentsPage() {
         onClose={() => setModalOpen(false)}
         onComplete={fetchAssessments}
         productVersionId={activeVersion?.id}
+        frameworks={frameworks}
+        loadingFrameworks={frameworks.length === 0}
       />
     </div>
   );

@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   title: "ihOS — Ionic Health OS",
   description:
     "Compliance intelligence platform. Automate GRC assessments, manage frameworks, and maintain continuous compliance with AI-powered analysis.",
-  icons: { icon: "/ionic-icon.svg" },
+  icons: { icon: "/ionic-icon.png" },
 };
 
 export default function RootLayout({
