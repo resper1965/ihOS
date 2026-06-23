@@ -73,9 +73,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     <VersionProvider>
       <PageTitleProvider>
         <HelpProvider>
-          <div className="flex h-screen overflow-hidden bg-bg-dark">
+          <div className="flex h-screen overflow-hidden bg-bg-dark relative">
+            {/* Ambient background glow orbs */}
+            <div className="pointer-events-none absolute -left-20 -top-20 h-[350px] w-[350px] rounded-full bg-primary/5 blur-[100px] dark:bg-primary/[0.03]" />
+            <div className="pointer-events-none absolute left-[40%] top-[30%] h-[400px] w-[400px] rounded-full bg-accent/5 blur-[120px] dark:bg-accent/[0.03]" />
+            <div className="pointer-events-none absolute -bottom-20 -right-20 h-[350px] w-[350px] rounded-full bg-primary/5 blur-[100px] dark:bg-primary/[0.03]" />
+
             {/* Sidebar */}
-        <aside className={`glass-surface relative flex flex-col transition-all duration-300 ease-in-out ${sidebarOpen ? "w-64" : "w-20"}`}>
+            <aside className={`glass-surface relative z-10 flex flex-col transition-all duration-300 ease-in-out ${sidebarOpen ? "w-64" : "w-20"}`}>
           <div className="flex h-16 items-center gap-3 border-b border-border-glass px-5">
             {sidebarOpen ? (
               <>
@@ -101,8 +106,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               const isActive = (isExact || isPrefix) && !hasMoreSpecificMatch;
               return (
                 <Link key={item.href} href={item.href}
-                  className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
-                    isActive ? "bg-primary/10 text-primary shadow-sm shadow-primary/5" : "text-text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-text-primary"
+                  className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 border ${
+                    isActive 
+                      ? "bg-primary/10 text-primary border-primary/20 shadow-sm shadow-primary/5 font-semibold" 
+                      : "border-transparent text-text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-text-primary"
                   }`}>
                   <item.icon className={`h-5 w-5 shrink-0 stroke-[1.5] ${isActive ? "text-primary" : "text-text-muted group-hover:text-text-secondary"}`} />
                   {sidebarOpen && <span>{item.label}</span>}

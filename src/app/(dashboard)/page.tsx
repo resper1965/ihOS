@@ -299,7 +299,7 @@ export default async function DashboardPage() {
     <div className="w-full space-y-8">
       <OnboardingGate />
       <PageTitleRegistrar
-        title={<>Welcome to <span className="text-emerald-400">ihOS</span></>}
+        title={<>Welcome to <span className="gradient-text font-extrabold">ihOS</span></>}
         subtitle="Your consolidated view of compliance and governance."
         icon={<LayoutDashboard className="h-4 w-4 text-primary" />}
       />
@@ -322,7 +322,7 @@ export default async function DashboardPage() {
       {/* SCRMS MSR Baseline Progress Section */}
       {msrData && (
         <div className="glass-card p-6 space-y-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-white/5 pb-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border-glass pb-4">
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-lg font-bold text-text-primary">
@@ -373,27 +373,27 @@ export default async function DashboardPage() {
                 Discretionary Security Requirements (DSR)
               </span>
               <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-lg bg-emerald-500/10 p-2.5 text-center border border-emerald-500/10">
-                  <span className="block text-lg font-bold text-emerald-400">
+                <div className="status-card-accepted rounded-xl p-2.5 text-center shadow-sm">
+                  <span className="block text-lg font-bold leading-none">
                     {msrData.stats.acceptedDSR}
                   </span>
-                  <span className="text-[10px] uppercase font-semibold tracking-wider text-emerald-400/80">
+                  <span className="text-[9px] uppercase font-bold tracking-wider opacity-85 mt-1 block">
                     Accepted
                   </span>
                 </div>
-                <div className="rounded-lg bg-amber-500/10 p-2.5 text-center border border-amber-500/10">
-                  <span className="block text-lg font-bold text-amber-400">
+                <div className="status-card-pending rounded-xl p-2.5 text-center shadow-sm">
+                  <span className="block text-lg font-bold leading-none">
                     {msrData.stats.pendingDSR}
                   </span>
-                  <span className="text-[10px] uppercase font-semibold tracking-wider text-amber-400/80">
+                  <span className="text-[9px] uppercase font-bold tracking-wider opacity-85 mt-1 block">
                     Pending
                   </span>
                 </div>
-                <div className="rounded-lg bg-rose-500/10 p-2.5 text-center border border-rose-500/10">
-                  <span className="block text-lg font-bold text-rose-400">
+                <div className="status-card-rejected rounded-xl p-2.5 text-center shadow-sm">
+                  <span className="block text-lg font-bold leading-none">
                     {msrData.stats.rejectedDSR}
                   </span>
-                  <span className="text-[10px] uppercase font-semibold tracking-wider text-rose-400/80">
+                  <span className="text-[9px] uppercase font-bold tracking-wider opacity-85 mt-1 block">
                     Rejected
                   </span>
                 </div>
@@ -412,11 +412,11 @@ export default async function DashboardPage() {
                 {Object.entries(msrData.stats.pptdf).map(([scope, count]) => (
                   <div
                     key={scope}
-                    className="flex items-center gap-1.5 rounded-md bg-white/5 px-2 py-1 text-xs text-text-secondary border border-white/5"
+                    className="flex items-center gap-1.5 rounded-lg bg-black/[0.03] dark:bg-white/5 px-2.5 py-1.5 text-xs text-text-secondary border border-border-glass"
                   >
-                    <span className="h-1.5 w-1.5 rounded-full bg-accent" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
                     <span className="font-medium text-text-primary">{scope}:</span>
-                    <span className="font-semibold text-accent">{count}</span>
+                    <span className="font-semibold text-primary">{count}</span>
                   </div>
                 ))}
               </div>

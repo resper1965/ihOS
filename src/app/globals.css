@@ -121,22 +121,64 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--color-border-glass);
-  border-radius: 12px;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  border-radius: 16px;
+  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.015), 0 1px 2px 0 rgba(0, 0, 0, 0.01);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              border-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
+              background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dark .glass-card {
+  box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
 }
 .glass-card:hover {
   border-color: var(--color-border-glass-hover);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.03);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px 0 rgba(0, 0, 0, 0.025), 0 2px 4px 0 rgba(0, 0, 0, 0.015);
 }
 .dark .glass-card:hover {
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45);
+  box-shadow: 0 12px 36px 0 rgba(0, 0, 0, 0.5), 0 2px 4px 0 rgba(0, 0, 0, 0.3);
 }
 
 .glass-surface {
   background: var(--color-bg-glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--color-border-glass);
+}
+
+/* Premium Status Cards for MSR Compliance */
+.status-card-accepted {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.06), rgba(16, 185, 129, 0.02));
+  border: 1px solid rgba(16, 185, 129, 0.15) !important;
+  color: #059669;
+}
+.dark .status-card-accepted {
+  background: linear-gradient(135deg, rgba(52, 211, 153, 0.08), rgba(52, 211, 153, 0.02));
+  border: 1px solid rgba(52, 211, 153, 0.25) !important;
+  color: #34d399;
+}
+
+.status-card-pending {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.02));
+  border: 1px solid rgba(245, 158, 11, 0.15) !important;
+  color: #d97706;
+}
+.dark .status-card-pending {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.08), rgba(251, 191, 36, 0.02));
+  border: 1px solid rgba(251, 191, 36, 0.25) !important;
+  color: #fbbf24;
+}
+
+.status-card-rejected {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.06), rgba(239, 68, 68, 0.02));
+  border: 1px solid rgba(239, 68, 68, 0.15) !important;
+  color: #dc2626;
+}
+.dark .status-card-rejected {
+  background: linear-gradient(135deg, rgba(248, 113, 113, 0.08), rgba(248, 113, 113, 0.02));
+  border: 1px solid rgba(248, 113, 113, 0.25) !important;
+  color: #f87171;
 }
 
 .gradient-text {
