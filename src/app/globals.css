@@ -15,9 +15,11 @@
   --color-border-glass: #e2e8f0;
   --color-border-glass-hover: #cbd5e1;
   
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #334155;
-  --color-text-muted: #64748b;
+  --color-text-primary: #020617;
+  --color-text-secondary: #1e293b;
+  --color-text-muted: #475569;
+  
+  --color-cyan-400: #0891b2;
   
   --color-danger: #EF4444;
   --color-warning: #EAB308;
@@ -44,6 +46,8 @@
   --color-text-secondary: #94b3be;
   --color-text-muted: #5a7a88;
   
+  --color-cyan-400: #22d3ee;
+  
   --color-danger: #EF4444;
   --color-warning: #EAB308;
   --color-success: #37962D;
@@ -66,6 +70,8 @@
   --color-text-primary: var(--color-text-primary);
   --color-text-secondary: var(--color-text-secondary);
   --color-text-muted: var(--color-text-muted);
+  
+  --color-cyan-400: var(--color-cyan-400);
   
   /* Semantic Colors */
   --color-danger: var(--color-danger);
