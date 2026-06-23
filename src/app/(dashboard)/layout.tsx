@@ -89,7 +89,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
             {NAV_ITEMS.map((item) => {
-              const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              const isExact = pathname === item.href;
+              const isPrefix = item.href !== "/" && pathname.startsWith(item.href);
+              const hasMoreSpecificMatch = NAV_ITEMS.some(
+                (other) =>
+                  other.href !== item.href &&
+                  other.href !== "/" &&
+                  pathname.startsWith(other.href) &&
+                  other.href.length > item.href.length
+              );
+              const isActive = (isExact || isPrefix) && !hasMoreSpecificMatch;
               return (
                 <Link key={item.href} href={item.href}
                   className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
