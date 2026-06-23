@@ -32,11 +32,11 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={`
-              w-full rounded-xl border bg-white/5 px-4 py-2.5 text-sm
+              w-full rounded-xl border bg-black/[0.03] dark:bg-white/5 px-4 py-2.5 text-sm
               text-text-primary outline-none
               transition-all duration-300
               placeholder:text-text-muted
-              focus:border-primary/50 focus:bg-white/[0.07] focus:ring-2 focus:ring-primary/20
+              focus:border-primary/50 focus:bg-transparent dark:focus:bg-transparent focus:ring-2 focus:ring-primary/20
               ${icon ? "pl-10" : ""}
               ${
                 error

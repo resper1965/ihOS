@@ -138,7 +138,7 @@ export function ConversationList({
   return (
     <div className="flex h-full flex-col">
       {/* Header + New button */}
-      <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
+      <div className="flex items-center justify-between border-b border-border-glass px-4 py-3">
         <h3 className="text-sm font-semibold text-text-primary">Conversas</h3>
         <button
           onClick={handleCreate}
@@ -187,13 +187,13 @@ export function ConversationList({
                   className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-200 cursor-pointer ${
                     isActive
                       ? "border border-primary/30 bg-primary/5 shadow-sm shadow-primary/10"
-                      : "hover:bg-white/5"
+                      : "hover:bg-black/[0.03] dark:hover:bg-white/5"
                   }`}
                   onClick={() => onSelectConversation?.(conv.id)}
                 >
                   <div
                     className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                      isActive ? "bg-primary/10" : "bg-white/5"
+                      isActive ? "bg-primary/10" : "bg-black/[0.03] dark:bg-white/5"
                     }`}
                   >
                     <MessageSquare
@@ -208,7 +208,7 @@ export function ConversationList({
                       className={`truncate text-sm ${
                         isActive
                           ? "font-medium text-primary"
-                          : "text-slate-300"
+                          : "text-text-secondary"
                       }`}
                     >
                       {truncateTitle(conv.title)}

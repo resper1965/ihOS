@@ -111,9 +111,207 @@ const DOMAIN_FULL_NAMES: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------------
+// calculateFrameworkScoresLocally()
+// Computes framework compliance scores locally using database mappings
+// ---------------------------------------------------------------------------
+
+export async function calculateFrameworkScoresLocally(supabase: any): Promise<FrameworkScore[]> {
+  try {
+    // 1. Fetch all framework mappings for the 5 main frameworks in pages of 1000
+    const frameworks = ["iso27001", "iso27701", "BR-LGPD", "HI-2013", "EU-GDPR"];
+    let mappings: any[] = [];
+    
+    for (const code of frameworks) {
+      let page = 0;
+      const pageSize = 1000;
+      while (true) {
+        const { data, error } = await supabase
+          .from("scf_framework_mappings")
+          .select("framework_code, target_control_id, scf_control_code")
+          .eq("framework_code", code)
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+          
+        if (error) {
+          console.error(`[compliance-data] Error fetching mappings for ${code}:`, error);
+          break;
+        }
+        if (!data || data.length === 0) {
+          break;
+        }
+        mappings = mappings.concat(data);
+        if (data.length < pageSize) {
+          break;
+        }
+        page++;
+      }
+    }
+
+
+    // 2. Fetch all evaluations
+    const { data: evaluations, error: evalError } = await supabase
+      .from("evidence_evaluations")
+      .select("control_code, scf_control_code, is_compliant, confidence_score, evidence_sources");
+
+    if (evalError) {
+      console.error("[compliance-data] Error fetching evaluations:", evalError);
+      return [];
+    }
+
+    const results: FrameworkScore[] = [];
+
+    // Build evaluation lookup map by control_code or scf_control_code
+    const evalMap = new Map<string, any>();
+    if (evaluations) {
+      for (const ev of evaluations) {
+        const code = ev.control_code || ev.scf_control_code;
+        if (code) {
+          evalMap.set(code, ev);
+        }
+      }
+    }
+
+    // Group mappings by framework_code
+    const mappingsByFramework = new Map<string, any[]>();
+    if (mappings) {
+      for (const m of mappings) {
+        const code = m.framework_code;
+        if (!mappingsByFramework.has(code)) {
+          mappingsByFramework.set(code, []);
+        }
+        mappingsByFramework.get(code)!.push(m);
+      }
+    }
+
+    const FRAMEWORK_NAMES: Record<string, string> = {
+      "iso27001": "ISO 27001:2022",
+      "iso27701": "ISO 27701:2019",
+      "BR-LGPD": "LGPD",
+      "HI-2013": "HIPAA",
+      "EU-GDPR": "EU GDPR",
+    };
+
+    const FRAMEWORK_ICONS: Record<string, string> = {
+      "BR-LGPD": "🇧🇷",
+      "HI-2013": "🏥",
+      "iso27001": "🔒",
+      "iso27701": "🛡️",
+      "EU-GDPR": "🇪🇺",
+    };
+
+    for (const code of frameworks) {
+      const fwMappings = mappingsByFramework.get(code) || [];
+      const controlCodes = Array.from(new Set(fwMappings.map(m => m.scf_control_code)));
+      const totalRequired = controlCodes.length;
+
+      if (totalRequired === 0) {
+        results.push({
+          code,
+          name: FRAMEWORK_NAMES[code] ?? code,
+          score: null,
+          coverage: null,
+          missing: 0,
+          icon: FRAMEWORK_ICONS[code] ?? "📋",
+          ismsScore: null,
+          evidenceScore: null,
+          conformingCount: null,
+          partialCount: null,
+          informalCount: null,
+          gapCount: null,
+        });
+        continue;
+      }
+
+      // Filter evaluations that are mapped to this framework
+      const fwEvals = controlCodes.map(c => evalMap.get(c)).filter(Boolean);
+      const compliantCount = fwEvals.filter(e => e.is_compliant).length;
+      
+      // Calculate averages & phases
+      let ismsCompliantCount = 0;
+      let evidenceCompliantCount = 0;
+      let conformingCount = 0;
+      let partialCount = 0;
+      let informalCount = 0;
+
+      for (const ev of fwEvals) {
+        let ismsOk = false;
+        let evOk = false;
+        let combinedStatus = "gap";
+
+        if (ev.evidence_sources) {
+          try {
+            const sources = typeof ev.evidence_sources === "string"
+              ? JSON.parse(ev.evidence_sources)
+              : ev.evidence_sources;
+            if (sources) {
+              if (sources.combinedStatus) {
+                combinedStatus = sources.combinedStatus;
+                ismsOk = combinedStatus === "conforming" || combinedStatus === "partial";
+                evOk = combinedStatus === "conforming" || combinedStatus === "informal";
+              } else if (sources.ismsPhase && sources.evidencePhase) {
+                ismsOk = (sources.ismsPhase.score ?? 0) >= 0.025;
+                evOk = (sources.evidencePhase.score ?? 0) >= 0.025;
+                if (ismsOk && evOk) combinedStatus = "conforming";
+                else if (ismsOk) combinedStatus = "partial";
+                else if (evOk) combinedStatus = "informal";
+                else combinedStatus = "gap";
+              }
+            }
+          } catch {
+            // Ignore
+          }
+        }
+        if (combinedStatus === "gap") {
+          if (ev.is_compliant) {
+            combinedStatus = "conforming";
+            ismsOk = true;
+            evOk = true;
+          }
+        }
+
+        if (ismsOk) ismsCompliantCount++;
+        if (evOk) evidenceCompliantCount++;
+        
+        if (combinedStatus === "conforming") conformingCount++;
+        else if (combinedStatus === "partial") partialCount++;
+        else if (combinedStatus === "informal") informalCount++;
+      }
+
+      const gapCount = totalRequired - conformingCount - partialCount - informalCount;
+
+      const score = Math.round((compliantCount / totalRequired) * 100);
+      const coverage = score;
+      const missing = totalRequired - compliantCount;
+
+      const ismsScore = Math.round((ismsCompliantCount / totalRequired) * 100);
+      const evidenceScore = Math.round((evidenceCompliantCount / totalRequired) * 100);
+
+      results.push({
+        code,
+        name: FRAMEWORK_NAMES[code] ?? code,
+        score,
+        coverage,
+        missing,
+        icon: FRAMEWORK_ICONS[code] ?? "📋",
+        ismsScore,
+        evidenceScore,
+        conformingCount,
+        partialCount,
+        informalCount,
+        gapCount,
+      });
+    }
+
+    return results;
+  } catch (error) {
+    console.error("[compliance-data] calculateFrameworkScoresLocally failed:", error);
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 1. getFrameworkScores()
 // Query intelligence_snapshots for latest scores per framework.
-// Fallback: Standard API complianceScore(). Final fallback: empty array.
+// Fallback: local calculations from standard mappings.
 // ---------------------------------------------------------------------------
 
 export async function getFrameworkScores(): Promise<FrameworkScore[]> {
@@ -155,6 +353,7 @@ export async function getFrameworkScores(): Promise<FrameworkScore[]> {
       if (latestByFramework.size > 0) {
         const results: FrameworkScore[] = [];
         for (const [code, snap] of latestByFramework) {
+          if (code === "all") continue; // skip overall aggregate for main dashboard list
           const data = snap.snapshot_data as Record<string, any> | null;
           results.push({
             code,
@@ -186,40 +385,22 @@ export async function getFrameworkScores(): Promise<FrameworkScore[]> {
       }
     }
 
-    // Fallback: try Standard API for each known framework
+    // Fallback: calculate framework scores fully locally
     try {
-      const frameworks = ["iso27001", "iso27701", "BR-LGPD", "HI-2013", "EU-GDPR"];
-      const results: FrameworkScore[] = [];
-
-      for (const code of frameworks) {
-        try {
-          const apiResult = await standardApi.complianceScore({ framework_code: code });
-          results.push({
-            code,
-            name: code,
-            score: apiResult.score ?? apiResult.overall_score ?? null,
-            coverage: null,
-            missing: apiResult.missing_controls?.length ?? 0,
-            icon: FRAMEWORK_ICONS[code] ?? "📋",
-          });
-        } catch {
-          // Individual framework failure — skip
-        }
-      }
-
-      if (results.length > 0) {
+      const localResults = await calculateFrameworkScoresLocally(supabase);
+      if (localResults && localResults.length > 0) {
         // Cache fallback results in Redis
         if (redis) {
           try {
-            await redis.set(CACHE_KEY_SCORES, results, { ex: CACHE_TTL_SECONDS });
+            await redis.set(CACHE_KEY_SCORES, localResults, { ex: CACHE_TTL_SECONDS });
           } catch (cacheErr) {
             console.warn("[compliance-data] Redis write error:", cacheErr);
           }
         }
-        return results;
+        return localResults;
       }
-    } catch {
-      // Standard API unavailable
+    } catch (localErr) {
+      console.warn("[compliance-data] Local calculation fallback failed:", localErr);
     }
 
     console.warn("[compliance-data] getFrameworkScores: no data available");

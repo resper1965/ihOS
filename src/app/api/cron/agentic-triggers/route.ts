@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import * as standardApi from '@/lib/standard-api/client';
 import { routeNotification, type NotificationSeverity } from '@/lib/integrations/notification-router';
+import { calculateFrameworkScoresLocally } from '@/lib/data/compliance-data';
 
 export async function GET(req: Request) {
   try {
@@ -217,20 +218,162 @@ export async function GET(req: Request) {
       allUniqueFrameworks.add(g.framework_code);
     });
 
-    // Cache scores globally per framework code (Avoid calling API in N+1 loop)
+    // Cache scores globally per framework code using local calculations
     const cachedScores = new Map<string, number>();
-    for (const framework of allUniqueFrameworks) {
+    
+    // Calculate all scores locally
+    let localScores: any[] = [];
+    try {
+      localScores = await calculateFrameworkScoresLocally(supabase);
+    } catch (err) {
+      console.error('[CRON] Local scorecard calculation failed:', err);
+    }
+
+    // Index local scores by framework code
+    const localScoreMap = new Map(localScores.map(s => [s.code, s]));
+
+    const mainFrameworks = ["iso27001", "iso27701", "BR-LGPD", "HI-2013", "EU-GDPR"];
+    const frameworksToProcess = new Set([...mainFrameworks, ...allUniqueFrameworks]);
+
+    for (const framework of frameworksToProcess) {
+      const computed = localScoreMap.get(framework);
       let currentScore = 73.5;
-      try {
-        const result = await standardApi.complianceScore({
-          framework_code: framework.toUpperCase().replace(/\s+/g, '-'),
-        });
-        currentScore = result.overall_score ?? 73.5;
-      } catch (err) {
-        // Deterministic mock fallback for tests or when API is offline
+      if (computed && computed.score !== null) {
+        currentScore = computed.score;
+      } else {
+        // Fallback for untracked/unseeded frameworks
         currentScore = 60 + (framework.length * 3) % 40;
       }
       cachedScores.set(framework, currentScore);
+
+      // Save/Upsert this calculated score as a fresh snapshot in intelligence_snapshots
+      if (computed && computed.score !== null) {
+        try {
+          // Delete old scorecard for this framework
+          await supabase
+            .from('intelligence_snapshots')
+            .delete()
+            .eq('snapshot_type', 'scorecard')
+            .eq('framework_code', framework);
+
+          // Insert fresh scorecard snapshot
+          await supabase
+            .from('intelligence_snapshots')
+            .insert({
+              snapshot_type: 'scorecard',
+              framework_code: framework,
+              input_payload: {
+                source: 'cron_scheduler',
+              },
+              result_payload: {
+                score: computed.score,
+                coverage: computed.coverage,
+                missing: computed.missing,
+                isms_score: computed.ismsScore,
+                evidence_score: computed.evidenceScore,
+                conforming_count: computed.conformingCount,
+                partial_count: computed.partialCount,
+                informal_count: computed.informalCount,
+                gap_count: computed.gapCount,
+              },
+              snapshot_data: {
+                name: computed.name,
+                score: computed.score,
+                coverage: computed.coverage,
+                missing: computed.missing,
+                source: 'cron_scheduler',
+                isms_score: computed.ismsScore,
+                evidence_score: computed.evidenceScore,
+                conforming_count: computed.conformingCount,
+                partial_count: computed.partialCount,
+                informal_count: computed.informalCount,
+                gap_count: computed.gapCount,
+              },
+              score: computed.score,
+              user_id: null,
+              metadata: null,
+            });
+        } catch (snapErr) {
+          console.error(`[CRON] Failed to save scorecard snapshot for ${framework}:`, snapErr);
+        }
+      }
+    }
+
+    // Now, also compute and save the "all" aggregate scorecard snapshot!
+    if (localScores.length > 0) {
+      try {
+        const validScores = localScores.filter(s => s.score !== null);
+        const totalMapped = validScores.reduce((sum, s) => sum + (s.conformingCount ?? 0) + (s.partialCount ?? 0) + (s.informalCount ?? 0) + (s.gapCount ?? 0), 0);
+        const totalConforming = validScores.reduce((sum, s) => sum + (s.conformingCount ?? 0), 0);
+        const totalPartial = validScores.reduce((sum, s) => sum + (s.partialCount ?? 0), 0);
+        const totalInformal = validScores.reduce((sum, s) => sum + (s.informalCount ?? 0), 0);
+        const totalGap = validScores.reduce((sum, s) => sum + (s.gapCount ?? 0), 0);
+        const totalCompliant = totalConforming; // only conforming is compliant
+
+        const overallScore = totalMapped > 0 ? Math.round((totalCompliant / totalMapped) * 100) : null;
+        const allIsmsScore = totalMapped > 0 ? Math.round(((totalConforming + totalPartial) / totalMapped) * 100) : null;
+        const allEvidenceScore = totalMapped > 0 ? Math.round(((totalConforming + totalInformal) / totalMapped) * 100) : null;
+
+        const allFrameworksList = validScores.map(s => ({
+          code: s.code,
+          name: s.name,
+          score: s.score,
+          coverage: s.coverage,
+          missing: s.missing,
+          icon: s.icon,
+          implemented: s.conformingCount,
+          total_required: (s.conformingCount ?? 0) + (s.partialCount ?? 0) + (s.informalCount ?? 0) + (s.gapCount ?? 0),
+          isms_score: s.ismsScore,
+          evidence_score: s.evidenceScore,
+          conforming_count: s.conformingCount,
+          partial_count: s.partialCount,
+          informal_count: s.informalCount,
+          gap_count: s.gapCount,
+        }));
+
+        await supabase
+          .from('intelligence_snapshots')
+          .delete()
+          .eq('snapshot_type', 'scorecard')
+          .eq('framework_code', 'all');
+
+        await supabase
+          .from('intelligence_snapshots')
+          .insert({
+            snapshot_type: 'scorecard',
+            framework_code: 'all',
+            input_payload: {
+              source: 'cron_scheduler',
+            },
+            result_payload: {
+              frameworks_evaluated: allFrameworksList.length,
+              total_controls: totalMapped,
+              total_compliant: totalCompliant,
+              isms_score: allIsmsScore,
+              evidence_score: allEvidenceScore,
+              conforming_count: totalConforming,
+              partial_count: totalPartial,
+              informal_count: totalInformal,
+              gap_count: totalGap,
+            },
+            snapshot_data: {
+              frameworks: allFrameworksList,
+              evaluated_at: new Date().toISOString(),
+              overall_score: overallScore,
+              isms_score: allIsmsScore,
+              evidence_score: allEvidenceScore,
+              conforming_count: totalConforming,
+              partial_count: totalPartial,
+              informal_count: totalInformal,
+              gap_count: totalGap,
+            },
+            score: overallScore,
+            user_id: null,
+            metadata: null,
+          });
+      } catch (allErr) {
+        console.error('[CRON] Failed to save "all" scorecard snapshot:', allErr);
+      }
     }
 
     // Batch-fetch ALL org state rows for framework scores in one query

@@ -51,7 +51,7 @@ function LoginContent() {
             required
             autoComplete="email"
             placeholder="you@ionichealth.com"
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-text-primary outline-none transition-all placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-xl border border-border-glass bg-black/[0.03] dark:bg-white/5 px-4 py-3 text-sm text-text-primary outline-none transition-all placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
         </div>
         <div className="space-y-2">
@@ -63,7 +63,7 @@ function LoginContent() {
             required
             autoComplete="current-password"
             placeholder="••••••••"
-            className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-text-primary outline-none transition-all placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+            className="w-full rounded-xl border border-border-glass bg-black/[0.03] dark:bg-white/5 px-4 py-3 text-sm text-text-primary outline-none transition-all placeholder:text-text-muted focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
           />
         </div>
         <div className="flex justify-end">

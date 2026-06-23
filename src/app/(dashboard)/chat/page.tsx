@@ -115,11 +115,13 @@ export default function ChatPage() {
   return (
     <div className="flex h-full w-full overflow-hidden">
       {/* Conversation sidebar */}
-      <ConversationList
-        activeConversationId={activeConversationId}
-        onSelectConversation={setActiveConversationId}
-        onNewConversation={(id) => setActiveConversationId(id)}
-      />
+      <div className="w-64 shrink-0 border-r border-border-glass bg-black/[0.01] dark:bg-white/[0.01]">
+        <ConversationList
+          activeConversationId={activeConversationId}
+          onSelectConversation={setActiveConversationId}
+          onNewConversation={(id) => setActiveConversationId(id)}
+        />
+      </div>
 
       {/* Main chat area */}
       <div className="flex flex-1 flex-col overflow-hidden">
@@ -263,7 +265,7 @@ export default function ChatPage() {
             type="button"
             onClick={handleFileButtonClick}
             disabled={isQuestionnaireProcessing}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-text-muted transition-all duration-200 hover:bg-white/5 hover:text-primary active:scale-95 disabled:opacity-40"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-text-muted transition-all duration-200 hover:bg-black/[0.04] dark:hover:bg-white/5 hover:text-primary active:scale-95 disabled:opacity-40"
             title="Upload questionnaire (.xlsx, .csv, .pdf)"
           >
             <Paperclip className="h-4 w-4" />
