@@ -46,255 +46,255 @@ interface HelpContextType {
 
 const HELP_DATABASE: Record<string, PageHelpData> = {
   "/": {
-    title: "Painel de Controle (Dashboard)",
-    subtitle: "Visão consolidada de governança e conformidade",
-    description: "Este painel centraliza o estado geral da postura de conformidade regulatória e de segurança da sua organização.",
+    title: "Dashboard",
+    subtitle: "Consolidated view of compliance and governance",
+    description: "This dashboard centralizes the general status of your organization's regulatory and security compliance posture.",
     faqs: [
       {
-        question: "Como o Score de Conformidade é calculado?",
-        answer: "Ele é a média aritmética das notas obtidas nas auditorias ativas dos frameworks selecionados."
+        question: "How is the Compliance Score calculated?",
+        answer: "It is the calculated average score of the active regulatory and discretionary controls mapped to your current baseline."
       },
       {
-        question: "O que indica o Feed de Atividades?",
-        answer: "Mostra eventos recentes gerados automaticamente, como aproximação de prazos de metas, expiração de concessões de risco (POAM) ou queda de scores de conformidade."
+        question: "What does the Activity Feed show?",
+        answer: "Displays recent automated compliance events, such as pending task reminders, risk acceptance expirations, or framework score updates."
       },
       {
-        question: "De onde vêm os dados de postura de vulnerabilidade?",
-        answer: "Eles são sincronizados diariamente às 3h da manhã da sua conta do DefectDojo. A barra de SLA exibe o prazo restante para correção com base nas severidades das CWEs encontradas."
+        question: "Where does the vulnerability posture data come from?",
+        answer: "It is synchronized daily from your configured vulnerability scanner. The SLA bar shows the remaining time to remediate based on open vulnerabilities and defined severity thresholds."
       }
     ],
     tourSteps: [
       {
         targetId: "stats-grid-dashboard",
-        title: "Indicadores Rápidos",
-        content: "Aqui você vê os totais de frameworks monitorados, documentos carregados, auditorias ativas e a nota geral média."
+        title: "Quick Indicators",
+        content: "View totals of monitored frameworks, uploaded documents, active assessments, and overall baseline compliance score."
       },
       {
         targetId: "vulnerability-posture-card",
-        title: "Postura de Vulnerabilidades",
-        content: "Métricas agregadas do DefectDojo. Acompanhe a conformidade do SLA de correção de acordo com as criticidades das falhas."
+        title: "Vulnerability Posture",
+        content: "Aggregated metrics from your vulnerability scanner. Track SLA compliance based on vulnerability severity."
       },
       {
         targetId: "activity-feed-card",
-        title: "Histórico de Atividades",
-        content: "Registra alertas importantes do agente autônomo sobre vencimento de tarefas e mudanças nos scores."
+        title: "Activity History",
+        content: "Logs important system updates, tasks nearing expiration, and baseline score updates."
       },
       {
         targetId: "goals-widget-card",
-        title: "Acompanhamento de Remediação",
-        content: "Visualize as metas ativas abertas para sanar lacunas identificadas e veja a evolução geral das tarefas."
+        title: "Remediation Tracking",
+        content: "Monitor active goals opened to resolve identified compliance gaps."
       }
     ]
   },
   "/compliance": {
-    title: "Inteligência de Conformidade",
-    subtitle: "Análise profunda de postura e plano de ação ideal",
-    description: "Espaço dedicado a detalhar o score de cada regulamento, analisar overlaps e priorizar as tarefas com maior retorno sobre o esforço (ROI).",
+    title: "Compliance Intelligence",
+    subtitle: "Deep analysis of security posture and optimal action plan",
+    description: "Analyze the score of each standard, identify control overlaps, and prioritize remediation projects with the highest return on investment (ROI).",
     faqs: [
       {
-        question: "O que é a priorização de remediação baseada em ROI?",
-        answer: "Nosso algoritmo mapeia os controles compartilhados entre regulamentos. Corrigir um controle que atende simultaneamente à ISO 27001 e à LGPD oferece maior retorno de investimento (ROI)."
+        question: "What is ROI-based remediation prioritization?",
+        answer: "The system maps shared controls across frameworks. Implementing a control that satisfies multiple requirements simultaneously offers a higher return on investment (ROI)."
       },
       {
-        question: "Como funcionam os níveis de confiança do RAG nos Gaps?",
-        answer: "Representa a certeza estatística da inteligência artificial de que a evidência de fato atende àquele controle, variando de 0 a 100%."
+        question: "How do RAG confidence levels work?",
+        answer: "Represents the confidence level that the uploaded evidence satisfies the control requirement, based on semantic audit verification."
       }
     ],
     tourSteps: [
       {
         targetId: "compliance-scorecards",
-        title: "Postura por Framework",
-        content: "Compare o desempenho entre diferentes regulamentos. Cada card detalha a quantidade de controles atendidos e falhas abertas."
+        title: "Framework Posture",
+        content: "Compare performance across different standards, detailing covered controls and open gaps."
       },
       {
         targetId: "remediation-roi-card",
-        title: "Remediação Prioritária (ROI)",
-        content: "Siga esta lista para otimizar suas tarefas. Foca nas correções de controles com maior impacto regulatório integrado."
+        title: "Priority Remediation (ROI)",
+        content: "Follow this list to optimize tasks, focusing on controls that cover the largest integration footprint."
       },
       {
         targetId: "compliance-gaps-table",
-        title: "Lista de Gaps Críticos",
-        content: "Lista dos controles em estado de falha ou sem evidência documentada. Veja qual informação exata está em falta."
+        title: "Critical Gaps List",
+        content: "Lists controls that are in a failed state or missing evidence."
       }
     ]
   },
   "/compliance/mappings": {
-    title: "Mapeamentos GRC",
-    subtitle: "Conexão de controles locais com frameworks externos",
-    description: "Exibe a relação direta dos controles do Secure Controls Framework (SCF) mapeados para regulamentações de mercado.",
+    title: "GRC Mappings",
+    subtitle: "Map internal controls to external security frameworks",
+    description: "Displays the direct relationship between local control sets and external regulatory standards.",
     faqs: [
       {
-        question: "O que acontece ao clicar em 'Sync with Standard GRC'?",
-        answer: "A plataforma se conecta com a API Standard GRC para obter a atualização e tradução mais recente dos mapeamentos de controle para o SCF."
+        question: "What happens when synchronizing mappings?",
+        answer: "The platform connects with the central GRC API to pull the latest mapping definitions and translation updates."
       },
       {
-        question: "Posso carregar mapeamentos manuais?",
-        answer: "Sim, usando a ferramenta de upload é possível submeter planilhas customizadas que correlacionam controles internos com novos frameworks."
+        question: "Can I upload custom mappings?",
+        answer: "Yes, using the upload tool you can submit custom spreadsheets correlating internal controls with new security baselines."
       }
     ],
     tourSteps: [
       {
         targetId: "mappings-sync-button",
-        title: "Sincronização",
-        content: "Use este botão para garantir que suas definições de GRC estejam atualizadas conforme os padrões mais recentes do mercado."
+        title: "Synchronization",
+        content: "Sync GRC mappings to ensure local definitions match the latest regulatory standards."
       },
       {
         targetId: "mappings-search-input",
-        title: "Filtro de Busca",
-        content: "Busque mapeamentos específicos por palavra-chave, código de controle local ou identificador do framework alvo."
+        title: "Search Filter",
+        content: "Search for specific mappings by keyword, local control code, or target framework."
       }
     ]
   },
   "/documents": {
-    title: "Gerenciador de Documentos & Ingestão",
-    subtitle: "Submissão de políticas, evidências e classificação",
-    description: "Central para envio e acompanhamento dos documentos corporativos que alimentam a base RAG.",
+    title: "Document Manager & Ingestion",
+    subtitle: "Submit policies, evidence, and classifications",
+    description: "Central hub to upload and manage the corporate policy and evidence documents that feed the knowledge base.",
     faqs: [
       {
-        question: "O que é o Clarity Gate?",
-        answer: "É um validador baseado em IA que analisa a clareza e precisão do texto inserido, garantindo que não contenha contradições ou termos excessivamente vagos antes de indexá-lo."
+        question: "What is the Clarity Gate?",
+        answer: "It is an AI-based validator that checks the clarity and precision of submitted text, ensuring it is free of contradictions or overly vague terms before indexing."
       },
       {
-        question: "O que significa 'PENDING_HITL'?",
-        answer: "Significa 'Human-in-the-Loop pendente'. Ocorre quando um documento é marcado como ambíguo ou quando há falha no validador. Exige aprovação de um auditor para entrar na base de conhecimento."
+        question: "What does a pending status mean?",
+        answer: "If a document is flagged as ambiguous or fails automatic validation, it is queued for manual auditor review before it can be added to the active knowledge base."
       }
     ],
     tourSteps: [
       {
         targetId: "document-upload-btn",
-        title: "Novo Documento",
-        content: "Inicie o assistente para carregar um novo arquivo, selecionar o escopo (Global ou específico de produto) e sua categoria correspondente."
+        title: "New Document",
+        content: "Launch the wizard to upload a new file, select its scope (global or product-specific), and assign its category."
       },
       {
         targetId: "document-filter-tabs",
-        title: "Filtros de Visualização",
-        content: "Classifique seus documentos por escopo: políticas organizacionais gerais, especificações do produto nCommand ou contratos de canais."
+        title: "Filter Views",
+        content: "Classify documents by scope, such as organization-wide policies or specific product release documents."
       },
       {
         targetId: "document-list-table",
-        title: "Tabela de Documentos",
-        content: "Verifique o status do Clarity Gate de cada arquivo. Arquivos rejeitados ou não validados não entram no RAG até aprovação."
+        title: "Document Table",
+        content: "Track the validation status of each file. Unapproved or rejected files are excluded from the knowledge base."
       }
     ]
   },
   "/assessments": {
-    title: "Auditorias & Avaliações",
-    subtitle: "Execução de auditorias automatizadas e planos de ação (POAM)",
-    description: "Aqui você executa e analisa relatórios de auditoria, além de gerenciar itens de POAM com aceitação temporária de riscos.",
+    title: "Audits & Assessments",
+    subtitle: "Run automated compliance audits and manage POAMs",
+    description: "Execute audits, generate compliance reports, and manage Plan of Action and Milestones (POAM) items for temporary risk acceptance.",
     faqs: [
       {
-        question: "Qual a diferença entre os modos Quick e Deep?",
-        answer: "O Quick avalia rapidamente as correspondências de RAG textuais. O Deep executa análises com agentes de IA para verificar evidências em arquivos específicos, buscando provas reais."
+        question: "What is the difference between audit modes?",
+        answer: "Quick mode reviews textual evidence alignments, while Deep mode executes detailed analysis to verify evidence in specific files."
       },
       {
-        question: "Como funciona a expiração de riscos no POAM?",
-        answer: "Um controle classificado como gap pode ter seu risco aceito temporariamente. Quando esse prazo vence, a aceitação expira e o sistema cria alertas automáticos."
+        question: "How does risk acceptance expiration work?",
+        answer: "A control gap can be granted a temporary risk acceptance. When this period expires, the acceptance is revoked, and the system raises a task alert."
       }
     ],
     tourSteps: [
       {
         targetId: "run-assessment-btn",
-        title: "Iniciar Nova Auditoria",
-        content: "Clique aqui para configurar e executar um escaneamento de conformidade em tempo real baseado em RAG."
+        title: "Start New Audit",
+        content: "Configure and run a real-time compliance scan based on the active document knowledge base."
       },
       {
         targetId: "assessments-history-list",
-        title: "Histórico de Auditorias",
-        content: "Visualize ciclos de avaliações passados, comparando o progresso de conformidade ao longo do tempo."
+        title: "Audit History",
+        content: "Review past compliance scans and compare progress over time."
       }
     ]
   },
   "/goals": {
-    title: "Projetos de Remediação & Metas",
-    subtitle: "Acompanhamento de objetivos e autonomia do agente",
-    description: "Monitore o progresso de resolução de lacunas de segurança através de metas subdivididas em tarefas técnicas.",
+    title: "Remediation Projects & Goals",
+    subtitle: "Track compliance objectives and remediation progress",
+    description: "Monitor the resolution of security gaps through high-level goals broken down into technical tasks.",
     faqs: [
       {
-        question: "Por que algumas tarefas pedem autorização manual?",
-        answer: "Devido aos limites de autonomia do agente. Ações mapeadas na zona amarela dependem do seu consentimento ('Confirmar') para prosseguir."
+        question: "Why do some tasks require manual approval?",
+        answer: "To maintain control over sensitive actions, operations falling outside the agent's autonomous limits require explicit auditor confirmation."
       },
       {
-        question: "Como o progresso da meta é calculado?",
-        answer: "É proporcional à taxa de conclusão das tarefas técnicas ligadas a ela."
+        question: "How is goal progress calculated?",
+        answer: "Progress is proportional to the completion rate of the technical tasks associated with the goal."
       }
     ],
     tourSteps: [
       {
         targetId: "create-goal-btn",
-        title: "Nova Meta de Remediação",
-        content: "Crie um novo projeto associado a um framework para acompanhar as correções necessárias."
+        title: "New Remediation Goal",
+        content: "Create a new project associated with a framework to track required fixes."
       },
       {
         targetId: "goals-accordion-list",
-        title: "Lista de Projetos",
-        content: "Expanda qualquer meta para visualizar as tarefas vinculadas, prazos e agentes designados."
+        title: "Project List",
+        content: "Expand any goal to view linked tasks, deadlines, and assigned resources."
       }
     ]
   },
   "/chat": {
-    title: "Assistente de IA GRC",
-    subtitle: "Conversação contextual com inteligência RAG",
-    description: "Canal de conversação direta para tirar dúvidas de políticas da organização, solicitar análises ou submeter questionários de auditoria.",
+    title: "GRC AI Assistant",
+    subtitle: "Conversational interface powered by compliance knowledge",
+    description: "Direct channel to query internal policies, request analysis, or submit audit questionnaires.",
     faqs: [
       {
-        question: "Como funciona a validação de questionários?",
-        answer: "Você pode subir planilhas XLSX ou CSV. A IA lê cada linha, cruza as perguntas com as políticas indexadas no RAG, gera respostas embasadas e preenche o arquivo para download."
+        question: "How does questionnaire validation work?",
+        answer: "You can upload questionnaire spreadsheets. The assistant cross-references each question against indexed policies, generates verified answers, and compiles them for download."
       },
       {
-        question: "De onde vêm as respostas do Chat?",
-        answer: "Elas são geradas estritamente com base nos documentos que passaram pelo Clarity Gate e estão publicados na base de conhecimento."
+        question: "Where do the assistant's answers come from?",
+        answer: "Answers are generated strictly using policy and evidence documents that have passed clarity validation."
       }
     ],
     tourSteps: [
       {
         targetId: "chat-suggestion-chips",
-        title: "Perguntas Frequentes",
-        content: "Clique em uma das sugestões rápidas para testar a agilidade de resposta do RAG."
+        title: "Frequently Asked Questions",
+        content: "Click on any suggestion chip to test the assistant's response speed."
       },
       {
         targetId: "chat-input-area",
-        title: "Área de Interação",
-        content: "Envie suas dúvidas textuais ou faça upload de uma planilha de perguntas clicando no ícone do clipe."
+        title: "Interaction Area",
+        content: "Send text questions or upload a questionnaire spreadsheet."
       }
     ]
   },
   "/reports": {
-    title: "Relatórios de Conformidade",
-    subtitle: "Exportação e compilação de relatórios de gaps e prioridades",
-    description: "Interface para geração de relatórios de auditoria estáticos e exportação para formatos XLSX (Excel) e PDF.",
+    title: "Compliance Reports",
+    subtitle: "Export and compile audit summaries",
+    description: "Generate static compliance reports and export data to spreadsheet or document formats.",
     faqs: [
       {
-        question: "O que o relatório Excel exportado contém?",
-        answer: "Contém 3 planilhas: Visão Geral de conformidade, Plano de Remediação detalhado com priorização de ROI e a Lista completa de Gaps com anotações."
+        question: "What does the exported report contain?",
+        answer: "It contains a compliance status overview, a prioritized remediation plan, and the complete gap list."
       }
     ],
     tourSteps: [
       {
         targetId: "generate-report-btn",
-        title: "Gerar Relatório Completo",
-        content: "Compila o estado atual da conformidade e salva um snapshot estático na base de relatórios."
+        title: "Generate Full Report",
+        content: "Compile the current compliance state and save a snapshot static report."
       },
       {
         targetId: "reports-list-table",
-        title: "Exportar e Visualizar",
-        content: "Baixe relatórios gerados em PDF estruturado ou em formato de planilhas integradas do Excel."
+        title: "Export and View",
+        content: "Download compiled reports in PDF or spreadsheet format."
       }
     ]
   }
 };
 
 const DEFAULT_HELP: PageHelpData = {
-  title: "Ajuda Online ihOS",
-  subtitle: "Suporte contextual de conformidade e governança",
-  description: "Selecione uma das páginas do menu para ver informações de suporte contextualizadas.",
+  title: "ihOS Online Help",
+  subtitle: "Contextual compliance and governance support",
+  description: "Select any page in the navigation menu to display relevant help and documentation.",
   faqs: [
     {
-      question: "O que é o ihOS?",
-      answer: "O ihOS é um sistema autônomo de governança, risco e conformidade (GRC) projetado para acelerar processos de auditoria (como a ISO 27001) e automatizar o controle de políticas corporativas."
+      question: "What is ihOS?",
+      answer: "ihOS is an autonomous governance, risk, and compliance (GRC) operating system designed to accelerate security audits and automate policy management."
     },
     {
-      question: "O que é o RAG no contexto da plataforma?",
-      answer: "RAG (Retrieval-Augmented Generation) é a arquitetura que permite à inteligência artificial recuperar trechos de suas políticas internas de segurança para fundamentar suas respostas de auditoria de forma precisa."
+      question: "What is RAG in this platform?",
+      answer: "Retrieval-Augmented Generation (RAG) is the architecture that allows the AI to securely retrieve sections of your internal policies to answer audit questions accurately."
     }
   ],
   tourSteps: []
