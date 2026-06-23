@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   /* Light Theme Variables (Apple-inspired clean light) */
   --color-primary: #3DC2C2;
