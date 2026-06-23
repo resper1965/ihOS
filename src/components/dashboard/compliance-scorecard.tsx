@@ -2,16 +2,26 @@
 
 import { useState } from "react";
 import type { FrameworkScore } from "@/lib/data/compliance-data";
+import { Lock, Shield, ShieldCheck, Heart, Globe } from "lucide-react";
+
+function getFrameworkIcon(code: string) {
+  const normalized = code.toLowerCase();
+  if (normalized.includes("27001")) return <Lock className="h-4.5 w-4.5 text-text-secondary stroke-[1.5]" />;
+  if (normalized.includes("27701")) return <ShieldCheck className="h-4.5 w-4.5 text-text-secondary stroke-[1.5]" />;
+  if (normalized.includes("lgpd") || normalized.includes("gdpr")) return <Globe className="h-4.5 w-4.5 text-text-secondary stroke-[1.5]" />;
+  if (normalized.includes("hi-") || normalized.includes("hipaa") || normalized.includes("health")) return <Heart className="h-4.5 w-4.5 text-text-secondary stroke-[1.5]" />;
+  return <Shield className="h-4.5 w-4.5 text-text-secondary stroke-[1.5]" />;
+}
 
 interface ComplianceScorecardProps {
   frameworks: FrameworkScore[];
 }
 
 function getScoreColor(score: number | null): string {
-  if (score === null) return "text-slate-400";
-  if (score >= 80) return "text-emerald-400";
-  if (score >= 50) return "text-amber-400";
-  return "text-red-400";
+  if (score === null) return "text-slate-600 dark:text-slate-400";
+  if (score >= 80) return "text-emerald-600 dark:text-emerald-400";
+  if (score >= 50) return "text-amber-600 dark:text-amber-400";
+  return "text-red-600 dark:text-red-400";
 }
 
 function getScoreBg(score: number | null): string {
@@ -67,9 +77,9 @@ export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
             {/* Header */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <span className="text-xl" role="img" aria-label={fw.name}>
-                  {fw.icon}
-                </span>
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black/5 dark:bg-white/5">
+                  {getFrameworkIcon(fw.code)}
+                </div>
                 <span className="text-sm font-semibold text-text-primary truncate">
                   {fw.name}
                 </span>
@@ -92,11 +102,11 @@ export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
               <div>
                 <div className="flex items-center justify-between text-[11px] mb-1">
                   <span className="text-text-secondary font-medium">1. Policies & Processes (ISMS)</span>
-                  <span className="font-semibold text-emerald-400 tabular-nums">
+                  <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
                     {fw.ismsScore !== null ? `${fw.ismsScore}%` : "—"}
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/5 dark:bg-white/5">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-emerald-600 to-emerald-400 transition-all duration-1000 ease-out"
                     style={{ width: `${fw.ismsScore ?? 0}%` }}
@@ -107,11 +117,11 @@ export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
               <div>
                 <div className="flex items-center justify-between text-[11px] mb-1">
                   <span className="text-text-secondary font-medium">2. Technical Evidence (Operational)</span>
-                  <span className="font-semibold text-cyan-400 tabular-nums">
+                  <span className="font-semibold text-cyan-600 dark:text-cyan-400 tabular-nums">
                     {fw.evidenceScore !== null ? `${fw.evidenceScore}%` : "—"}
                   </span>
                 </div>
-                <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/5">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-black/5 dark:bg-white/5">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-1000 ease-out"
                     style={{ width: `${fw.evidenceScore ?? 0}%` }}
@@ -121,7 +131,7 @@ export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
             </div>
 
             {/* 4-State Indicators Grid */}
-            <div className="mt-4 pt-3 border-t border-white/5 grid grid-cols-2 gap-x-3 gap-y-1.5 text-[10px]">
+            <div className="mt-4 pt-3 border-t border-border-glass grid grid-cols-2 gap-x-3 gap-y-1.5 text-[10px]">
               <div className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400/50" />
                 <span className="text-text-muted truncate">Compliant:</span>

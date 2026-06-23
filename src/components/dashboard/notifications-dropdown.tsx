@@ -25,13 +25,13 @@ function relativeTime(isoDate: string | null): string {
 function notificationIcon(type: AgentNotification["type"]) {
   switch (type) {
     case "poam_expiry":
-      return <AlertTriangle className="h-4 w-4 text-amber-400" />;
+      return <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 stroke-[1.5]" />;
     case "score_change":
-      return <TrendingUp className="h-4 w-4 text-emerald-400" />;
+      return <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400 stroke-[1.5]" />;
     case "task_deadline":
-      return <Clock className="h-4 w-4 text-primary" />;
+      return <Clock className="h-4 w-4 text-primary stroke-[1.5]" />;
     default:
-      return <Bell className="h-4 w-4 text-slate-400" />;
+      return <Bell className="h-4 w-4 text-text-muted stroke-[1.5]" />;
   }
 }
 
@@ -141,10 +141,10 @@ export function NotificationsDropdown() {
           setOpen(!open);
           if (!open) fetchNotifications();
         }}
-        className="relative rounded-xl p-2 text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
+        className="relative rounded-xl p-2 text-text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-text-primary transition-colors"
         aria-label="Notifications"
       >
-        <Bell className="h-5 w-5" />
+        <Bell className="h-5 w-5 stroke-[1.5]" />
         {unreadCount > 0 && (
           <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-emerald-400 px-1 text-[10px] font-bold text-[#0f172a]">
             {unreadCount > 99 ? "99+" : unreadCount}
@@ -157,16 +157,16 @@ export function NotificationsDropdown() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-white/10 bg-[#1e293b]/95 shadow-2xl backdrop-blur-xl sm:w-96">
+        <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border-glass bg-bg-card/95 shadow-2xl backdrop-blur-xl sm:w-96">
           {/* Header */}
-          <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
-            <h3 className="text-sm font-semibold text-white">Notifications</h3>
+          <div className="flex items-center justify-between border-b border-border-glass px-4 py-3">
+            <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>
             {unreadCount > 0 && (
               <button
                 onClick={markAllAsRead}
-                className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-primary hover:bg-white/5 transition-colors"
+                className="flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs text-primary hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
               >
-                <CheckCheck className="h-3.5 w-3.5" />
+                <CheckCheck className="h-3.5 w-3.5 stroke-[1.5]" />
                 Mark all as read
               </button>
             )}
@@ -188,7 +188,7 @@ export function NotificationsDropdown() {
               </div>
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center px-4 py-10">
-                <Bell className="mb-2 h-8 w-8 text-slate-600" />
+                <Bell className="mb-2 h-8 w-8 text-text-muted stroke-[1.5]" />
                 <p className="text-sm text-text-muted">No notifications</p>
               </div>
             ) : (
@@ -199,15 +199,15 @@ export function NotificationsDropdown() {
                     onClick={() => {
                       if (!n.read) markAsRead(n.id);
                     }}
-                    className={`flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-white/5 ${
+                    className={`flex w-full items-start gap-3 rounded-lg px-3 py-3 text-left transition-colors hover:bg-black/5 dark:hover:bg-white/5 ${
                       !n.read ? "bg-primary/5" : ""
                     }`}
                   >
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/5">
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black/5 dark:bg-white/5">
                       {notificationIcon(n.type)}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className={`text-sm leading-tight ${!n.read ? "font-medium text-white" : "text-slate-300"}`}>
+                      <p className={`text-sm leading-tight ${!n.read ? "font-medium text-text-primary" : "text-text-secondary"}`}>
                         {n.title}
                       </p>
                       {n.content && (

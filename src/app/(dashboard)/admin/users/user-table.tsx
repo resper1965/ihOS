@@ -36,8 +36,8 @@ export function UserTable({ users }: { users: UserRow[] }) {
   return (
     <div className="glass-card overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm text-slate-300">
-          <thead className="bg-white/5 text-xs uppercase text-slate-400">
+        <table className="w-full text-left text-sm text-text-secondary">
+          <thead className="bg-black/5 dark:bg-white/5 text-xs uppercase text-text-muted">
             <tr>
               <th className="px-6 py-4 font-medium">User</th>
               <th className="px-6 py-4 font-medium">Role</th>
@@ -46,12 +46,12 @@ export function UserTable({ users }: { users: UserRow[] }) {
               <th className="px-6 py-4 font-medium text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-white/10">
+          <tbody className="divide-y divide-border-glass">
             {users.map((u) => (
-              <tr key={u.id} className="hover:bg-white/[0.02]">
+              <tr key={u.id} className="hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">
                 <td className="px-6 py-4">
-                  <div className="font-medium text-white">{u.email || "No Email"}</div>
-                  <div className="text-xs text-slate-500 font-mono mt-0.5">{u.id}</div>
+                  <div className="font-medium text-text-primary">{u.email || "No Email"}</div>
+                  <div className="text-xs text-text-muted font-mono mt-0.5">{u.id}</div>
                 </td>
                 <td className="px-6 py-4">
                   <Badge variant="neutral" className="text-[10px]">
@@ -60,22 +60,22 @@ export function UserTable({ users }: { users: UserRow[] }) {
                 </td>
                 <td className="px-6 py-4">
                   {u.status === "approved" && (
-                    <Badge variant="success" className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px]">
+                    <Badge variant="success" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px]">
                       Approved
                     </Badge>
                   )}
                   {u.status === "pending" && (
-                    <Badge variant="warning" className="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] animate-pulse">
+                    <Badge variant="warning" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] animate-pulse">
                       Pending
                     </Badge>
                   )}
                   {u.status === "rejected" && (
-                    <Badge variant="danger" className="bg-red-500/10 text-red-400 border border-red-500/20 text-[10px]">
+                    <Badge variant="danger" className="bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 text-[10px]">
                       Rejected
                     </Badge>
                   )}
                 </td>
-                <td className="px-6 py-4 text-slate-400">
+                <td className="px-6 py-4 text-text-muted">
                   {formatDate(u.created_at)}
                 </td>
                 <td className="px-6 py-4 text-right">
@@ -85,23 +85,23 @@ export function UserTable({ users }: { users: UserRow[] }) {
                         <button
                           onClick={() => handleAction(u.id, "approved")}
                           disabled={loadingId === u.id}
-                          className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors disabled:opacity-50"
+                          className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 rounded-lg transition-colors disabled:opacity-50"
                           title="Approve User"
                         >
-                          {loadingId === u.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                          {loadingId === u.id ? <Loader2 className="h-4 w-4 animate-spin stroke-[1.5]" /> : <CheckCircle className="h-4 w-4 stroke-[1.5]" />}
                         </button>
                         <button
                           onClick={() => handleAction(u.id, "rejected")}
                           disabled={loadingId === u.id}
-                          className="p-1.5 text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                          className="p-1.5 text-red-600 dark:text-red-400 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
                           title="Reject User"
                         >
-                          {loadingId === u.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <XCircle className="h-4 w-4" />}
+                          {loadingId === u.id ? <Loader2 className="h-4 w-4 animate-spin stroke-[1.5]" /> : <XCircle className="h-4 w-4 stroke-[1.5]" />}
                         </button>
                       </>
                     )}
                     {u.status !== "pending" && u.role !== "admin" && (
-                      <span className="text-xs text-slate-500 italic">No actions</span>
+                      <span className="text-xs text-text-muted italic">No actions</span>
                     )}
                   </div>
                 </td>
@@ -109,7 +109,7 @@ export function UserTable({ users }: { users: UserRow[] }) {
             ))}
             {users.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
+                <td colSpan={5} className="px-6 py-8 text-center text-text-muted">
                   No users found in the system.
                 </td>
               </tr>

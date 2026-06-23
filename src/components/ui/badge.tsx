@@ -13,28 +13,28 @@ interface BadgeProps {
 const variantStyles: Record<BadgeVariant, { bg: string; text: string; dot: string }> = {
   success: {
     bg: "bg-emerald-500/10 border-emerald-500/20",
-    text: "text-emerald-400",
-    dot: "bg-emerald-400",
+    text: "text-emerald-600 dark:text-emerald-400",
+    dot: "bg-emerald-500 dark:bg-emerald-400",
   },
   warning: {
     bg: "bg-amber-500/10 border-amber-500/20",
-    text: "text-amber-400",
-    dot: "bg-amber-400",
+    text: "text-amber-600 dark:text-amber-400",
+    dot: "bg-amber-500 dark:bg-amber-400",
   },
   danger: {
     bg: "bg-red-500/10 border-red-500/20",
-    text: "text-red-400",
-    dot: "bg-red-400",
+    text: "text-red-600 dark:text-red-400",
+    dot: "bg-red-500 dark:bg-red-400",
   },
   info: {
     bg: "bg-primary/10 border-primary/20",
-    text: "text-primary",
-    dot: "bg-primary",
+    text: "text-cyan-600 dark:text-primary",
+    dot: "bg-cyan-500 dark:bg-primary",
   },
   neutral: {
     bg: "bg-slate-500/10 border-slate-500/20",
-    text: "text-slate-400",
-    dot: "bg-slate-400",
+    text: "text-slate-600 dark:text-slate-400",
+    dot: "bg-slate-500 dark:bg-slate-400",
   },
 };
 

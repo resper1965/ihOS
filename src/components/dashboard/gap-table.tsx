@@ -27,26 +27,26 @@ function StatusBadge({ status }: { status: GapItem["status"] }) {
   const config = {
     critical: {
       bg: "bg-red-500/15 border-red-500/25",
-      text: "text-red-400",
-      dot: "bg-red-400",
+      text: "text-red-600 dark:text-red-400",
+      dot: "bg-red-500 dark:bg-red-400",
       label: "Critical",
     },
     high: {
       bg: "bg-orange-500/15 border-orange-500/25",
-      text: "text-orange-400",
-      dot: "bg-orange-400",
+      text: "text-orange-600 dark:text-orange-400",
+      dot: "bg-orange-500 dark:bg-orange-400",
       label: "High",
     },
     medium: {
       bg: "bg-amber-500/15 border-amber-500/25",
-      text: "text-amber-400",
-      dot: "bg-amber-400",
+      text: "text-amber-600 dark:text-amber-400",
+      dot: "bg-amber-500 dark:bg-amber-400",
       label: "Medium",
     },
     low: {
       bg: "bg-primary/15 border-primary/25",
-      text: "text-primary",
-      dot: "bg-primary",
+      text: "text-cyan-600 dark:text-primary",
+      dot: "bg-cyan-500 dark:bg-primary",
       label: "Low",
     },
   }[status];
@@ -82,7 +82,7 @@ function ConfidenceBar({ value }: { value: number }) {
 
   return (
     <div className="flex items-center gap-2">
-      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-white/5">
+      <div className="h-1.5 w-16 overflow-hidden rounded-full bg-black/5 dark:bg-white/5">
         <div
           className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-500`}
           style={{ width: `${value}%` }}
@@ -90,7 +90,7 @@ function ConfidenceBar({ value }: { value: number }) {
       </div>
       <span
         className={`text-xs font-semibold tabular-nums ${
-          value >= 70 ? "text-emerald-400" : value >= 40 ? "text-amber-400" : "text-red-400"
+          value >= 70 ? "text-emerald-600 dark:text-emerald-400" : value >= 40 ? "text-amber-600 dark:text-amber-400" : "text-red-600 dark:text-red-400"
         }`}
       >
         {value}%
@@ -129,12 +129,12 @@ function SortHeader({
       <span className="text-text-muted/60">
         {isActive ? (
           currentDir === "asc" ? (
-            <ChevronUp className="h-3.5 w-3.5" />
+            <ChevronUp className="h-3.5 w-3.5 stroke-[1.5]" />
           ) : (
-            <ChevronDown className="h-3.5 w-3.5" />
+            <ChevronDown className="h-3.5 w-3.5 stroke-[1.5]" />
           )
         ) : (
-          <ChevronsUpDown className="h-3.5 w-3.5 opacity-0 transition-opacity group-hover:opacity-100" />
+          <ChevronsUpDown className="h-3.5 w-3.5 stroke-[1.5] opacity-0 transition-opacity group-hover:opacity-100" />
         )}
       </span>
     </button>
@@ -191,7 +191,7 @@ export function GapTable({ gaps }: GapTableProps) {
 
   return (
     <div className="glass-card overflow-hidden">
-      <div className="border-b border-white/5 px-6 py-4">
+      <div className="border-b border-border-glass px-6 py-4">
         <h3 className="text-lg font-semibold text-text-primary">
           Top Compliance Gaps
         </h3>
@@ -203,7 +203,7 @@ export function GapTable({ gaps }: GapTableProps) {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-white/5">
+            <tr className="border-b border-border-glass">
               <th className="px-6 py-3 text-left">
                 <SortHeader
                   label="Control"
@@ -271,8 +271,8 @@ export function GapTable({ gaps }: GapTableProps) {
                       }
                       className={`flex w-full items-center border-b transition-colors duration-200 ${
                         isExpanded
-                          ? "border-white/10 bg-white/[0.03]"
-                          : "border-white/5 hover:bg-white/[0.02]"
+                          ? "border-border-glass bg-black/[0.03] dark:bg-white/[0.03]"
+                          : "border-border-glass hover:bg-black/[0.02] dark:hover:bg-white/[0.02]"
                       }`}
                     >
                       <span className="w-[140px] shrink-0 px-6 py-3.5 text-left">
@@ -281,7 +281,7 @@ export function GapTable({ gaps }: GapTableProps) {
                         </span>
                       </span>
                       <span className="w-[80px] shrink-0 px-4 py-3.5 text-left">
-                        <span className="rounded-md bg-white/5 px-2 py-0.5 text-xs font-medium text-text-muted">
+                        <span className="rounded-md bg-black/5 dark:bg-white/5 px-2 py-0.5 text-xs font-medium text-text-muted">
                           {gap.domain}
                         </span>
                       </span>
@@ -298,7 +298,7 @@ export function GapTable({ gaps }: GapTableProps) {
                       </span>
                       <span className="w-10 shrink-0 px-4 py-3.5 text-center">
                         <ChevronDown
-                          className={`h-4 w-4 text-text-muted transition-transform duration-200 ${
+                          className={`h-4 w-4 stroke-[1.5] text-text-muted transition-transform duration-200 ${
                             isExpanded ? "rotate-180" : ""
                           }`}
                         />
@@ -307,7 +307,7 @@ export function GapTable({ gaps }: GapTableProps) {
 
                     {/* Expanded row */}
                     {isExpanded && gap.missingElements && (
-                      <div className="border-b border-white/5 bg-white/[0.02] px-10 py-4">
+                      <div className="border-b border-border-glass bg-black/[0.02] dark:bg-white/[0.02] px-10 py-4">
                         <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-text-muted">
                           Missing Elements
                         </p>
