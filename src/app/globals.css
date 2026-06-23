@@ -8,16 +8,16 @@
   --color-accent-hover: #2ca5a5;
   --color-brand-gray: #58595b;
   
-  --color-bg-dark: #000000;
-  --color-bg-card: #171717;
-  --color-bg-glass: #171717;
-  --color-bg-glass-light: #171717;
-  --color-border-glass: #262626;
-  --color-border-glass-hover: #262626;
+  --color-bg-dark: #f8fafc;
+  --color-bg-card: #ffffff;
+  --color-bg-glass: rgba(255, 255, 255, 0.85);
+  --color-bg-glass-light: rgba(255, 255, 255, 0.5);
+  --color-border-glass: #e2e8f0;
+  --color-border-glass-hover: #cbd5e1;
   
-  --color-text-primary: #f0f6f7;
-  --color-text-secondary: #94b3be;
-  --color-text-muted: #5a7a88;
+  --color-text-primary: #0f172a;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748b;
   
   --color-danger: #EF4444;
   --color-warning: #EAB308;
