@@ -247,52 +247,73 @@ export async function GET(req: Request) {
       cachedScores.set(framework, currentScore);
 
       // Save/Upsert this calculated score as a fresh snapshot in intelligence_snapshots
+      // GUARD: Never overwrite a real assessment score with a cron-computed zero.
+      // The local calculator can produce 0% when evidence_evaluations covers only a
+      // small subset of the full scf_framework_mappings catalogue. In that case we
+      // preserve the existing (higher) snapshot rather than degrading it.
       if (computed && computed.score !== null) {
         try {
-          // Delete old scorecard for this framework
-          await supabase
+          // Fetch the currently stored scorecard for this framework
+          const { data: existingSnap } = await supabase
             .from('intelligence_snapshots')
-            .delete()
+            .select('score')
             .eq('snapshot_type', 'scorecard')
-            .eq('framework_code', framework);
+            .eq('framework_code', framework)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
 
-          // Insert fresh scorecard snapshot
-          await supabase
-            .from('intelligence_snapshots')
-            .insert({
-              snapshot_type: 'scorecard',
-              framework_code: framework,
-              input_payload: {
-                source: 'cron_scheduler',
-              },
-              result_payload: {
+          const existingScore = existingSnap?.score ?? null;
+
+          // Skip update if the newly computed score is 0 but the stored score is better
+          if (computed.score === 0 && existingScore !== null && existingScore > 0) {
+            console.log(`[CRON] Skipping scorecard update for ${framework}: computed=0 but existing=${existingScore} (preserving assessment data)`);
+          } else {
+            // Delete old scorecard for this framework
+            await supabase
+              .from('intelligence_snapshots')
+              .delete()
+              .eq('snapshot_type', 'scorecard')
+              .eq('framework_code', framework);
+
+            // Insert fresh scorecard snapshot
+            await supabase
+              .from('intelligence_snapshots')
+              .insert({
+                snapshot_type: 'scorecard',
+                framework_code: framework,
+                input_payload: {
+                  source: 'cron_scheduler',
+                },
+                result_payload: {
+                  score: computed.score,
+                  coverage: computed.coverage,
+                  missing: computed.missing,
+                  isms_score: computed.ismsScore,
+                  evidence_score: computed.evidenceScore,
+                  conforming_count: computed.conformingCount,
+                  partial_count: computed.partialCount,
+                  informal_count: computed.informalCount,
+                  gap_count: computed.gapCount,
+                },
+                snapshot_data: {
+                  name: computed.name,
+                  score: computed.score,
+                  coverage: computed.coverage,
+                  missing: computed.missing,
+                  source: 'cron_scheduler',
+                  isms_score: computed.ismsScore,
+                  evidence_score: computed.evidenceScore,
+                  conforming_count: computed.conformingCount,
+                  partial_count: computed.partialCount,
+                  informal_count: computed.informalCount,
+                  gap_count: computed.gapCount,
+                },
                 score: computed.score,
-                coverage: computed.coverage,
-                missing: computed.missing,
-                isms_score: computed.ismsScore,
-                evidence_score: computed.evidenceScore,
-                conforming_count: computed.conformingCount,
-                partial_count: computed.partialCount,
-                informal_count: computed.informalCount,
-                gap_count: computed.gapCount,
-              },
-              snapshot_data: {
-                name: computed.name,
-                score: computed.score,
-                coverage: computed.coverage,
-                missing: computed.missing,
-                source: 'cron_scheduler',
-                isms_score: computed.ismsScore,
-                evidence_score: computed.evidenceScore,
-                conforming_count: computed.conformingCount,
-                partial_count: computed.partialCount,
-                informal_count: computed.informalCount,
-                gap_count: computed.gapCount,
-              },
-              score: computed.score,
-              user_id: null,
-              metadata: null,
-            });
+                user_id: null,
+                metadata: null,
+              });
+          }
         } catch (snapErr) {
           console.error(`[CRON] Failed to save scorecard snapshot for ${framework}:`, snapErr);
         }
