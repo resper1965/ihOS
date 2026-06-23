@@ -45,7 +45,7 @@ export async function getSecret(name: string): Promise<string | null> {
       return null;
     }
 
-    if (data) {
+    if (typeof data === "string" && data) {
       secretsCache[name] = data;
       return data;
     }

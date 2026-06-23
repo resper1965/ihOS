@@ -55,14 +55,19 @@ const DEFAULT_TIMEOUT_MS = 30_000;
 
 async function getConfig(): Promise<StandardApiConfig> {
   const baseUrl = process.env.STANDARD_GRC_API_URL;
-  const apiKey = await getSecret("STANDARD_GRC_API_KEY");
+  let apiKey: string | null = null;
+  try {
+    apiKey = await getSecret("STANDARD_GRC_API_KEY");
+  } catch (e) {
+    apiKey = process.env.STANDARD_GRC_API_KEY || null;
+  }
   const tenantId = process.env.STANDARD_GRC_TENANT_ID;
 
   if (!baseUrl) {
     throw new Error("Missing STANDARD_GRC_API_URL environment variable.");
   }
   if (!apiKey) {
-    throw new Error("Missing STANDARD_GRC_API_KEY from environment or Supabase Vault.");
+    throw new Error("Missing STANDARD_GRC_API_KEY environment variable.");
   }
 
   return {
@@ -326,6 +331,9 @@ export async function getScfFrameworks(): Promise<any[]> {
 // ---------------------------------------------------------------------------
 
 async function tryLocalFallback(endpoint: string, payload: any): Promise<any | null> {
+  if (process.env.GRC_FALLBACK_DISABLED === "true") {
+    return null;
+  }
   const cleanEndpoint = endpoint.split("?")[0];
   switch (cleanEndpoint) {
     case "/gap/evaluate-evidence":

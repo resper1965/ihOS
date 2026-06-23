@@ -2,6 +2,14 @@
 // Global test setup — runs before each test suite via vitest setupFiles.
 // Provides mock factories for Supabase, AI SDK, and OpenAI modules.
 
+process.env.GRC_FALLBACK_DISABLED = 'true';
+process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://fake.supabase.co';
+process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'fake-anon-key';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'fake-service-role-key';
+process.env.STANDARD_GRC_API_URL = 'https://fake-grc.api';
+process.env.STANDARD_GRC_API_KEY = 'fake-grc-key';
+process.env.OPENAI_API_KEY = 'fake-openai-key';
+
 import { vi } from 'vitest';
 
 // ---------------------------------------------------------------------------
@@ -97,6 +105,7 @@ vi.mock('ai', () => ({
     text: Promise.resolve('Mock streamed response.'),
   }),
   tool: vi.fn((definition: any) => definition),
+  generateObject: vi.fn(),
 }));
 
 // Mock: @ai-sdk/openai
