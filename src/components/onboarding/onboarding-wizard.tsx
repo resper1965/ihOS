@@ -27,7 +27,7 @@ const STEPS = [
     iconColor: "text-primary",
     iconBg: "from-primary/20 to-accent/20",
     description:
-      "ihOS is the central governance, risk, and compliance operating system for Ionic Health. In just a few steps, you will be monitoring frameworks such as LGPD, ISO 27001, TX-RAMP, and more.",
+      "ihOS is the central governance, risk, and compliance operating system for Ionic Health. In just a few steps, you will be monitoring frameworks such as LGPD, ISO 27001, ISO 27701, and more.",
     action: null,
   },
   {
@@ -38,7 +38,7 @@ const STEPS = [
     iconColor: "text-emerald-400",
     iconBg: "from-accent/20 to-cyan-500/20",
     description:
-      "Access the Compliance page to view the scorecard of available frameworks. The system automatically monitors LGPD, HIPAA, ISO 27001, TX-RAMP, and EU GDPR.",
+      "Access the Compliance page to view the scorecard of available frameworks. The system automatically monitors LGPD, HIPAA, ISO 27001, ISO 27701, and EU GDPR.",
     action: { label: "View Compliance", href: "/compliance" },
   },
   {

@@ -32,13 +32,6 @@ VALUES
    '{"name": "HIPAA", "score": null, "coverage": 76, "missing": 40, "source": "Coverage analysis from ISO 27001 Annex A cross-mapping to HIPAA Security Rule"}'::jsonb,
    NULL),
 
-  -- TX-RAMP Level 2 - In Process (Tracking # 1897478)
-  ('scorecard', 'TX-LEVEL-2',
-   '{"source": "application", "tracking": "1897478"}'::jsonb,
-   '{"status": "in_process"}'::jsonb,
-   '{"name": "TX-RAMP L2", "score": null, "coverage": 68, "missing": 89, "source": "Tracking # 1897478 - In Process - Texas DIR / Texas Cyber Command"}'::jsonb,
-   NULL),
-
   -- EU GDPR - High coverage via ISO 27701 + GDPR-specific articles
   ('scorecard', 'EU-GDPR',
    '{"source": "derived", "base": "iso27701"}'::jsonb,
@@ -53,8 +46,8 @@ SET snapshot_data = '{"frameworks": [
   {"code": "iso27701", "name": "ISO 27701:2019", "score": 95, "coverage": 100, "missing": 0, "icon": "🛡️"},
   {"code": "BR-LGPD", "name": "LGPD", "score": 100, "coverage": 100, "missing": 0, "icon": "🇧🇷"},
   {"code": "HI-2013", "name": "HIPAA", "score": null, "coverage": 76, "missing": 40, "icon": "🏥"},
-  {"code": "TX-LEVEL-2", "name": "TX-RAMP L2", "score": null, "coverage": 68, "missing": 89, "icon": "⭐"},
   {"code": "EU-GDPR", "name": "EU GDPR", "score": null, "coverage": 88, "missing": 12, "icon": "🇪🇺"}
 ]}'::jsonb
 WHERE snapshot_type = 'scorecard'
   AND framework_code = 'all';
+

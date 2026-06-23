@@ -6,6 +6,6 @@ export const DEFAULT_FRAMEWORKS = [
   { id: 'soc2', name: 'SOC 2 Type II' },
   { id: 'hipaa', name: 'HIPAA' },
   { id: 'nist_800_53', name: 'NIST 800-53' },
-  { id: 'tx-ramp-level-2', name: 'TX-RAMP Level 2' },
+  { id: 'iso27701', name: 'ISO/IEC 27701:2019' },
   { id: 'fedramp', name: 'FedRAMP' },
 ];

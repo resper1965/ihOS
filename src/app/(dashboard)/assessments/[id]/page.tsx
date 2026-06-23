@@ -26,7 +26,7 @@ const FRAMEWORK_NAMES: Record<string, string> = {
   "iso27001": "ISO/IEC 27001:2022",
   "BR-LGPD": "LGPD",
   "HI-2013": "HIPAA",
-  "TX-LEVEL-2": "TX-RAMP Level 2",
+  "iso27701": "ISO/IEC 27701:2019",
   "EU-GDPR": "EU GDPR",
   "soc-2": "SOC 2 Type II",
 };

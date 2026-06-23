@@ -580,7 +580,7 @@ export default function ScrmsPage() {
               You are rejecting the recommended control <strong>{rejectingControl?.control_code}</strong> ({rejectingControl?.control_name}).
             </p>
             <p className="text-[10px] text-red-300 font-semibold italic leading-relaxed">
-              *TX-RAMP / ISO 27001 requires documenting a formal risk acceptance rationale if a recommended security control is not implemented.*
+              *ISO 27001 requires documenting a formal risk acceptance rationale if a recommended security control is not implemented.*
             </p>
           </div>
 

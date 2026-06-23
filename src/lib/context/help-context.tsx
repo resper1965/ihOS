@@ -290,7 +290,7 @@ const DEFAULT_HELP: PageHelpData = {
   faqs: [
     {
       question: "O que é o ihOS?",
-      answer: "O ihOS é um sistema autônomo de governança, risco e conformidade (GRC) projetado para acelerar processos de auditoria (como o TX-RAMP) e automatizar o controle de políticas corporativas."
+      answer: "O ihOS é um sistema autônomo de governança, risco e conformidade (GRC) projetado para acelerar processos de auditoria (como a ISO 27001) e automatizar o controle de políticas corporativas."
     },
     {
       question: "O que é o RAG no contexto da plataforma?",

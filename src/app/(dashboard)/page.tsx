@@ -267,7 +267,7 @@ export default async function DashboardPage() {
       icon: ShieldCheck,
       color: "text-primary",
       bgColor: "bg-primary/10",
-      tooltipContent: "Quantidade de regulamentações ativas com auditorias iniciadas (ex: ISO 27001, SOC 2, TX-RAMP).",
+      tooltipContent: "Quantidade de regulamentações ativas com auditorias iniciadas (ex: ISO 27001, SOC 2, ISO 27701).",
     },
     {
       label: "Analyzed Documents",
@@ -363,7 +363,7 @@ export default async function DashboardPage() {
                 size="md"
               />
               <p className="text-xs text-text-muted">
-                Mandatory controls mapped from regulatory frameworks (TX-RAMP/ISO 27001).
+                Mandatory controls mapped from regulatory frameworks (ISO 27701/ISO 27001).
               </p>
             </div>
 

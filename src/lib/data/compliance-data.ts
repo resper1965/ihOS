@@ -82,7 +82,6 @@ export interface DomainBreakdown {
 const FRAMEWORK_ICONS: Record<string, string> = {
   "BR-LGPD": "🇧🇷",
   "HI-2013": "🏥",
-  "TX-LEVEL-2": "⭐",
   "iso27001": "🔒",
   "iso27701": "🛡️",
   "EU-GDPR": "🇪🇺",
@@ -189,7 +188,7 @@ export async function getFrameworkScores(): Promise<FrameworkScore[]> {
 
     // Fallback: try Standard API for each known framework
     try {
-      const frameworks = ["iso27001", "iso27701", "BR-LGPD", "HI-2013", "TX-LEVEL-2", "EU-GDPR"];
+      const frameworks = ["iso27001", "iso27701", "BR-LGPD", "HI-2013", "EU-GDPR"];
       const results: FrameworkScore[] = [];
 
       for (const code of frameworks) {
@@ -323,7 +322,7 @@ export async function getTopGaps(): Promise<GapItem[]> {
 export async function getRoiPath(): Promise<RoiItem[]> {
   try {
     const apiResult = await standardApi.roiPath({
-      target_frameworks: ["TX-RAMP", "HIPAA", "ISO 27001"],
+      target_frameworks: ["ISO 27701", "HIPAA", "ISO 27001"],
       top_n: 10,
     });
 

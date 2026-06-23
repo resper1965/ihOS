@@ -14,7 +14,6 @@ const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisTo
 const FRAMEWORK_ICONS: Record<string, string> = {
   'BR-LGPD': '🇧🇷',
   'HI-2013': '🏥',
-  'TX-LEVEL-2': '⭐',
   'iso27001': '🔒',
   'iso27701': '🛡️',
   'EU-GDPR': '🇪🇺',
@@ -24,7 +23,6 @@ const FRAMEWORK_ICONS: Record<string, string> = {
 const FRAMEWORK_NAMES: Record<string, string> = {
   'BR-LGPD': 'LGPD',
   'HI-2013': 'HIPAA',
-  'TX-LEVEL-2': 'TX-RAMP L2',
   'iso27001': 'ISO 27001:2022',
   'iso27701': 'ISO 27701:2019',
   'EU-GDPR': 'EU GDPR',

@@ -22,7 +22,7 @@ import {
 export const metadata: Metadata = {
   title: "Compliance Intelligence — ihOS",
   description:
-    "Real-time compliance posture across LGPD, HIPAA, TX-RAMP, ISO 27001, and EU GDPR. Gap analysis, evidence evaluation, and ROI-driven remediation priorities.",
+    "Real-time compliance posture across LGPD, HIPAA, ISO 27701, ISO 27001, and EU GDPR. Gap analysis, evidence evaluation, and ROI-driven remediation priorities.",
 };
 
 export const dynamic = "force-dynamic";

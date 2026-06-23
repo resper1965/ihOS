@@ -383,7 +383,7 @@ export default function GoalsPage() {
               <option value="all">Todos Frameworks</option>
               <option value="ISO-27001">ISO 27001</option>
               <option value="SOC-2">SOC 2</option>
-              <option value="TX-RAMP">TX-RAMP</option>
+              <option value="ISO-27701">ISO 27701</option>
               <option value="NIST-800-53">NIST 800-53</option>
               <option value="LGPD">LGPD</option>
             </select>
@@ -609,7 +609,7 @@ export default function GoalsPage() {
             >
               <option value="ISO-27001">ISO 27001:2022 (ISMS)</option>
               <option value="SOC-2">SOC 2 Type II (Security)</option>
-              <option value="TX-RAMP">TX-RAMP Level 2</option>
+              <option value="ISO-27701">ISO 27701:2019 (Privacy)</option>
               <option value="NIST-800-53">NIST SP 800-53 R5</option>
               <option value="LGPD">LGPD (Privacy)</option>
             </select>

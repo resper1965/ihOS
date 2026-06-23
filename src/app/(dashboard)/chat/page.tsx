@@ -24,7 +24,7 @@ import { Progress } from "@/components/ui/progress";
 
 const SUGGESTION_CHIPS = [
   { text: "Qual nosso score ISO 27001?", icon: ShieldCheck },
-  { text: "Analise gaps TX-RAMP", icon: FileSearch },
+  { text: "Analise gaps ISO 27701", icon: FileSearch },
   { text: "Resumo executivo", icon: BarChart3 },
 ] as const;
 
