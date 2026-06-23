@@ -159,13 +159,22 @@ export async function calculateFrameworkScoresLocally(supabase: any): Promise<Fr
 
     const results: FrameworkScore[] = [];
 
-    // Build evaluation lookup map by control_code or scf_control_code
+    // Build evaluation lookup map keyed by scf_control_code (matches mappings)
+    // Also index by control_code as fallback
     const evalMap = new Map<string, any>();
     if (evaluations) {
       for (const ev of evaluations) {
-        const code = ev.control_code || ev.scf_control_code;
-        if (code) {
-          evalMap.set(code, ev);
+        // Primary key: scf_control_code (matches scf_framework_mappings)
+        if (ev.scf_control_code) {
+          // Keep the best evaluation per SCF control (prefer compliant)
+          const existing = evalMap.get(ev.scf_control_code);
+          if (!existing || (!existing.is_compliant && ev.is_compliant)) {
+            evalMap.set(ev.scf_control_code, ev);
+          }
+        }
+        // Secondary key: control_code (fallback for direct mapping)
+        if (ev.control_code && !evalMap.has(ev.control_code)) {
+          evalMap.set(ev.control_code, ev);
         }
       }
     }
@@ -278,9 +287,17 @@ export async function calculateFrameworkScoresLocally(supabase: any): Promise<Fr
 
       const gapCount = totalRequired - conformingCount - partialCount - informalCount;
 
-      const score = Math.round((compliantCount / totalRequired) * 100);
-      const coverage = score;
-      const missing = totalRequired - compliantCount;
+      // Weighted score: conforming=100%, partial=50%, informal=25%, gap=0%
+      // This reflects maturity level rather than binary compliant/non-compliant
+      const evaluatedControls = conformingCount + partialCount + informalCount;
+      const weightedNumerator = (conformingCount * 1.0) + (partialCount * 0.5) + (informalCount * 0.25);
+      const score = evaluatedControls > 0
+        ? Math.round((weightedNumerator / totalRequired) * 100)
+        : 0;
+      const coverage = evaluatedControls > 0
+        ? Math.round((evaluatedControls / totalRequired) * 100)
+        : 0;
+      const missing = totalRequired - evaluatedControls;
 
       const ismsScore = Math.round((ismsCompliantCount / totalRequired) * 100);
       const evidenceScore = Math.round((evidenceCompliantCount / totalRequired) * 100);
