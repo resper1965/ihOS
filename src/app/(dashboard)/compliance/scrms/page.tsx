@@ -33,6 +33,19 @@ interface DsrFactors {
   risk_appetite_factor: number;
   maturity_alignment: number;
   control_importance_weight: number;
+  delta_impact_boost?: number;
+}
+
+interface ProductDelta {
+  feature_slug: string;
+  description: string;
+  affected_components: string[];
+  risk_level: string;
+}
+
+interface IsmsStats {
+  total: number;
+  implemented: number;
 }
 
 interface ScrmsControl {
@@ -76,6 +89,8 @@ export default function ScrmsPage() {
   const [baseline, setBaseline] = useState<ScrmsBaseline | null>(null);
   const [controls, setControls] = useState<ScrmsControl[]>([]);
   const [stats, setStats] = useState<ScrmsStats | null>(null);
+  const [deltas, setDeltas] = useState<ProductDelta[]>([]);
+  const [ismsStats, setIsmsStats] = useState<IsmsStats | null>(null);
   const [loading, setLoading] = useState(true);
   
   // Filtering & Search
@@ -100,6 +115,8 @@ export default function ScrmsPage() {
         setBaseline(data.baseline);
         setControls(data.controls);
         setStats(data.stats);
+        setDeltas(data.deltas || []);
+        setIsmsStats(data.ismsStats || null);
       }
     } catch (err) {
       console.error("Error loading SCRMS data:", err);
@@ -212,16 +229,57 @@ export default function ScrmsPage() {
         </div>
       ) : (
         <>
-          {/* SCRMS Methodology Summary banner */}
-          <div className="glass-card border-l-4 border-emerald-400 bg-emerald-500/5 p-4 flex gap-3 items-start">
-            <Info className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
-            <div>
-              <h4 className="font-semibold text-sm text-emerald-400">SCRMS Methodology (Compliance vs Security)</h4>
-              <p className="text-xs text-slate-200 mt-1 leading-relaxed">
-                Compliance frameworks set the floor (**MCR - Minimum Compliance Requirements**). SCRMS evaluates gaps using your RAG knowledge base and calculates risk-driven controls (**DSR - Discretionary Security Requirements**) to form your ultimate **MSR (Minimum Security Requirements)** baseline.
-              </p>
+          {/* SCRMS Methodology & Core ISMS Status Banner */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="md:col-span-2 glass-card border-l-4 border-emerald-400 bg-emerald-500/5 p-4 flex gap-3 items-start">
+              <Info className="h-5 w-5 text-emerald-400 shrink-0 mt-0.5" />
+              <div>
+                <h4 className="font-semibold text-sm text-emerald-400">SCRMS Core + Release Delta Methodology</h4>
+                <p className="text-xs text-slate-200 mt-1 leading-relaxed">
+                  Compliance is validated against the global **ISMS Core** baseline (inherited organizational policies), while the release audit focuses strictly on the **technical differences** introduced by this version.
+                </p>
+              </div>
             </div>
+            {ismsStats && (
+              <div className="glass-card border-l-4 border-sky-400 bg-sky-500/5 p-4 flex flex-col justify-between">
+                <div className="flex justify-between items-center text-xs font-semibold text-sky-400">
+                  <span>Inherited Global ISMS Core</span>
+                  <span>{ismsStats.implemented} / {ismsStats.total}</span>
+                </div>
+                <p className="text-[10px] text-slate-300 mt-1">Validated organizational change procedures.</p>
+                <div className="w-full bg-slate-800 rounded-full h-1 mt-2">
+                  <div 
+                    className="bg-sky-400 h-1 rounded-full" 
+                    style={{ width: `${(ismsStats.implemented / (ismsStats.total || 1)) * 100}%` }}
+                  ></div>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Version Deltas (Technical Diff) */}
+          {deltas.length > 0 && (
+            <div className="glass-card p-4 space-y-2 bg-amber-500/[0.01] border-amber-500/20 border">
+              <h4 className="text-xs font-bold text-amber-400 tracking-wider uppercase">Active Technical Release Deltas (v2.2.x)</h4>
+              <div className="flex flex-wrap gap-3">
+                {deltas.map((delta) => (
+                  <div key={delta.feature_slug} className="bg-slate-900/60 border border-white/5 rounded-xl p-3 text-xs flex flex-col justify-between max-w-sm flex-1 min-w-[250px]">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-extrabold text-slate-100">{delta.feature_slug}</span>
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${delta.risk_level === "high" ? "bg-red-500/10 text-red-400 border border-red-500/10" : "bg-amber-500/10 text-amber-400 border border-amber-500/10"}`}>{delta.risk_level} risk</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300 leading-normal">{delta.description}</p>
+                    <div className="mt-2 pt-1.5 border-t border-white/5 flex gap-1 items-center">
+                      <span className="text-[9px] font-semibold text-slate-400">Impacted Components:</span>
+                      {delta.affected_components.map((comp) => (
+                        <Badge key={comp} variant="neutral" className="text-[8px] px-1 py-0">{comp}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Stats Summary cards */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -396,6 +454,12 @@ export default function ScrmsPage() {
                           </>
                         )}
                         
+                        {c.dsr_factors?.delta_impact_boost && c.dsr_factors.delta_impact_boost > 0 && (
+                          <Badge variant="warning" className="text-[9px] px-2 py-0.5 bg-amber-500/10 text-amber-400 border border-amber-500/10">
+                            DIF Triggered (+{c.dsr_factors.delta_impact_boost} pts)
+                          </Badge>
+                        )}
+
                         {c.status === "accepted" && (
                           <span className="flex items-center gap-1 text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">
                             <CheckCircle2 className="h-3 w-3" /> Scoped in MSR

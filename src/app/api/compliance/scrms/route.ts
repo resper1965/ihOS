@@ -21,6 +21,8 @@ export async function GET() {
         description,
         status,
         product_version_id,
+        parent_baseline_id,
+        isms_baseline_id,
         product_versions (
           version_code
         )
@@ -34,10 +36,30 @@ export async function GET() {
     }
 
     if (!baseline) {
-      return NextResponse.json({ success: true, message: "No active MSR baseline found", controls: [], stats: null });
+      return NextResponse.json({ success: true, message: "No active MSR baseline found", controls: [], stats: null, deltas: [], ismsStats: null });
     }
 
-    // 2. Fetch all controls for this baseline and join scf_controls information
+    // 2. Fetch version specific deltas
+    const { data: deltas, error: deltasError } = await (supabase as any)
+      .from("product_version_deltas")
+      .select("feature_slug, description, affected_components, risk_level")
+      .eq("product_version_id", baseline.product_version_id);
+
+    // 3. Fetch Core ISMS controls stats
+    let ismsStats = { total: 0, implemented: 0 };
+    if (baseline.isms_baseline_id) {
+      const { data: ismsControls, error: ismsError } = await (supabase as any)
+        .from("isms_controls")
+        .select("status")
+        .eq("isms_id", baseline.isms_baseline_id);
+      
+      if (!ismsError && ismsControls) {
+        ismsStats.total = ismsControls.length;
+        ismsStats.implemented = ismsControls.filter((c: any) => c.status === "implemented").length;
+      }
+    }
+
+    // 4. Fetch all controls for this baseline and join scf_controls information
     const { data: controls, error: controlsError } = await (supabase as any)
       .from("msr_controls")
       .select(`
@@ -61,7 +83,7 @@ export async function GET() {
       throw controlsError;
     }
 
-    // 3. Compute statistics
+    // 5. Compute statistics
     const stats = {
       total_mcr: 0,
       total_dsr: 0,
@@ -122,10 +144,14 @@ export async function GET() {
         name: baseline.name,
         description: baseline.description,
         status: baseline.status,
-        version_code: baseline.product_versions?.version_code || "v2.2.x"
+        version_code: baseline.product_versions?.version_code || "v2.2.x",
+        parent_baseline_id: baseline.parent_baseline_id,
+        isms_baseline_id: baseline.isms_baseline_id
       },
       stats,
-      controls: formattedControls
+      controls: formattedControls,
+      deltas: deltas || [],
+      ismsStats
     });
 
   } catch (err: any) {
