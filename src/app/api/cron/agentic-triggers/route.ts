@@ -247,16 +247,15 @@ export async function GET(req: Request) {
       cachedScores.set(framework, currentScore);
 
       // Save/Upsert this calculated score as a fresh snapshot in intelligence_snapshots
-      // GUARD: Never overwrite a real assessment score with a cron-computed zero.
-      // The local calculator can produce 0% when evidence_evaluations covers only a
-      // small subset of the full scf_framework_mappings catalogue. In that case we
-      // preserve the existing (higher) snapshot rather than degrading it.
+      // GUARD: Never overwrite authoritative scores (rag_verified, derived, cross_mapped,
+      // seed_aggregate) with cron-computed values. Also never overwrite a real score
+      // with a cron-computed zero.
       if (computed && computed.score !== null) {
         try {
           // Fetch the currently stored scorecard for this framework
           const { data: existingSnap } = await supabase
             .from('intelligence_snapshots')
-            .select('score')
+            .select('score, input_payload')
             .eq('snapshot_type', 'scorecard')
             .eq('framework_code', framework)
             .order('created_at', { ascending: false })
@@ -264,10 +263,19 @@ export async function GET(req: Request) {
             .maybeSingle();
 
           const existingScore = existingSnap?.score ?? null;
+          const existingSource = existingSnap?.input_payload?.source ?? '';
 
-          // Skip update if the newly computed score is 0 but the stored score is better
-          if (computed.score === 0 && existingScore !== null && existingScore > 0) {
-            console.log(`[CRON] Skipping scorecard update for ${framework}: computed=0 but existing=${existingScore} (preserving assessment data)`);
+          // Authoritative sources that cron must NEVER overwrite
+          const authoritativeSources = ['rag_verified', 'derived', 'cross_mapped', 'seed_aggregate', 'manual_recalc_fixed'];
+          const isAuthoritative = authoritativeSources.includes(existingSource);
+
+          // Skip update if existing data comes from an authoritative source
+          if (isAuthoritative) {
+            console.log(`[CRON] Skipping scorecard update for ${framework}: existing source="${existingSource}" is authoritative (score=${existingScore})`);
+          }
+          // Skip update if the newly computed score is lower than existing
+          else if (existingScore !== null && computed.score < existingScore) {
+            console.log(`[CRON] Skipping scorecard update for ${framework}: computed=${computed.score} < existing=${existingScore} (preserving higher score)`);
           } else {
             // Delete old scorecard for this framework
             await supabase
@@ -352,46 +360,63 @@ export async function GET(req: Request) {
           gap_count: s.gapCount,
         }));
 
-        await supabase
+        // GUARD: Check if "all" snapshot comes from an authoritative source
+        const { data: existingAllSnap } = await supabase
           .from('intelligence_snapshots')
-          .delete()
+          .select('score, input_payload')
           .eq('snapshot_type', 'scorecard')
-          .eq('framework_code', 'all');
+          .eq('framework_code', 'all')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-        await supabase
-          .from('intelligence_snapshots')
-          .insert({
-            snapshot_type: 'scorecard',
-            framework_code: 'all',
-            input_payload: {
-              source: 'cron_scheduler',
-            },
-            result_payload: {
-              frameworks_evaluated: allFrameworksList.length,
-              total_controls: totalMapped,
-              total_compliant: totalCompliant,
-              isms_score: allIsmsScore,
-              evidence_score: allEvidenceScore,
-              conforming_count: totalConforming,
-              partial_count: totalPartial,
-              informal_count: totalInformal,
-              gap_count: totalGap,
-            },
-            snapshot_data: {
-              frameworks: allFrameworksList,
-              evaluated_at: new Date().toISOString(),
-              overall_score: overallScore,
-              isms_score: allIsmsScore,
-              evidence_score: allEvidenceScore,
-              conforming_count: totalConforming,
-              partial_count: totalPartial,
-              informal_count: totalInformal,
-              gap_count: totalGap,
-            },
-            score: overallScore,
-            user_id: null,
-            metadata: null,
-          });
+        const existingAllSource = existingAllSnap?.input_payload?.source ?? '';
+        const allAuthoritativeSources = ['rag_verified', 'derived', 'cross_mapped', 'seed_aggregate', 'manual_recalc_fixed'];
+
+        if (allAuthoritativeSources.includes(existingAllSource)) {
+          console.log(`[CRON] Skipping "all" scorecard update: existing source="${existingAllSource}" is authoritative`);
+        } else {
+          await supabase
+            .from('intelligence_snapshots')
+            .delete()
+            .eq('snapshot_type', 'scorecard')
+            .eq('framework_code', 'all');
+
+          await supabase
+            .from('intelligence_snapshots')
+            .insert({
+              snapshot_type: 'scorecard',
+              framework_code: 'all',
+              input_payload: {
+                source: 'cron_scheduler',
+              },
+              result_payload: {
+                frameworks_evaluated: allFrameworksList.length,
+                total_controls: totalMapped,
+                total_compliant: totalCompliant,
+                isms_score: allIsmsScore,
+                evidence_score: allEvidenceScore,
+                conforming_count: totalConforming,
+                partial_count: totalPartial,
+                informal_count: totalInformal,
+                gap_count: totalGap,
+              },
+              snapshot_data: {
+                frameworks: allFrameworksList,
+                evaluated_at: new Date().toISOString(),
+                overall_score: overallScore,
+                isms_score: allIsmsScore,
+                evidence_score: allEvidenceScore,
+                conforming_count: totalConforming,
+                partial_count: totalPartial,
+                informal_count: totalInformal,
+                gap_count: totalGap,
+              },
+              score: overallScore,
+              user_id: null,
+              metadata: null,
+            });
+        }
       } catch (allErr) {
         console.error('[CRON] Failed to save "all" scorecard snapshot:', allErr);
       }

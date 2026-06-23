@@ -229,7 +229,7 @@ export default function ScrmsPage() {
   };
 
   return (
-    <div className="w-full space-y-8 text-text-primary">
+    <div className="w-full space-y-6 text-text-primary">
       <PageTitleRegistrar
         title={<>SCRMS <span className="text-emerald-400">Security Baseline</span></>}
         subtitle={baseline ? `${baseline.name} — nCommand Lite ${baseline.version_code}` : "Consolidating MCRs and DSRs to build your Minimum Security Requirements (MSR)."}
