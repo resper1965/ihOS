@@ -28,42 +28,48 @@ export async function GET(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  const { data: rows, error } = await admin
-    .from('threat_models')
-    .select('*')
-    .order('created_at', { ascending: false });
+  try {
+    const { data: rows, error } = await admin
+      .from('threat_models')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-  if (error) {
-    console.error('[ThreatModeling] List error:', error.message);
-    return NextResponse.json({ error: 'Failed to fetch threat models' }, { status: 500 });
+    if (error) {
+      // Table might not exist yet — return empty gracefully
+      console.warn('[ThreatModeling] List query error (table may not exist):', error.message);
+      return NextResponse.json({ models: [] });
+    }
+
+    const records = (rows ?? []) as ThreatModelRecord[];
+
+    // Optional client-side filter by product_version
+    const version = request.nextUrl.searchParams.get('version');
+
+    const models: ThreatModelSummary[] = records
+      .filter((r) => {
+        if (!version) return true;
+        return r.data?.product_version === version;
+      })
+      .map((r) => {
+        const d: ThreatModelData = r.data;
+        return {
+          id: r.id,
+          model_id: d?.model_id ?? r.id,
+          product_version: d?.product_version ?? 'unknown',
+          status: d?.status ?? 'draft',
+          threat_count: d?.threat_model?.threats?.length ?? 0,
+          gap_count: d?.gaps?.length ?? 0,
+          recommendation_count: d?.recommendations?.length ?? 0,
+          avg_rpn: d?.fmea?.summary?.avg_rpn ?? 0,
+          created_at: r.created_at,
+        };
+      });
+
+    return NextResponse.json({ models });
+  } catch (err) {
+    console.warn('[ThreatModeling] List catch:', err);
+    return NextResponse.json({ models: [] });
   }
-
-  const records = (rows ?? []) as ThreatModelRecord[];
-
-  // Optional client-side filter by product_version
-  const version = request.nextUrl.searchParams.get('version');
-
-  const models: ThreatModelSummary[] = records
-    .filter((r) => {
-      if (!version) return true;
-      return r.data?.product_version === version;
-    })
-    .map((r) => {
-      const d: ThreatModelData = r.data;
-      return {
-        id: r.id,
-        model_id: d.model_id,
-        product_version: d.product_version,
-        status: d.status,
-        threat_count: d.threat_model?.threats?.length ?? 0,
-        gap_count: d.gaps?.length ?? 0,
-        recommendation_count: d.recommendations?.length ?? 0,
-        avg_rpn: d.fmea?.summary?.avg_rpn ?? 0,
-        created_at: r.created_at,
-      };
-    });
-
-  return NextResponse.json({ models });
 }
 
 // ── POST — generate new threat model ────────────────────────────────────────
