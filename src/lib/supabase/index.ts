@@ -46,4 +46,18 @@ export type {
   ScfFrameworkMappingUpdate,
   ComplianceAssessmentUpdate,
   PoamItemUpdate,
+  // Threat Modeling types
+  ThreatModelStatus,
+  StrideCategory,
+  SeverityLevel,
+  StrideThreat,
+  FmeaItem,
+  ThreatModelData,
+  ThreatModelSummary,
+  ThreatModelRecord,
+  ThreatModelReport,
+  ThreatModelReportData,
 } from "./types";
+
+// Re-export STRIDE_LABELS constant
+export { STRIDE_LABELS } from "./types";
