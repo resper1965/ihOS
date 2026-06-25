@@ -2,8 +2,8 @@
 
 import { useState, useMemo } from "react";
 import { ChevronDown, ChevronUp, ChevronsUpDown, Filter } from "lucide-react";
-import type { StrideThreat, StrideCategory, SeverityLevel } from "@/lib/supabase";
-import { STRIDE_LABELS } from "@/lib/supabase";
+import type { StrideThreat, StrideCategory, SeverityLevel } from "@/lib/supabase/types";
+import { STRIDE_LABELS } from "@/lib/supabase/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types

@@ -27,7 +27,7 @@ import type {
   ThreatModelData,
   ThreatModelStatus,
   SeverityLevel,
-} from "@/lib/supabase";
+} from "@/lib/supabase/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tab definitions

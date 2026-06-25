@@ -3,7 +3,7 @@
 import { Eye, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import type { ThreatModelSummary, ThreatModelStatus } from "@/lib/supabase";
+import type { ThreatModelSummary, ThreatModelStatus } from "@/lib/supabase/types";
 
 interface ThreatModelCardProps {
   model: ThreatModelSummary;

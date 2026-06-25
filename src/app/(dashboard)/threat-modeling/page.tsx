@@ -24,7 +24,7 @@ import type {
   ThreatModelData,
   ThreatModelStatus,
   StrideThreat,
-} from "@/lib/supabase";
+} from "@/lib/supabase/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Status filter tabs

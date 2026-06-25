@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { StrideThreat, SeverityLevel } from "@/lib/supabase";
+import type { StrideThreat, SeverityLevel } from "@/lib/supabase/types";
 
 interface RiskMatrixProps {
   threats: StrideThreat[];

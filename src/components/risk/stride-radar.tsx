@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { StrideThreat, StrideCategory } from "@/lib/supabase";
-import { STRIDE_LABELS } from "@/lib/supabase";
+import type { StrideThreat, StrideCategory } from "@/lib/supabase/types";
+import { STRIDE_LABELS } from "@/lib/supabase/types";
 
 interface StrideRadarProps {
   threats: StrideThreat[];

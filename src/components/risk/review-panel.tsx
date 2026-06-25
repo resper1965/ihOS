@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Check, X, Loader2, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import type { ThreatModelStatus } from "@/lib/supabase";
+import type { ThreatModelStatus } from "@/lib/supabase/types";
 
 interface ReviewPanelProps {
   modelId: string;

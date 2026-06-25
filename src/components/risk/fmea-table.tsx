@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { ChevronDown, ChevronUp, ChevronsUpDown, Info } from "lucide-react";
-import type { FmeaItem } from "@/lib/supabase";
+import type { FmeaItem } from "@/lib/supabase/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
