@@ -1,0 +1,70 @@
+// tests/unit/test_threat_modeling_post.test.ts
+import { describe, it, expect, vi } from "vitest";
+import { POST } from "@/app/api/threat-modeling/route";
+import { ihosEngine } from "@/lib/ihos-engine";
+
+// Mock the NextRequest
+class MockRequest {
+  private bodyData: any;
+  public headers: Headers;
+
+  constructor(body: any) {
+    this.bodyData = body;
+    this.headers = new Headers({ "Content-Type": "application/json" });
+  }
+
+  async json() {
+    if (!this.bodyData) {
+      throw new Error("No body");
+    }
+    return this.bodyData;
+  }
+}
+
+describe("POST /api/threat-modeling", () => {
+  it("should return 400 if product_version is missing", async () => {
+    const req = new MockRequest({
+      target_frameworks: ["ISO 27001"],
+    }) as any;
+
+    const res = await POST(req);
+    const data = await res.json();
+    console.log("Response for missing product_version:", res.status, data);
+    expect(res.status).toBe(400);
+  });
+
+  it("should return 400 if target_frameworks is missing/empty", async () => {
+    const req = new MockRequest({
+      product_version: "v2.2.x",
+      target_frameworks: [],
+    }) as any;
+
+    const res = await POST(req);
+    const data = await res.json();
+    console.log("Response for empty target_frameworks:", res.status, data);
+    expect(res.status).toBe(400);
+  });
+
+  it("should run engine generate when parameters are valid", async () => {
+    // Spy on ihosEngine.generateThreatModel
+    const spy = vi.spyOn(ihosEngine, "generateThreatModel").mockResolvedValue({
+      metadata: { product_version: "v2.2.x", target_frameworks: ["ISO 27001"], generated_at: "now", llm_model: "gpt" },
+      rag_context: {},
+      threat_model: { threats: [], fmea_correlations: [] },
+      gaps: [],
+      recommendations: [],
+      limitations: [],
+    });
+
+    const req = new MockRequest({
+      product_version: "v2.2.x",
+      target_frameworks: ["ISO 27001"],
+    }) as any;
+
+    const res = await POST(req);
+    const data = await res.json();
+    console.log("Response for valid input:", res.status, data);
+    expect(res.status).toBe(200);
+    expect(spy).toHaveBeenCalled();
+  });
+});

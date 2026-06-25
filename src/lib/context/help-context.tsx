@@ -280,6 +280,42 @@ const HELP_DATABASE: Record<string, PageHelpData> = {
         content: "Download compiled reports in PDF or spreadsheet format."
       }
     ]
+  },
+  "/threat-modeling": {
+    title: "Threat Modeling",
+    subtitle: "Identify STRIDE threats and quantify risks with FMEA",
+    description: "Generate and review threat models for product versions based on compliance specifications and design documents.",
+    faqs: [
+      {
+        question: "How is the Threat Model constructed?",
+        answer: "It uses AI (RAG) to analyze design specs, EULAs, agreements, and requirements documents associated with the selected version, identifying threats across all 6 STRIDE categories."
+      },
+      {
+        question: "What is FMEA in the context of threat modeling?",
+        answer: "Failure Mode and Effects Analysis (FMEA) calculates a Risk Priority Number (RPN = Severity x Occurrence x Detection) for each threat, allowing risk-based prioritization."
+      },
+      {
+        question: "Why do we generate reports for approved models?",
+        answer: "Once a model is reviewed and approved, generating a report locks the results into a static PDF or Excel snapshot to serve as compliance evidence for audit trails."
+      }
+    ],
+    tourSteps: [
+      {
+        targetId: "threat-modeling-summary",
+        title: "Risk Summary Metrics",
+        content: "Track total threats identified, average RPN score, critical/high severity count, and associated compliance gaps."
+      },
+      {
+        targetId: "risk-matrix-card",
+        title: "5x5 Risk Matrix",
+        content: "Visual heat map correlating threat likelihood against impact severity."
+      },
+      {
+        targetId: "stride-radar-card",
+        title: "STRIDE Radar",
+        content: "Distribution of threats across Spoofing, Tampering, Repudiation, Information Disclosure, Denial of Service, and Elevation of Privilege."
+      }
+    ]
   }
 };
 
@@ -323,6 +359,9 @@ export function HelpProvider({ children }: { children: React.ReactNode }) {
     }
     if (matchingPath.startsWith("/chat/") && matchingPath !== "/chat") {
       matchingPath = "/chat";
+    }
+    if (matchingPath.startsWith("/threat-modeling/") && matchingPath !== "/threat-modeling") {
+      matchingPath = "/threat-modeling";
     }
 
     const data = HELP_DATABASE[matchingPath] || DEFAULT_HELP;

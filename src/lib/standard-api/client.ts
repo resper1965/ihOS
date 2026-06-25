@@ -163,7 +163,7 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
 
 }
 
-async function get<TRes>(endpoint: string): Promise<TRes> {
+async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Promise<TRes> {
   const config = await getConfig();
   const url = `${config.baseUrl}${endpoint}`;
 
@@ -187,6 +187,7 @@ async function get<TRes>(endpoint: string): Promise<TRes> {
       method: "GET",
       headers,
       signal: controller.signal,
+      next: nextCache,
     });
 
     clearTimeout(timeoutId);
@@ -322,7 +323,7 @@ export async function getScfControls(
  * Fetch mapped frameworks from GRC Engine.
  */
 export async function getScfFrameworks(): Promise<any[]> {
-  const result = await get<any[] | { data: any[] }>("/scf/frameworks");
+  const result = await get<any[] | { data: any[] }>("/scf/frameworks", { revalidate: 86400 });
   return Array.isArray(result) ? result : result.data || [];
 }
 
@@ -346,7 +347,37 @@ async function tryLocalFallback(endpoint: string, payload: any): Promise<any | n
       return localRoiPath(payload);
     case "/intelligence/blast-radius":
       return localBlastRadius(payload);
+    case "/scf/frameworks":
+      return [
+        { framework_code: "iso27001", framework_name: "ISO/IEC 27001:2022" },
+        { framework_code: "soc2", framework_name: "SOC 2 Type II" },
+        { framework_code: "hipaa", framework_name: "HIPAA" },
+        { framework_code: "nist_800_53", framework_name: "NIST 800-53" },
+        { framework_code: "iso27701", framework_name: "ISO/IEC 27701:2019" },
+        { framework_code: "fedramp", framework_name: "FedRAMP" }
+      ];
+    case "/scf/versions/latest":
+      return { scf_version_id: "2024.1", version_label: "SCF 2024.1" };
     default:
+      if (cleanEndpoint.startsWith("/scf/versions/") && cleanEndpoint.endsWith("/controls")) {
+        return {
+          data: [
+            {
+              control_id: "A.5.1",
+              control_name: "Policies for information security",
+              description: "Policies for information security shall be defined, approved, and published.",
+              domain: "GOV",
+            },
+            {
+              control_id: "A.5.15",
+              control_name: "Access control",
+              description: "Access to physical and logical assets shall be restricted based on business requirements.",
+              domain: "AST",
+            }
+          ],
+          total: 2
+        };
+      }
       return null;
   }
 }

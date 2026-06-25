@@ -66,7 +66,7 @@ export const ConversationList = forwardRef<ConversationListHandle, ConversationL
           .from("conversations")
           .select("*")
           .eq("user_id", user.id)
-          .order("updated_at", { ascending: false });
+          .order("created_at", { ascending: false });
 
         if (error) {
           console.warn("[conversation-list] fetch error:", error);

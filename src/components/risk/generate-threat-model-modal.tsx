@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useVersion } from "@/lib/context/version-context";
 import {
   Settings,
   ChevronRight,
@@ -108,6 +110,7 @@ export function GenerateThreatModelModal({
   onClose,
   onGenerated,
 }: GenerateThreatModelModalProps) {
+  const { versions, activeVersion } = useVersion();
   const [step, setStep] = useState<WizardStep>(1);
   const [version, setVersion] = useState("");
   const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>(DEFAULT_FRAMEWORKS);
@@ -116,10 +119,42 @@ export function GenerateThreatModelModal({
   const [stageIdx, setStageIdx] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [allDocs, setAllDocs] = useState<any[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
 
-  // Reset state when modal closes
+  // Load versions and fetch docs when modal opens
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      // Set initial version based on active version or first version
+      if (activeVersion) {
+        setVersion(activeVersion.version_code);
+      } else if (versions.length > 0) {
+        setVersion(versions[0].version_code);
+      } else {
+        setVersion("");
+      }
+
+      // Fetch documents to dynamically count them
+      async function fetchDocs() {
+        setLoadingDocs(true);
+        try {
+          const supabase = createClient();
+          const { data, error } = await supabase
+            .from("compliance_documents")
+            .select("id, product_version_id, filename, status")
+            .eq("status", "published");
+          if (!error && data) {
+            setAllDocs(data);
+          }
+        } catch (err) {
+          console.error("[GenerateThreatModelModal] Error fetching docs:", err);
+        } finally {
+          setLoadingDocs(false);
+        }
+      }
+      fetchDocs();
+    } else {
+      // Reset state when modal closes
       setStep(1);
       setVersion("");
       setSelectedFrameworks(DEFAULT_FRAMEWORKS);
@@ -128,8 +163,28 @@ export function GenerateThreatModelModal({
       setStageIdx(0);
       setError(null);
       setIsGenerating(false);
+      setAllDocs([]);
     }
-  }, [open]);
+  }, [open, activeVersion, versions]);
+
+  // Derived dynamic document count & checklist
+  const selectedVersionObj = versions.find((v) => v.version_code === version);
+  const applicableDocs = allDocs.filter(
+    (doc) =>
+      doc.product_version_id === null ||
+      (selectedVersionObj && doc.product_version_id === selectedVersionObj.id)
+  );
+  const applicableDocsCount = applicableDocs.length;
+
+  const hasSAD = applicableDocs.some((doc) =>
+    /sad|architect|arquitetura/i.test(doc.filename || "")
+  );
+  const hasSRS = applicableDocs.some((doc) =>
+    /srs|requirement|requisito/i.test(doc.filename || "")
+  );
+  const hasTI = applicableDocs.some((doc) =>
+    /psi|infra|operac|ti/i.test(doc.filename || "")
+  );
 
   // Progress animation for step 3
   useEffect(() => {
@@ -174,7 +229,7 @@ export function GenerateThreatModelModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           product_version: version,
-          frameworks: selectedFrameworks,
+          target_frameworks: selectedFrameworks,
         }),
       });
 
@@ -215,13 +270,18 @@ export function GenerateThreatModelModal({
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-text-muted">
               Product Version
             </label>
-            <input
-              type="text"
+            <select
               value={version}
               onChange={(e) => setVersion(e.target.value)}
-              placeholder="e.g. v2.4.1"
-              className="w-full rounded-xl border border-border-glass bg-white/5 px-4 py-2.5 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-300"
-            />
+              className="w-full rounded-xl border border-border-glass bg-slate-950/80 px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-300 [&>option]:bg-slate-900"
+            >
+              <option value="" disabled>Select a version...</option>
+              {versions.map((v) => (
+                <option key={v.id} value={v.version_code}>
+                  {v.product_name} ({v.version_code})
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Frameworks */}
@@ -278,10 +338,51 @@ export function GenerateThreatModelModal({
           {/* Document count hint */}
           <div className="flex items-center gap-2 rounded-lg bg-primary/5 border border-primary/10 px-3 py-2">
             <Settings className="h-4 w-4 text-primary shrink-0" />
-            <p className="text-xs text-text-secondary">
-              <span className="font-semibold text-primary">47</span> documents available for analysis
-            </p>
+            {loadingDocs ? (
+              <p className="text-xs text-text-secondary flex items-center gap-1.5">
+                <Loader2 className="h-3.5 w-3.5 text-primary animate-spin" />
+                Calculating available documents...
+              </p>
+            ) : (
+              <p className="text-xs text-text-secondary">
+                <span className="font-semibold text-primary">{applicableDocsCount}</span> documents available for version {version || "selected version"} (global + version-specific)
+              </p>
+            )}
           </div>
+
+          {/* Document Checklist */}
+          {!loadingDocs && version && (
+            <div className="rounded-xl border border-white/5 bg-white/[0.01] p-3.5 space-y-2 text-xs">
+              <p className="font-semibold text-text-secondary uppercase tracking-wider text-[10px] mb-1">
+                Required Documents Checklist
+              </p>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-text-muted">Solution Architecture (SAD)</span>
+                  <span className={hasSAD ? "text-emerald-400 font-medium" : "text-amber-500 font-medium"}>
+                    {hasSAD ? "✓ Detected" : "✗ Missing"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-text-muted">Requirements Spec (SRS/SDS)</span>
+                  <span className={hasSRS ? "text-emerald-400 font-medium" : "text-amber-500 font-medium"}>
+                    {hasSRS ? "✓ Detected" : "✗ Missing"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-text-muted">IT Operations/Infrastructure</span>
+                  <span className={hasTI ? "text-emerald-400 font-medium" : "text-slate-500 font-medium"}>
+                    {hasTI ? "✓ Detected" : "— Optional"}
+                  </span>
+                </div>
+              </div>
+              {(!hasSAD || !hasSRS) && (
+                <p className="text-[10px] text-amber-500/80 leading-relaxed pt-1.5 border-t border-white/5">
+                  ⚠️ Generating models without SAD/SRS may produce generic results. We recommend uploading these files in the Documents manager first.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Next button */}
           <Button

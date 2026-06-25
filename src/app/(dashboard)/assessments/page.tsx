@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   ClipboardCheck,
   Plus,
@@ -81,6 +81,7 @@ function RunAssessmentModal({
   const [mode, setMode] = useState<"quick" | "deep">("quick");
   const [salesChannel, setSalesChannel] = useState<string>("all");
   const [frameworkSearch, setFrameworkSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>([
     "ISO 27001 2022",
     "AICPA TSC 2017:2022 (used for SOC 2)",
@@ -94,19 +95,24 @@ function RunAssessmentModal({
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(frameworkSearch), 150);
+    return () => clearTimeout(timer);
+  }, [frameworkSearch]);
+
   const toggleFramework = (code: string) => {
     setSelectedFrameworks((prev) =>
       prev.includes(code) ? prev.filter((f) => f !== code) : [...prev, code]
     );
   };
 
-  const filteredFrameworks = frameworks.filter((fw) => {
-    const term = frameworkSearch.toLowerCase();
-    return (
+  const filteredFrameworks = useMemo(() => {
+    const term = debouncedSearch.toLowerCase();
+    return frameworks.filter((fw) =>
       (fw.framework_code || "").toLowerCase().includes(term) ||
       (fw.framework_name || "").toLowerCase().includes(term)
     );
-  });
+  }, [frameworks, debouncedSearch]);
 
   const resolveFwName = (id: string) => {
     const match = frameworks.find((f) => f.framework_code === id);

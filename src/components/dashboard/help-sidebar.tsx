@@ -81,12 +81,12 @@ function GuidedTourOverlay() {
       )}
 
       {/* Backdrop for click block / highlight contrast */}
-      <div className="fixed inset-0 bg-black/40 backdrop-blur-[1px] pointer-events-auto z-40" onClick={stopTour} />
-
+      <div className="fixed inset-0 bg-black/50 pointer-events-auto z-40" onClick={stopTour} />
+ 
       {/* Tour Step Card */}
       <div
         ref={cardRef}
-        className="fixed z-50 w-full max-w-sm glass-card border border-white/10 bg-slate-950/90 shadow-2xl p-5 pointer-events-auto rounded-2xl animate-fade-in"
+        className="fixed z-50 w-full max-w-sm border border-white/10 bg-slate-950 shadow-2xl p-5 pointer-events-auto rounded-2xl transition-all duration-200"
         style={
           position
             ? {
@@ -105,7 +105,7 @@ function GuidedTourOverlay() {
           <div className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary animate-pulse" />
             <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-              Passo {tourStep + 1} de {activeHelpData.tourSteps.length}
+              Step {tourStep + 1} of {activeHelpData.tourSteps.length}
             </span>
           </div>
           <button
@@ -115,16 +115,16 @@ function GuidedTourOverlay() {
             <X className="h-4 w-4" />
           </button>
         </div>
-
+ 
         <h4 className="text-sm font-bold text-white mb-2">{step.title}</h4>
-        <p className="text-xs text-slate-300 leading-relaxed mb-4">{step.content}</p>
-
+        <p className="text-xs text-slate-200 leading-relaxed mb-4">{step.content}</p>
+ 
         <div className="flex items-center justify-between border-t border-white/5 pt-3">
           <button
             onClick={stopTour}
             className="text-xs text-slate-400 hover:text-white transition-colors"
           >
-            Pular Tour
+            Skip Tour
           </button>
           
           <div className="flex gap-2">
@@ -133,7 +133,7 @@ function GuidedTourOverlay() {
                 onClick={prevTourStep}
                 className="flex items-center gap-1.5 rounded-lg border border-white/10 px-2.5 py-1.5 text-xs text-slate-300 hover:bg-white/5 transition-all"
               >
-                <ArrowLeft className="h-3 w-3" /> Voltar
+                <ArrowLeft className="h-3 w-3" /> Back
               </button>
             )}
             
@@ -142,10 +142,10 @@ function GuidedTourOverlay() {
               className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-slate-950 hover:bg-primary/95 transition-all shadow-md shadow-primary/20"
             >
               {tourStep === activeHelpData.tourSteps.length - 1 ? (
-                "Finalizar"
+                "Finish"
               ) : (
                 <>
-                  Avançar <ArrowRight className="h-3 w-3" />
+                  Next <ArrowRight className="h-3 w-3" />
                 </>
               )}
             </button>
@@ -178,8 +178,8 @@ function FAQAccordionItem({ item }: { item: { question: string; answer: string }
         />
       </button>
       <div
-        className={`mt-2 overflow-hidden text-xs text-slate-400 leading-relaxed transition-all duration-300 ${
-          isOpen ? "max-h-40 opacity-100" : "max-h-0 opacity-0"
+        className={`mt-2 overflow-hidden text-xs text-slate-200 leading-relaxed transition-all duration-300 ${
+          isOpen ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
         }`}
       >
         <p className="pb-1">{item.answer}</p>
@@ -228,15 +228,15 @@ export function HelpSidebar() {
             ref={sidebarRef}
             role="dialog"
             aria-modal="true"
-            aria-label="Ajuda Contextual"
-            className="relative w-full max-w-md h-full border-l border-white/10 bg-slate-950/95 shadow-2xl p-6 overflow-y-auto flex flex-col justify-between backdrop-blur-xl animate-slide-in-right z-50"
+            aria-label="Contextual Help"
+            className="relative w-full max-w-md h-full border-l border-white/10 bg-slate-950 shadow-2xl p-6 overflow-y-auto flex flex-col justify-between z-50 transition-all duration-300"
           >
             {/* Header */}
             <div>
               <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-5">
                 <div className="flex items-center gap-2">
                   <HelpCircle className="h-5 w-5 text-primary" />
-                  <h3 className="text-base font-bold text-white">Central de Ajuda</h3>
+                  <h3 className="text-base font-bold text-white">Help Center</h3>
                 </div>
                 <button
                   onClick={closeHelp}
@@ -245,7 +245,7 @@ export function HelpSidebar() {
                   <X className="h-5 w-5" />
                 </button>
               </div>
-
+ 
               {/* Help Content */}
               <div className="space-y-6">
                 <div>
@@ -253,11 +253,11 @@ export function HelpSidebar() {
                     {activeHelpData.title}
                   </h4>
                   <p className="text-xs text-slate-400 mb-3">{activeHelpData.subtitle}</p>
-                  <div className="rounded-xl border border-white/5 bg-white/5 p-4 text-xs text-slate-300 leading-relaxed">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-slate-200 leading-relaxed">
                     {activeHelpData.description}
                   </div>
                 </div>
-
+ 
                 {/* Tour Button */}
                 {activeHelpData.tourSteps.length > 0 && (
                   <button
@@ -265,14 +265,14 @@ export function HelpSidebar() {
                     className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-primary/20 to-accent/20 border border-primary/30 hover:border-primary/60 px-4 py-3 text-xs font-semibold text-primary transition-all duration-200 group"
                   >
                     <Play className="h-3.5 w-3.5 fill-primary group-hover:scale-110 transition-transform" />
-                    Iniciar Tour Interativo
+                    Start Interactive Tour
                   </button>
                 )}
-
+ 
                 {/* FAQs Accordion */}
                 <div>
                   <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider border-b border-white/5 pb-2 mb-3">
-                    Perguntas Frequentes
+                    Frequently Asked Questions
                   </h4>
                   <div className="space-y-1">
                     {activeHelpData.faqs.map((faq, idx) => (
@@ -282,10 +282,10 @@ export function HelpSidebar() {
                 </div>
               </div>
             </div>
-
+ 
             {/* Footer */}
             <div className="border-t border-white/5 pt-4 mt-6 text-center text-[10px] text-slate-500">
-              ihOS Platform • Guia de Conformidade Autônoma v2.2
+              ihOS Platform • Autonomous Compliance Guide v2.2
             </div>
           </div>
         </div>,
