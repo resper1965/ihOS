@@ -139,7 +139,7 @@ export async function POST(
     const chunkRows = chunks.map((chunk, idx) => ({
       document_id: documentId,
       content: chunk.content,
-      embedding: embeddings[idx],
+      embedding: JSON.stringify(embeddings[idx]),
       section_title: chunk.metadata.sectionTitle ?? null,
       chunk_index: chunk.index,
       char_count: chunk.content.length,
