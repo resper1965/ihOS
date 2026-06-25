@@ -368,7 +368,7 @@ export async function POST(req: Request) {
         framework_code: frameworkCode,
         input_payload: { source: 'compliance_report', framework: frameworkCode },
         result_payload: { summary: reportData.summary },
-        score: reportData.summary?.complianceRate ?? null,
+        score: (reportData.summary as Record<string, unknown>)?.complianceRate as number ?? null,
         snapshot_data: reportData,
         user_id: user.id,
         metadata: {
