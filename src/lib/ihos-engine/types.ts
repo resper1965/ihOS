@@ -39,9 +39,8 @@ export interface GapDetectRequest {
 }
 
 export interface EvidenceEvaluateRequest {
-  control_id: string;
-  evidence_text: string;
-  framework?: string;
+  control_requirement: string;
+  evidence_description: string;
 }
 
 // Response types
