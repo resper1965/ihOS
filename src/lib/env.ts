@@ -81,6 +81,16 @@ const serverEnvSchema = z.object({
     .coerce.number()
     .optional(),
 
+  // ── ihOS GRC Engine ─────────────────────────────────────────────────
+  IHOS_ENGINE_URL: z
+    .string()
+    .url('IHOS_ENGINE_URL must be a valid URL')
+    .optional(),
+
+  IHOS_ENGINE_API_KEY: z
+    .string()
+    .optional(),
+
   // ── Node ──────────────────────────────────────────────────────────────
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
