@@ -4,6 +4,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { ihosEngine } from "@/lib/ihos-engine";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   getFrameworkScores,
@@ -298,7 +299,7 @@ export async function POST(req: Request) {
         auditorNotes: g.auditor_notes,
       }));
 
-    const reportData = {
+    const reportData: Record<string, unknown> = {
       summary: {
         total,
         compliant,
@@ -316,6 +317,48 @@ export async function POST(req: Request) {
         : null,
       evaluationCount: total,
     };
+
+    // Enrich report with ihos-engine gap analysis data
+    try {
+      const engineReport = await ihosEngine.generateGapReport({
+        product_version: 'latest',
+      });
+
+      if (engineReport.gaps && engineReport.gaps.length > 0) {
+        reportData.engineGaps = engineReport.gaps.map((g) => ({
+          id: g.id,
+          type: g.gap_type,
+          title: g.title,
+          description: g.description,
+          priority: g.priority,
+          affectedControls: g.affected_controls,
+          remediation: g.remediation_suggestion,
+        }));
+      }
+
+      if (engineReport.recommendations && engineReport.recommendations.length > 0) {
+        reportData.engineRecommendations = engineReport.recommendations.map((r) => ({
+          id: r.id,
+          title: r.title,
+          description: r.description,
+          priority: r.priority,
+          relatedGaps: r.related_gaps,
+          roiScore: r.roi_score,
+        }));
+      }
+
+      if (engineReport.report) {
+        reportData.engineNarrative = engineReport.report;
+      }
+
+      reportData.engineEnriched = true;
+    } catch (engineErr) {
+      console.warn(
+        '[API] ihos-engine report enrichment failed, proceeding with base report:',
+        engineErr instanceof Error ? engineErr.message : engineErr,
+      );
+      reportData.engineEnriched = false;
+    }
 
     // Insert the snapshot into database
     const { data: snapshot, error: insertError } = await adminSupabase

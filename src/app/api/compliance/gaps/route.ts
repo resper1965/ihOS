@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/server";
 import type { EvidenceEvaluation } from "@/lib/supabase/types";
 import { getTopGaps } from "@/lib/data/compliance-data";
 import type { GapItem } from "@/lib/data/compliance-data";
+import { ihosEngine } from "@/lib/ihos-engine";
+import type { Gap } from "@/lib/ihos-engine";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +24,42 @@ export async function GET(request: NextRequest) {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Primary: try ihos-engine gap detection
+    try {
+      const engineResponse = await ihosEngine.detectGaps({
+        product_version: 'latest',
+        target_frameworks: ['iso27001', 'lgpd'],
+      });
+
+      if (engineResponse.gaps && engineResponse.gaps.length > 0) {
+        const engineGaps = engineResponse.gaps
+          .filter((g: Gap) => !domain || g.affected_controls.some((c: string) => c.toUpperCase().startsWith(domain.toUpperCase())))
+          .slice(0, limit)
+          .map((g: Gap) => ({
+            code: g.affected_controls[0] ?? g.id,
+            domain: g.affected_controls[0]?.split('.')[0] ?? 'UNKNOWN',
+            name: g.title,
+            confidence: priorityToConfidence(g.priority),
+            status: g.priority === 'critical' ? 'critical' : g.priority === 'high' ? 'high' : g.priority === 'medium' ? 'medium' : 'low',
+            missingElements: g.remediation_suggestion ? [g.remediation_suggestion] : [],
+            auditorNotes: g.description,
+            gapType: g.gap_type,
+          }));
+
+        return NextResponse.json({
+          source: "engine" as const,
+          total: engineGaps.length,
+          gaps: engineGaps,
+          engineSummary: engineResponse.summary,
+        });
+      }
+    } catch (engineErr) {
+      console.warn(
+        '[API] ihos-engine gap detection failed, falling back to database:',
+        engineErr instanceof Error ? engineErr.message : engineErr,
+      );
     }
 
     // Query non-compliant evaluations ordered by lowest confidence first
@@ -94,4 +132,17 @@ function confidenceToSeverity(
   if (confidence <= 40) return "high";
   if (confidence <= 60) return "medium";
   return "low";
+}
+
+/**
+ * Maps engine priority to a numeric confidence score.
+ */
+function priorityToConfidence(priority: string): number {
+  switch (priority) {
+    case 'critical': return 10;
+    case 'high': return 30;
+    case 'medium': return 50;
+    case 'low': return 75;
+    default: return 50;
+  }
 }
