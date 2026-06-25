@@ -24,9 +24,9 @@ const RAG_MATCH_THRESHOLD = 0.65;
 async function processQuestion(
   question: ExtractedQuestion,
   supabase: Awaited<ReturnType<typeof createClient>>,
+  openai: Awaited<ReturnType<typeof getOpenAI>>,
   productVersionId?: string,
 ): Promise<GeneratedAnswer> {
-  const openai = await getOpenAI();
   // 1. Generate embedding for the question text
   const { embedding } = await embed({
     model: openai.embedding('text-embedding-3-small'),
@@ -115,10 +115,11 @@ ${ragContext}`,
 async function processBatch(
   questions: ExtractedQuestion[],
   supabase: Awaited<ReturnType<typeof createClient>>,
+  openai: Awaited<ReturnType<typeof getOpenAI>>,
   productVersionId?: string,
 ): Promise<GeneratedAnswer[]> {
   const results = await Promise.allSettled(
-    questions.map((q) => processQuestion(q, supabase, productVersionId)),
+    questions.map((q) => processQuestion(q, supabase, openai, productVersionId)),
   );
 
   return results.map((result, idx) => {
@@ -147,6 +148,7 @@ async function processBatch(
 export async function POST(req: Request) {
   try {
     const supabase = await createClient();
+    const openai = await getOpenAI();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
 
     if (authError || !user) {
@@ -178,7 +180,7 @@ export async function POST(req: Request) {
     // Process in batches of BATCH_SIZE
     for (let i = 0; i < questions.length; i += BATCH_SIZE) {
       const batch = questions.slice(i, i + BATCH_SIZE);
-      const batchAnswers = await processBatch(batch, supabase, productVersionId);
+      const batchAnswers = await processBatch(batch, supabase, openai, productVersionId);
       allAnswers.push(...batchAnswers);
     }
 

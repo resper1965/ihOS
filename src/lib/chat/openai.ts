@@ -1,12 +1,13 @@
 import { createOpenAI } from '@ai-sdk/openai';
 import { env } from '@/lib/env';
 import { getSecret } from '@/lib/supabase/vault';
+import { cache } from 'react';
 
 /**
  * Dynamically resolves the OpenAI API Key from Supabase Vault (with fallback to env)
  * and returns a fresh or cached OpenAI provider instance.
  */
-export async function getOpenAI() {
+export const getOpenAI = cache(async () => {
   const apiKey = await getSecret('OPENAI_API_KEY') || env.OPENAI_API_KEY;
   
   if (!apiKey) {
@@ -17,4 +18,4 @@ export async function getOpenAI() {
     apiKey,
     baseURL: env.OPENAI_BASE_URL || 'https://ai-gateway.vercel.sh/v1',
   });
-}
+});

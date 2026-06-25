@@ -1,7 +1,9 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { useState, useRef, useEffect } from "react";
+import { DefaultChatTransport } from "ai";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Send,
   Sparkles,
@@ -13,6 +15,7 @@ import {
   Paperclip,
   X,
   FileSpreadsheet,
+  AlertCircle,
 } from "lucide-react";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { SuggestionChips } from "@/components/chat/suggestion-chips";
@@ -21,6 +24,7 @@ import { ConversationList } from "@/components/chat/conversation-list";
 import { useQuestionnaire } from "@/hooks/useQuestionnaire";
 import { useVersion } from "@/lib/context/version-context";
 import { Progress } from "@/components/ui/progress";
+import type { UIMessage } from "ai";
 
 const SUGGESTION_CHIPS = [
   { text: "Qual nosso score ISO 27001?", icon: ShieldCheck },
@@ -30,17 +34,108 @@ const SUGGESTION_CHIPS = [
 
 const ACCEPTED_FILE_TYPES = ".xlsx,.csv,.pdf";
 
-export default function ChatPage() {
-  const { activeVersion } = useVersion();
-  const { messages, sendMessage, status } = useChat();
+interface ChatPageProps {
+  /** When provided, the page loads an existing conversation */
+  conversationId?: string;
+}
 
+export default function ChatPage({ conversationId: initialConversationId }: ChatPageProps = {}) {
+  const { activeVersion } = useVersion();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(
+    initialConversationId ?? null
+  );
+  const [initialMessages, setInitialMessages] = useState<UIMessage[]>([]);
+  const [isLoadingConversation, setIsLoadingConversation] = useState(false);
+  const [chatError, setChatError] = useState<string | null>(null);
   const [input, setInput] = useState("");
-  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const conversationListRef = useRef<{ refresh: () => void }>(null);
 
   const questionnaire = useQuestionnaire();
+
+  // ── Load conversation messages ─────────────────────────────────────────
+  const loadConversation = useCallback(async (convId: string) => {
+    setIsLoadingConversation(true);
+    setChatError(null);
+    try {
+      const res = await fetch(`/api/conversations/${convId}`);
+      if (!res.ok) {
+        if (res.status === 404) {
+          setChatError("Conversa não encontrada.");
+          return;
+        }
+        throw new Error(`Failed to load conversation: ${res.status}`);
+      }
+      const { data } = await res.json();
+      // Convert DB messages to UIMessage format
+      const uiMessages: UIMessage[] = (data.messages ?? []).map((msg: any) => ({
+        id: msg.id,
+        role: msg.role as "user" | "assistant",
+        content: msg.content ?? "",
+        parts: [{ type: "text" as const, text: msg.content ?? "" }],
+      }));
+      setInitialMessages(uiMessages);
+    } catch (err) {
+      console.error("[ChatPage] Load conversation error:", err);
+      setChatError("Erro ao carregar conversa.");
+    } finally {
+      setIsLoadingConversation(false);
+    }
+  }, []);
+
+  // Load conversation when activeConversationId changes
+  useEffect(() => {
+    if (activeConversationId) {
+      loadConversation(activeConversationId);
+    } else {
+      setInitialMessages([]);
+    }
+  }, [activeConversationId, loadConversation]);
+
+  // Custom fetch to intercept X-Conversation-Id header from response
+  const customFetch = useCallback(async (url: string | URL | Request, init?: RequestInit) => {
+    const response = await fetch(url, init);
+    const newConvId = response.headers.get("X-Conversation-Id");
+    if (newConvId && newConvId !== activeConversationId) {
+      setActiveConversationId(newConvId);
+      window.history.replaceState(null, "", `/chat/${newConvId}`);
+      // Refresh sidebar after a short delay to let the DB persist
+      setTimeout(() => conversationListRef.current?.refresh(), 500);
+    }
+    return response;
+  }, [activeConversationId]);
+
+  // AI SDK v6: useChat returns sendMessage/messages/status/error/setMessages
+  // Input state is managed locally since v6 doesn't provide it
+  const {
+    messages,
+    setMessages,
+    sendMessage,
+    status,
+    error: chatHookError,
+  } = useChat({
+    id: activeConversationId ?? undefined,
+    messages: initialMessages.length > 0 ? initialMessages : undefined,
+    transport: new DefaultChatTransport({
+      fetch: customFetch as typeof globalThis.fetch,
+    }),
+    onError: (error) => {
+      console.error("[ChatPage] Chat error:", error);
+      setChatError(error.message || "Erro ao processar mensagem. Tente novamente.");
+    },
+  });
+
+  // Sync initialMessages into useChat when they change
+  useEffect(() => {
+    if (initialMessages.length > 0) {
+      setMessages(initialMessages);
+    }
+  }, [initialMessages, setMessages]);
 
   const isLoading = status === "submitted" || status === "streaming";
 
@@ -54,23 +149,75 @@ export default function ChatPage() {
     inputRef.current?.focus();
   }, []);
 
+  // Clear error after 8 seconds
+  useEffect(() => {
+    if (chatError) {
+      const timer = setTimeout(() => setChatError(null), 8000);
+      return () => clearTimeout(timer);
+    }
+  }, [chatError]);
+
+  // ── Handlers ───────────────────────────────────────────────────────────
+
+  function doSend(text: string) {
+    const trimmed = text.trim();
+    if (!trimmed || isLoading) return;
+    setChatError(null);
+    sendMessage(
+      { text: trimmed },
+      {
+        body: {
+          conversationId: activeConversationId,
+          productVersionId: activeVersion?.id ?? null,
+        },
+      }
+    );
+    setInput("");
+    // Reset textarea height
+    if (inputRef.current) {
+      inputRef.current.style.height = "auto";
+    }
+  }
+
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const trimmed = input.trim();
-    if (!trimmed || isLoading) return;
-    sendMessage({ text: trimmed }, { body: { productVersionId: activeVersion?.id ?? null } });
-    setInput("");
+    doSend(input);
   }
 
   function handleSuggestionClick(text: string) {
-    sendMessage({ text }, { body: { productVersionId: activeVersion?.id ?? null } });
+    doSend(text);
   }
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSubmit(e);
+      doSend(input);
     }
+  }
+
+  function handleSelectConversation(id: string) {
+    setActiveConversationId(id);
+    router.push(`/chat/${id}`);
+  }
+
+  function handleNewConversation(id?: string) {
+    setActiveConversationId(id ?? null);
+    setMessages([]);
+    setChatError(null);
+    if (id) {
+      router.push(`/chat/${id}`);
+    } else {
+      router.push("/chat");
+    }
+  }
+
+  // ── Textarea auto-resize ───────────────────────────────────────────────
+  function handleTextareaInput(e: React.ChangeEvent<HTMLTextAreaElement>) {
+    setInput(e.target.value);
+    // Auto-resize
+    const el = e.target;
+    el.style.height = "auto";
+    el.style.height = Math.min(el.scrollHeight, 160) + "px";
   }
 
   // ── File upload handlers ───────────────────────────────────────────────
@@ -83,7 +230,6 @@ export default function ChatPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     questionnaire.uploadFile(file);
-    // Reset the input so the same file can be re-selected
     e.target.value = "";
   }
 
@@ -110,16 +256,17 @@ export default function ChatPage() {
     downloading: "Preparing download...",
   };
 
-  const isEmpty = messages.length === 0;
+  const isEmpty = messages.length === 0 && !isLoadingConversation;
 
   return (
     <div className="flex h-full w-full overflow-hidden">
       {/* Conversation sidebar */}
       <div className="w-64 shrink-0 border-r border-border-glass bg-black/[0.01] dark:bg-white/[0.01]">
         <ConversationList
+          ref={conversationListRef}
           activeConversationId={activeConversationId}
-          onSelectConversation={setActiveConversationId}
-          onNewConversation={(id) => setActiveConversationId(id)}
+          onSelectConversation={handleSelectConversation}
+          onNewConversation={() => handleNewConversation()}
         />
       </div>
 
@@ -127,7 +274,12 @@ export default function ChatPage() {
       <div className="flex flex-1 flex-col overflow-hidden">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto">
-        {isEmpty ? (
+        {isLoadingConversation ? (
+          <div className="flex h-full flex-col items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            <p className="mt-2 text-sm text-text-muted">Carregando conversa…</p>
+          </div>
+        ) : isEmpty ? (
           /* ─── Empty State ─── */
           <div className="flex h-full flex-col items-center justify-center px-4">
             <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-primary to-accent shadow-2xl shadow-primary/20">
@@ -146,7 +298,7 @@ export default function ChatPage() {
           </div>
         ) : (
           /* ─── Message List ─── */
-          <div className="space-y-6 py-6">
+          <div className="space-y-6 py-6 px-4">
             {messages.map((message) => (
               <MessageBubble key={message.id} message={message} />
             ))}
@@ -168,6 +320,24 @@ export default function ChatPage() {
           </div>
         )}
       </div>
+
+      {/* ─── Error Banner ─── */}
+      {(chatError || chatHookError) && (
+        <div className="mx-2 mb-3">
+          <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-950/20 px-4 py-3">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
+            <span className="text-sm text-red-400">
+              {chatError || chatHookError?.message || "Erro inesperado."}
+            </span>
+            <button
+              onClick={() => setChatError(null)}
+              className="ml-auto shrink-0 rounded-lg p-1 text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ─── Processing Progress Overlay ─── */}
       {isQuestionnaireProcessing && (
@@ -193,7 +363,7 @@ export default function ChatPage() {
         </div>
       )}
 
-      {/* ─── Error Banner ─── */}
+      {/* ─── Questionnaire Error Banner ─── */}
       {questionnaire.state === "error" && (
         <div className="mx-2 mb-3">
           <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-950/20 px-4 py-3">
@@ -227,10 +397,10 @@ export default function ChatPage() {
       )}
 
       {/* ─── Input Area ─── */}
-      <div className="shrink-0 border-t border-border-glass pb-4 pt-4">
+      <div className="shrink-0 border-t border-border-glass pb-4 pt-4 px-4">
         {/* File badge */}
         {isQuestionnaireActive && questionnaire.fileName && questionnaire.state !== "error" && questionnaire.state !== "complete" && (
-          <div className="mb-2 flex items-center gap-2 px-3">
+          <div className="mb-2 flex items-center gap-2">
             <div className="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs text-primary">
               <FileSpreadsheet className="h-3 w-3" />
               <span className="max-w-[200px] truncate">{questionnaire.fileName}</span>
@@ -247,6 +417,7 @@ export default function ChatPage() {
         )}
 
         <form
+          id="chat-form"
           onSubmit={handleSubmit}
           className="glass-card flex items-end gap-3 p-3"
         >
@@ -274,13 +445,13 @@ export default function ChatPage() {
           <textarea
             ref={inputRef}
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleTextareaInput}
             onKeyDown={handleKeyDown}
             placeholder="Ask about compliance, frameworks, gaps..."
             aria-label="Chat message"
             rows={1}
             className="flex-1 resize-none bg-transparent px-2 py-2 text-sm text-text-primary outline-none placeholder:text-text-muted"
-            style={{ maxHeight: "120px" }}
+            style={{ maxHeight: "160px" }}
           />
           <button
             type="submit"

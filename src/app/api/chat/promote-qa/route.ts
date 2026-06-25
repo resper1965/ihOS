@@ -68,7 +68,7 @@ export async function POST(req: Request) {
           content: combinedText,
           chunk_index: 0,
           section_title: 'VERIFIED_QA',
-          embedding: JSON.stringify(embedding),
+          embedding,
           char_count: combinedText.length,
         });
 

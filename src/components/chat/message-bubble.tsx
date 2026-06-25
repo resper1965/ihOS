@@ -1,5 +1,7 @@
 import type { UIMessage } from "ai";
 import { Bot, User, Wrench } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface MessageBubbleProps {
   message: UIMessage;
@@ -27,10 +29,23 @@ export function MessageBubble({ message }: MessageBubbleProps) {
       >
         {message.parts?.map((part: any, i: number) => {
           if (part.type === "text") {
+            if (isUser) {
+              return (
+                <span key={i} className="whitespace-pre-wrap">
+                  {part.text}
+                </span>
+              );
+            }
+
             return (
-              <span key={i} className="whitespace-pre-wrap">
-                {part.text}
-              </span>
+              <div
+                key={i}
+                className="prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-p:leading-relaxed prose-headings:text-text-primary prose-headings:font-semibold prose-headings:mt-3 prose-headings:mb-1 prose-strong:text-text-primary prose-strong:font-semibold prose-code:text-primary prose-code:bg-primary/10 prose-code:rounded prose-code:px-1 prose-code:py-0.5 prose-code:text-xs prose-code:font-mono prose-code:before:content-none prose-code:after:content-none prose-pre:bg-black/20 prose-pre:dark:bg-white/5 prose-pre:rounded-lg prose-pre:p-3 prose-pre:my-2 prose-ul:my-1 prose-ol:my-1 prose-li:my-0.5 prose-table:text-xs prose-a:text-primary prose-a:no-underline hover:prose-a:underline"
+              >
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {part.text}
+                </ReactMarkdown>
+              </div>
             );
           }
 
@@ -57,7 +72,7 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             );
           }
           return null;
-        }) ?? <span className="whitespace-pre-wrap">{message.parts?.filter((p): p is { type: 'text'; text: string } => p.type === 'text').map(p => p.text).join('') ?? ''}</span>}
+        })}
       </div>
 
       {/* User Avatar */}

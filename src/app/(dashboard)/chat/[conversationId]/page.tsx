@@ -1,8 +1,18 @@
+"use client";
+
+import { use } from "react";
 import ChatPage from "../page";
 
-// For now, the conversation page re-uses the same ChatPage component.
-// Once the backend supports loading existing conversations via conversationId,
-// this can be enhanced to pre-populate messages.
-export default function ConversationPage() {
-  return <ChatPage />;
+/**
+ * Loads an existing conversation by extracting the conversationId from the URL.
+ * Passes it to ChatPage which handles loading messages and initializing useChat.
+ */
+export default function ConversationPage({
+  params,
+}: {
+  params: Promise<{ conversationId: string }>;
+}) {
+  const { conversationId } = use(params);
+
+  return <ChatPage conversationId={conversationId} />;
 }

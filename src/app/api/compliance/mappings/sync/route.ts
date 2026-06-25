@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
           domain_code: domain,
           control_name: c.control_title,
           description: c.control_description || null,
-          embedding: embeddings[idx] ? JSON.stringify(embeddings[idx]) : null,
+          embedding: embeddings[idx] ? embeddings[idx] : null,
         };
       });
 

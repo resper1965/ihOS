@@ -9,6 +9,17 @@ export const maxDuration = 30;
 
 export async function POST(req: Request) {
   try {
+    // Auth check
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Authentication required.' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } },
+      );
+    }
+
     const body = (await req.json()) as DownloadPayload;
     const { originalFileBase64, fileName, answers } = body;
 
