@@ -409,6 +409,21 @@ export type AgentLearningCorrectionUpdate = Partial<Omit<AgentLearningCorrection
 export type AgentAutonomyBoundaryUpdate = Partial<Omit<AgentAutonomyBoundary, "id">>;
 export type AgentOrgStateUpdate = Partial<Omit<AgentOrgState, "id">>;
 
+// Threat Modeling Insert / Update types
+export type ThreatModelRecordInsert = Omit<ThreatModelRecord, "id" | "created_at" | "updated_at"> & {
+  id?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+export type ThreatModelRecordUpdate = Partial<Omit<ThreatModelRecord, "id">>;
+
+export type ThreatModelReportInsert = Omit<ThreatModelReport, "id" | "created_at" | "updated_at"> & {
+  id?: string;
+  created_at?: string | null;
+  updated_at?: string | null;
+};
+export type ThreatModelReportUpdate = Partial<Omit<ThreatModelReport, "id">>;
+
 // ---------------------------------------------------------------------------
 // Database interface — used as generic param for createClient<Database>
 // ---------------------------------------------------------------------------
@@ -534,6 +549,18 @@ export type Database = {
         Row: Assessment;
         Insert: AssessmentInsert;
         Update: AssessmentUpdate;
+        Relationships: [];
+      };
+      threat_models: {
+        Row: ThreatModelRecord;
+        Insert: ThreatModelRecordInsert;
+        Update: ThreatModelRecordUpdate;
+        Relationships: [];
+      };
+      threat_model_reports: {
+        Row: ThreatModelReport;
+        Insert: ThreatModelReportInsert;
+        Update: ThreatModelReportUpdate;
         Relationships: [];
       };
     };
