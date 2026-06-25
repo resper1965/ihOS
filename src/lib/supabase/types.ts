@@ -579,3 +579,172 @@ export type Database = {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Threat Modeling Types
+// ---------------------------------------------------------------------------
+
+export type ThreatModelStatus = "draft" | "reviewed" | "approved" | "rejected";
+
+export type StrideCategory = "S" | "T" | "R" | "I" | "D" | "E";
+
+export const STRIDE_LABELS: Record<StrideCategory, string> = {
+  S: "Spoofing",
+  T: "Tampering",
+  R: "Repudiation",
+  I: "Information Disclosure",
+  D: "Denial of Service",
+  E: "Elevation of Privilege",
+};
+
+export type SeverityLevel = "critical" | "high" | "medium" | "low";
+
+export interface StrideThreat {
+  id: string;
+  stride_category: StrideCategory;
+  title: string;
+  description: string;
+  affected_component: string;
+  severity: SeverityLevel;
+  likelihood: "very_high" | "high" | "medium" | "low" | "very_low";
+  risk_level: SeverityLevel;
+  rpn: number;
+  mitigations: string[];
+  related_controls: string[];
+}
+
+export interface FmeaItem {
+  threat_id: string;
+  failure_mode: string;
+  severity: number;    // 1-10
+  occurrence: number;  // 1-10
+  detection: number;   // 1-10
+  rpn: number;         // S × O × D
+  recommended_action: string;
+}
+
+export interface ThreatModelData {
+  model_id: string;
+  product_version: string;
+  status: ThreatModelStatus;
+  created_at: string;
+  reviewed_by?: string;
+  review_comment?: string;
+  reviewed_at?: string;
+
+  threat_model: {
+    threats: StrideThreat[];
+    summary: {
+      total_threats: number;
+      by_category: Record<string, number>;
+      high_risk_count: number;
+    };
+  };
+
+  fmea: {
+    items: FmeaItem[];
+    summary: { avg_rpn: number; max_rpn: number; critical_count: number };
+  };
+
+  gaps: Array<{
+    id: string;
+    gap_type: string;
+    title: string;
+    description: string;
+    priority: SeverityLevel;
+    affected_controls: string[];
+  }>;
+
+  recommendations: Array<{
+    id: string;
+    title: string;
+    description: string;
+    priority: SeverityLevel;
+    effort: "low" | "medium" | "high";
+    frameworks: string[];
+  }>;
+
+  target_frameworks: string[];
+  document_count: number;
+  rag_chunks_analyzed: number;
+}
+
+export interface ThreatModelRecord {
+  id: string;
+  data: ThreatModelData;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ThreatModelSummary {
+  id: string;
+  model_id: string;
+  product_version: string;
+  status: ThreatModelStatus;
+  threat_count: number;
+  gap_count: number;
+  recommendation_count: number;
+  avg_rpn: number;
+  created_at: string;
+}
+
+export interface ThreatModelReport {
+  id: string;
+  threat_model_id: string;
+  title: string;
+  product_version: string;
+  frameworks: string[];
+  report_data: ThreatModelReportData;
+  status: "draft" | "ready" | "archived";
+  generated_by: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
+
+export interface ThreatModelReportData {
+  title: string;
+  model_id: string;
+  product_version: string;
+  frameworks: string[];
+  generated_at: string;
+  generated_by: string;
+  status: string;
+
+  executive_summary: {
+    total_threats: number;
+    critical_count: number;
+    high_count: number;
+    avg_rpn: number;
+    max_rpn: number;
+    total_gaps: number;
+    recommendations_count: number;
+    risk_rating: SeverityLevel;
+    narrative: string;
+  };
+
+  risk_matrix: {
+    cells: Array<{
+      likelihood: number;
+      impact: number;
+      count: number;
+      threat_ids: string[];
+    }>;
+  };
+
+  stride_analysis: {
+    by_category: Record<string, {
+      count: number;
+      threats: StrideThreat[];
+    }>;
+  };
+
+  fmea_analysis: {
+    items: FmeaItem[];
+    summary: { avg_rpn: number; critical_items: number };
+  };
+
+  gap_analysis: ThreatModelData["gaps"];
+  recommendations: ThreatModelData["recommendations"];
+
+  engine_enriched: boolean;
+  engine_narrative?: string;
+}

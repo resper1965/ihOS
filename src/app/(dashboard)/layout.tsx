@@ -16,6 +16,7 @@ import {
   Settings,
   LogOut,
   Database,
+  AlertTriangle,
   Users,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { label: "Compliance", href: "/compliance", icon: ShieldCheck },
   { label: "SCRMS (MSR)", href: "/compliance/scrms", icon: Target },
   { label: "GRC Mapping", href: "/compliance/mappings", icon: Database },
+  { label: "Threat Modeling", href: "/threat-modeling", icon: AlertTriangle },
   { label: "Chat", href: "/chat", icon: MessageSquare },
   { label: "Assessments", href: "/assessments", icon: ClipboardCheck },
   { label: "Documents", href: "/documents", icon: FileText },
