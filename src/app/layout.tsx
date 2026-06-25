@@ -13,14 +13,6 @@ export const metadata: Metadata = {
   title: "ihOS — Ionic Health OS",
   description:
     "Compliance intelligence platform. Automate GRC assessments, manage frameworks, and maintain continuous compliance with AI-powered analysis.",
-  icons: {
-    icon: [
-      { url: "/ionic-icon.png", type: "image/png" },
-      { url: "/favicon.ico", type: "image/x-icon" }
-    ],
-    shortcut: "/favicon.ico",
-    apple: "/ionic-icon.png",
-  },
 };
 
 export default function RootLayout({
@@ -31,8 +23,6 @@ export default function RootLayout({
   return (
     <html lang="pt-BR" className={`${lato.variable} dark`}>
       <head>
-        <link rel="icon" href="/ionic-icon.png" type="image/png" />
-        <link rel="shortcut icon" href="/favicon.ico" type="image/x-icon" />
         <script
           dangerouslySetInnerHTML={{
             __html: `
