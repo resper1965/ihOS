@@ -11,6 +11,7 @@ import {
   Check,
   AlertCircle,
   Search,
+  ChevronDown,
 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -270,18 +271,21 @@ export function GenerateThreatModelModal({
             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-text-muted">
               Product Version
             </label>
-            <select
-              value={version}
-              onChange={(e) => setVersion(e.target.value)}
-              className="w-full rounded-xl border border-border-glass bg-slate-950/80 px-4 py-2.5 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-300 [&>option]:bg-slate-900"
-            >
-              <option value="" disabled>Select a version...</option>
-              {versions.map((v) => (
-                <option key={v.id} value={v.version_code}>
-                  {v.product_name} ({v.version_code})
-                </option>
-              ))}
-            </select>
+            <div className="relative">
+              <select
+                value={version}
+                onChange={(e) => setVersion(e.target.value)}
+                className="w-full appearance-none rounded-xl border border-border-glass bg-white/5 px-4 py-2.5 pr-10 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-300 [&>option]:bg-[#1e293b]"
+              >
+                <option value="" disabled>Select a version...</option>
+                {versions.map((v) => (
+                  <option key={v.id} value={v.version_code}>
+                    {v.product_name} ({v.version_code})
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted pointer-events-none" />
+            </div>
           </div>
 
           {/* Frameworks */}
