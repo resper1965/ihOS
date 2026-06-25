@@ -11,6 +11,7 @@ const {
   createGoal, listGoals, updateGoalProgress,
   createTask, listTasks, updateTaskStatus,
   recordUserCorrection,
+  generateThreatModel, detectComplianceGaps, evaluateControlEvidence,
 } = agentTools;
 
 // Core tools shared by ALL profiles
@@ -26,6 +27,7 @@ const PROFILE_TOOLS: Record<AgentProfileId, Record<string, unknown>> = {
     complianceScore, crossCoverage, blastRadius, getAssessmentStatus,
     createGoal, listGoals, updateGoalProgress,
     createTask, listTasks, updateTaskStatus,
+    generateThreatModel, detectComplianceGaps, evaluateControlEvidence,
   },
   privacy: {
     ...CORE_TOOLS,
@@ -37,6 +39,7 @@ const PROFILE_TOOLS: Record<AgentProfileId, Record<string, unknown>> = {
     complianceScore, blastRadius, getAssessmentStatus,
     createGoal, listGoals, updateGoalProgress,
     createTask, listTasks, updateTaskStatus,
+    generateThreatModel, detectComplianceGaps,
   },
   executive: {
     ...CORE_TOOLS,

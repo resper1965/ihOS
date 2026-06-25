@@ -803,6 +803,108 @@ export const recordUserCorrection = tool({
 });
 
 // ---------------------------------------------------------------------------
+// Tool: generateThreatModel
+// ---------------------------------------------------------------------------
+
+export const generateThreatModel = tool({
+  description:
+    'Generate a STRIDE threat model with FMEA correlation for a product version. ' +
+    'Analyzes documentation via RAG, generates threats, detects gaps, and provides recommendations.',
+  inputSchema: z.object({
+    productVersion: z.string().describe('Product version to analyze, e.g. "2.2.1"'),
+    frameworks: z.array(z.string()).default(['iso27001', 'lgpd']).describe('Target compliance frameworks'),
+    skipEnrichment: z.boolean().default(false).describe('Skip GRC API enrichment for faster results'),
+  }),
+  execute: async (input) => {
+    try {
+      const { ihosEngine } = await import('@/lib/ihos-engine');
+      const result = await ihosEngine.generateThreatModel({
+        product_version: input.productVersion,
+        target_frameworks: input.frameworks,
+        skip_grc_enrichment: input.skipEnrichment,
+      });
+      const threats = result.threat_model?.threats || [];
+      const gaps = result.gaps || [];
+      const recs = result.recommendations || [];
+      return `Threat Model generated for v${input.productVersion}:\n` +
+        `- ${threats.length} threats identified (STRIDE)\n` +
+        `- ${gaps.length} compliance gaps detected\n` +
+        `- ${recs.length} recommendations generated\n\n` +
+        `Top threats:\n${threats.slice(0, 5).map((t: any) => `  \u2022 [${t.stride_category}] ${t.title} (RPN: ${t.rpn})`).join('\n')}\n\n` +
+        `Top gaps:\n${gaps.slice(0, 5).map((g: any) => `  \u2022 [${g.gap_type}] ${g.title} (${g.priority})`).join('\n')}\n\n` +
+        `Top recommendations:\n${recs.slice(0, 3).map((r: any) => `  \u2022 [${r.priority}] ${r.title}`).join('\n')}`;
+    } catch (error) {
+      console.warn('GRC Engine threat model generation failed:', error);
+      return 'Threat model generation is currently unavailable. The GRC Engine may be offline.';
+    }
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Tool: detectComplianceGaps
+// ---------------------------------------------------------------------------
+
+export const detectComplianceGaps = tool({
+  description:
+    'Detect compliance gaps for a product version using the GRC Engine. ' +
+    'Identifies 7 types of gaps: document, evidence, technical, traceability, clarity, FMEA, and control comparison.',
+  inputSchema: z.object({
+    productVersion: z.string().describe('Product version to analyze, e.g. "2.2.1"'),
+    frameworks: z.array(z.string()).default(['iso27001', 'lgpd']).describe('Target compliance frameworks'),
+  }),
+  execute: async (input) => {
+    try {
+      const { ihosEngine } = await import('@/lib/ihos-engine');
+      const result = await ihosEngine.detectGaps({
+        product_version: input.productVersion,
+        target_frameworks: input.frameworks,
+      });
+      const gaps = result.gaps || [];
+      const summary = result.summary || {};
+      return `Gap Analysis for v${input.productVersion}:\n` +
+        `Total: ${gaps.length} gaps detected\n\n` +
+        `By type:\n${Object.entries(summary).map(([type, count]) => `  \u2022 ${type}: ${count}`).join('\n')}\n\n` +
+        `Critical gaps:\n${gaps.filter((g: any) => g.priority === 'critical' || g.priority === 'high').slice(0, 5).map((g: any) => `  \u2022 [${g.gap_type}] ${g.title} \u2014 ${g.description?.slice(0, 100)}...`).join('\n')}`;
+    } catch (error) {
+      console.warn('GRC Engine gap detection failed:', error);
+      return 'Gap detection is currently unavailable. The GRC Engine may be offline.';
+    }
+  },
+});
+
+// ---------------------------------------------------------------------------
+// Tool: evaluateControlEvidence
+// ---------------------------------------------------------------------------
+
+export const evaluateControlEvidence = tool({
+  description:
+    'Evaluate whether a piece of evidence satisfies a specific control requirement, ' +
+    'using the Standard GRC API via the GRC Engine.',
+  inputSchema: z.object({
+    controlRequirement: z.string().describe('The control requirement to evaluate against, e.g. "AC-2: Account Management"'),
+    evidenceDescription: z.string().describe('Description of the evidence to evaluate'),
+  }),
+  execute: async (input) => {
+    try {
+      const { ihosEngine } = await import('@/lib/ihos-engine');
+      const result = await ihosEngine.evaluateEvidence({
+        control_requirement: input.controlRequirement,
+        evidence_description: input.evidenceDescription,
+      });
+      if (result.error) {
+        return `Evidence evaluation returned an error: ${result.error}`;
+      }
+      return `Evidence Evaluation:\n` +
+        `Control: ${input.controlRequirement}\n` +
+        `Result: ${JSON.stringify(result, null, 2)}`;
+    } catch (error) {
+      console.warn('GRC Engine evidence evaluation failed:', error);
+      return 'Evidence evaluation is currently unavailable. The GRC Engine may be offline.';
+    }
+  },
+});
+
+// ---------------------------------------------------------------------------
 // Tools Map (used by streamText)
 // ---------------------------------------------------------------------------
 
@@ -820,6 +922,9 @@ export const agentTools = {
   listTasks,
   updateTaskStatus,
   recordUserCorrection,
+  generateThreatModel,
+  detectComplianceGaps,
+  evaluateControlEvidence,
 } as const;
 
 export type AgentToolName = keyof typeof agentTools;
