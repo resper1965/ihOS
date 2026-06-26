@@ -20,33 +20,29 @@ export async function GET() {
     const uniqueCodes = [...new Set(mappings?.map(m => m.framework_code) || [])];
     
     const fallbackNames: Record<string, string> = {
-      iso27001: "ISO/IEC 27001:2022",
-      soc2: "SOC 2 Type II",
-      hipaa: "HIPAA",
-      nist_800_53: "NIST 800-53",
-      iso27701: "ISO/IEC 27701:2019",
-      fedramp: "FedRAMP",
+      "iso27001": "ISO/IEC 27001:2022",
+      "soc2": "SOC 2 Type II",
+      "hipaa": "HIPAA",
+      "nist_800_53": "NIST 800-53",
+      "nist_csf": "NIST Cybersecurity Framework (CSF)",
+      "iso27701": "ISO/IEC 27701:2019",
+      "fedramp": "FedRAMP",
       "BR-LGPD": "LGPD (Brazil)",
       "EU-GDPR": "GDPR (European Union)",
-      "PCI-DSS": "PCI-DSS v4.0"
+      "PCI-DSS": "PCI-DSS v4.0",
+      "saudi_sama": "SAMA CSF (Saudi Arabia)",
+      "saudi_nca": "NCA ECC (Saudi Arabia)",
+      "cis_v8": "CIS Controls v8"
     };
 
-    const frameworks = uniqueCodes.map(code => ({
-      framework_code: code,
-      framework_name: fallbackNames[code.toLowerCase()] || fallbackNames[code] || code
-    }));
+    // Ensure we always return at least this rich set of common frameworks
+    const baseCodes = Object.keys(fallbackNames);
+    const combinedCodes = [...new Set([...baseCodes, ...uniqueCodes])];
 
-    // If for some reason DB is empty or fails, use the default 6
-    if (frameworks.length === 0) {
-      frameworks.push(
-        { framework_code: "iso27001", framework_name: "ISO/IEC 27001:2022" },
-        { framework_code: "soc2", framework_name: "SOC 2 Type II" },
-        { framework_code: "hipaa", framework_name: "HIPAA" },
-        { framework_code: "nist_800_53", framework_name: "NIST 800-53" },
-        { framework_code: "iso27701", framework_name: "ISO/IEC 27701:2019" },
-        { framework_code: "fedramp", framework_name: "FedRAMP" }
-      );
-    }
+    const frameworks = combinedCodes.map(code => ({
+      framework_code: code,
+      framework_name: fallbackNames[code] || fallbackNames[code.toLowerCase()] || code
+    }));
 
     return NextResponse.json({
       success: true,

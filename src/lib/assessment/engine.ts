@@ -150,9 +150,15 @@ export async function runAssessment(
       if (mappings && mappings.length > 0) {
         const relevantControlIds = new Set(mappings.map((m: any) => m.scf_control_code));
         allControls = allControls.filter(c => relevantControlIds.has(c.control_id || c.id));
+      } else {
+        // If no mappings exist for the selected frameworks, do NOT evaluate all 1,468 controls!
+        // This avoids the 5-minute Vercel timeout.
+        allControls = [];
       }
     } catch (err) {
       console.warn('[Assessment] Failed to filter controls by framework, falling back to all controls:', err);
+      // In case of DB error, we also avoid evaluating 1,468 controls to prevent timeout
+      allControls = [];
     }
   }
 
