@@ -18,6 +18,7 @@ import { ThreatModelCard } from "@/components/risk/threat-model-card";
 import { GenerateThreatModelModal } from "@/components/risk/generate-threat-model-modal";
 import { Button } from "@/components/ui/button";
 import { useRealtimeSync } from "@/hooks/use-realtime-sync";
+import { useThreatModels, useThreatModel } from "@/hooks/queries/use-threat-models";
 import type {
   ThreatModelSummary,
   ThreatModelRecord,
@@ -92,51 +93,25 @@ function LoadingSkeleton() {
 
 export default function ThreatModelingPage() {
   const router = useRouter();
-  const [models, setModels] = useState<ThreatModelSummary[]>([]);
-  const [latestData, setLatestData] = useState<ThreatModelData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  // ── React Query Hooks ─────────────────────────────────────────────────────
+  const { data: models = [], isLoading: modelsLoading, error: modelsError, refetch } = useThreatModels();
+  
+  const latestId = models.length > 0 ? models[0].id : "";
+  const { data: latestRecord, isLoading: latestLoading } = useThreatModel(latestId);
+  const latestData = latestRecord?.data ?? null;
+
+  const loading = modelsLoading;
+  const error = modelsError ? modelsError.message : null;
+
+  // ── Local State ───────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<ThreatModelStatus | "all">("all");
   const [modalOpen, setModalOpen] = useState(false);
 
-  // ── Fetch list of models ──────────────────────────────────────────────────
-
-  const fetchModels = useCallback(async () => {
-    try {
-      const res = await fetch("/api/threat-modeling");
-      if (!res.ok) throw new Error("Failed to fetch threat models");
-      const json = await res.json();
-      setModels(json.models ?? []);
-
-      // Fetch full data for the latest model (for matrix/radar)
-      if (json.models && json.models.length > 0) {
-        const latestId = json.models[0].id;
-        const detailRes = await fetch(`/api/threat-modeling/${latestId}`);
-        if (detailRes.ok) {
-          const detailJson = await detailRes.json();
-          setLatestData(detailJson.model?.data ?? null);
-        }
-      } else {
-        setLatestData(null);
-      }
-
-      setError(null);
-    } catch (err) {
-      console.error("[ThreatModeling] Fetch error:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchModels();
-  }, [fetchModels]);
-
   // Live updates
   useRealtimeSync("threat_models", () => {
-    fetchModels();
+    refetch();
   });
 
   // ── Derived data ──────────────────────────────────────────────────────────
@@ -176,7 +151,7 @@ export default function ThreatModelingPage() {
 
   const handleModalGenerated = (model: any) => {
     setModalOpen(false);
-    fetchModels();
+    refetch();
     const newId = model?.id ?? model?.data?.id;
     if (newId) router.push(`/threat-modeling/${newId}`);
   };

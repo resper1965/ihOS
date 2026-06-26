@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Lato } from "next/font/google";
+import { QueryProvider } from "@/components/providers/query-provider";
 import "./globals.css";
 
 const lato = Lato({
@@ -44,7 +45,9 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-screen bg-bg-dark text-text-primary antialiased">
-        {children}
+        <QueryProvider>
+          {children}
+        </QueryProvider>
       </body>
     </html>
   );

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, use } from "react";
+import { useState, useMemo, use } from "react";
 import { useRouter } from "next/navigation";
+import { useThreatModel } from "@/hooks/queries/use-threat-models";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -114,32 +115,11 @@ export default function ThreatModelDetailPage({
   const { id } = use(params);
   const router = useRouter();
 
-  const [record, setRecord] = useState<ThreatModelRecord | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { data: record, isLoading: loading, error: queryError } = useThreatModel(id);
+  const error = queryError ? queryError.message : null;
+
   const [activeTab, setActiveTab] = useState<Tab>("Overview");
   const [reportLoading, setReportLoading] = useState(false);
-
-  // ── Fetch model ───────────────────────────────────────────────────────────
-
-  const fetchModel = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/threat-modeling/${id}`);
-      if (!res.ok) throw new Error("Threat model not found");
-      const json = await res.json();
-      setRecord(json.model ?? null);
-      setError(null);
-    } catch (err) {
-      console.error("[ThreatModeling] Detail fetch error:", err);
-      setError(err instanceof Error ? err.message : "Unknown error");
-    } finally {
-      setLoading(false);
-    }
-  }, [id]);
-
-  useEffect(() => {
-    fetchModel();
-  }, [fetchModel]);
 
   // ── Derived data ──────────────────────────────────────────────────────────
 
