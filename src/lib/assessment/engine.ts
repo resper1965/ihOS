@@ -3,6 +3,7 @@
 
 import { searchDocuments } from '@/lib/chat/rag-search';
 import * as standardApi from '@/lib/standard-api/client';
+import { createClient } from '@/lib/supabase/server';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -125,7 +126,7 @@ export async function runAssessment(
   });
 
   const scfVersion = await standardApi.getLatestScfVersion();
-  const allControls: any[] = [];
+  let allControls: any[] = [];
   let page = 1;
   const perPage = 200;
 
@@ -137,11 +138,29 @@ export async function runAssessment(
     page++;
   }
 
+  // Optimize: Filter controls by selected frameworks to avoid timing out on 1,468 items
+  if (config.frameworks && config.frameworks.length > 0) {
+    try {
+      const supabase = await createClient();
+      const { data: mappings } = await supabase
+        .from('scf_framework_mappings')
+        .select('scf_control_code')
+        .in('framework_code', config.frameworks);
+        
+      if (mappings && mappings.length > 0) {
+        const relevantControlIds = new Set(mappings.map((m: any) => m.scf_control_code));
+        allControls = allControls.filter(c => relevantControlIds.has(c.control_id || c.id));
+      }
+    } catch (err) {
+      console.warn('[Assessment] Failed to filter controls by framework, falling back to all controls:', err);
+    }
+  }
+
   onProgress?.({
     phase: 'loading_controls',
     current: allControls.length,
     total: allControls.length,
-    message: `Loaded ${allControls.length} SCF controls.`,
+    message: `Loaded ${allControls.length} relevant SCF controls.`,
   });
 
   // ── Phase 2: Evaluate each control ──────────────────────────────────

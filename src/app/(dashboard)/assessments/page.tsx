@@ -83,12 +83,12 @@ function RunAssessmentModal({
   const [frameworkSearch, setFrameworkSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>([
-    "ISO 27001 2022",
-    "AICPA TSC 2017:2022 (used for SOC 2)",
-    "US HIPAA Administrative Simplification 2013",
-    "NIST 800-53 R5",
-    "ISO 27701  2025",
-    "US FedRAMP R5 (moderate)",
+    "iso27001",
+    "soc2",
+    "hipaa",
+    "nist_800_53",
+    "iso27701",
+    "fedramp",
   ]);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState("");
