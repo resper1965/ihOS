@@ -36,7 +36,14 @@ export async function GET(
     return NextResponse.json({ error: 'Threat model not found' }, { status: 404 });
   }
 
-  return NextResponse.json({ model: data as ThreatModelRecord });
+  // DB column is model_data, TS interface expects data
+  const mappedModel = {
+    ...data,
+    data: data.model_data,
+  };
+  delete mappedModel.model_data;
+
+  return NextResponse.json({ model: mappedModel as ThreatModelRecord });
 }
 
 // ── PATCH — submit review ───────────────────────────────────────────────────

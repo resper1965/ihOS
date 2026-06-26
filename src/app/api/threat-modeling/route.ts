@@ -111,7 +111,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ models: [] });
     }
 
-    const records = (rows ?? []) as ThreatModelRecord[];
+    const records = (rows ?? []).map((r: any) => {
+      const mapped = { ...r, data: r.model_data };
+      delete mapped.model_data;
+      return mapped as ThreatModelRecord;
+    });
 
     // Optional client-side filter by product_version
     const version = request.nextUrl.searchParams.get('version');
