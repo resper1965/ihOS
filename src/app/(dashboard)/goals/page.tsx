@@ -378,7 +378,7 @@ export default function GoalsPage() {
               value={frameworkFilter}
               onChange={(e) => setFrameworkFilter(e.target.value)}
               aria-label="Filtrar por framework"
-              className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-3 py-2 text-sm text-text-primary outline-none transition-all focus:border-primary/50"
+              className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-3 py-2 text-sm text-text-primary outline-none transition-all focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
             >
               <option value="all" className="bg-[#1e293b] text-white">Todos Frameworks</option>
               <option value="ISO-27001" className="bg-[#1e293b] text-white">ISO 27001</option>
@@ -393,7 +393,7 @@ export default function GoalsPage() {
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               aria-label="Filter by status"
-              className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-3 py-2 text-sm text-text-primary outline-none transition-all focus:border-primary/50"
+              className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-3 py-2 text-sm text-text-primary outline-none transition-all focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
             >
               <option value="all" className="bg-[#1e293b] text-white">All Statuses</option>
               <option value="not_started" className="bg-[#1e293b] text-white">Not Started</option>
@@ -605,7 +605,7 @@ export default function GoalsPage() {
             <select
               value={newGoalFramework}
               onChange={(e) => setNewGoalFramework(e.target.value)}
-              className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-4 py-2.5 text-sm text-text-primary outline-none transition-all focus:border-primary/50"
+              className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-4 py-2.5 text-sm text-text-primary outline-none transition-all focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
             >
               <option value="ISO-27001" className="bg-[#1e293b] text-white">ISO 27001:2022 (ISMS)</option>
               <option value="SOC-2" className="bg-[#1e293b] text-white">SOC 2 Type II (Security)</option>
@@ -662,7 +662,7 @@ export default function GoalsPage() {
             <select
               value={newTaskAgent}
               onChange={(e) => setNewTaskAgent(e.target.value)}
-              className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-4 py-2.5 text-sm text-text-primary outline-none transition-all focus:border-primary/50"
+              className="w-full rounded-xl border border-border-glass bg-[#0d2027] px-4 py-2.5 text-sm text-text-primary outline-none transition-all focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
             >
               <option value="Compliance Agent" className="bg-[#1e293b] text-white">Compliance Agent</option>
               <option value="Privacy Agent" className="bg-[#1e293b] text-white">Privacy Agent</option>

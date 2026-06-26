@@ -245,7 +245,7 @@ function RunAssessmentModal({
                 <select
                   value={salesChannel}
                   onChange={(e) => setSalesChannel(e.target.value)}
-                  className="w-full appearance-none rounded-xl border border-border-glass bg-white/5 py-2.5 pl-4 pr-10 text-sm text-text-primary outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20"
+                  className="w-full appearance-none rounded-xl border border-border-glass bg-white/5 py-2.5 pl-4 pr-10 text-sm text-text-primary outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                 >
                   <option value="all" className="bg-[#1e293b] text-white">All Channels (combined)</option>
                   <option value="B2B_GEHC" className="bg-[#1e293b] text-white">

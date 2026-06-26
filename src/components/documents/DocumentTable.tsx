@@ -144,7 +144,7 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
                           handleVersionChange(doc.id, val);
                         }}
                         disabled={updatingVersionId === doc.id}
-                        className="text-[10px] rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-text-secondary cursor-pointer hover:bg-white/10 transition-colors focus:border-primary/40 focus:outline-none appearance-none"
+                        className="text-[10px] rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-text-secondary cursor-pointer hover:bg-white/10 transition-colors focus:border-primary/40 focus:outline-none appearance-none dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                         title="Assign document version"
                       >
                         <option value="global" className="bg-[#1e293b] text-white">🌐 Global / Organizacional</option>

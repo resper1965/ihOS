@@ -234,7 +234,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                 <select
                   value={docCategory}
                   onChange={(e) => setDocCategory(e.target.value as any)}
-                  className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                 >
                   <option value="ISMS_CORE" className="bg-[#1e293b]">ISMS Core (Organization Policies)</option>
                   <option value="B2B_GEHC" className="bg-[#1e293b]">B2B Channel — GEHC (Privacy: GEHC as Data Controller)</option>
@@ -282,7 +282,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   <select
                     value={targetVersionId}
                     onChange={(e) => setTargetVersionId(e.target.value)}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                   >
                     {versions.map((v) => (
                       <option key={v.id} value={v.id} className="bg-[#1e293b]">
@@ -323,7 +323,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     id="doc-status"
                     value={docStatus}
                     onChange={(e) => setDocStatus(e.target.value as any)}
-                    className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50"
+                    className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                   >
                     <option value="published" className="bg-[#1e293b]">Active (Published to RAG)</option>
                     <option value="draft" className="bg-[#1e293b]">Draft (Does not index in RAG)</option>

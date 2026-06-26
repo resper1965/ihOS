@@ -251,7 +251,7 @@ export function ThreatTable({ threats }: ThreatTableProps) {
             <select
               value={filterCategory}
               onChange={(e) => setFilterCategory(e.target.value as StrideCategory | "all")}
-              className="rounded-lg border border-border-glass bg-white/5 px-2.5 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="rounded-lg border border-border-glass bg-white/5 px-2.5 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
             >
               <option value="all">All Categories</option>
               {(Object.keys(STRIDE_LABELS) as StrideCategory[]).map((cat) => (
@@ -263,7 +263,7 @@ export function ThreatTable({ threats }: ThreatTableProps) {
             <select
               value={filterSeverity}
               onChange={(e) => setFilterSeverity(e.target.value as SeverityLevel | "all")}
-              className="rounded-lg border border-border-glass bg-white/5 px-2.5 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="rounded-lg border border-border-glass bg-white/5 px-2.5 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
             >
               <option value="all">All Severities</option>
               <option value="critical">Critical</option>
