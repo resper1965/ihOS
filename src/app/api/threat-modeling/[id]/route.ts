@@ -37,13 +37,13 @@ export async function GET(
   }
 
   // DB column is model_data, TS interface expects data
+  const { model_data, ...rest } = data;
   const mappedModel = {
-    ...data,
-    data: data.model_data,
+    ...rest,
+    data: model_data,
   };
-  delete mappedModel.model_data;
 
-  return NextResponse.json({ model: mappedModel as ThreatModelRecord });
+  return NextResponse.json({ model: mappedModel as unknown as ThreatModelRecord });
 }
 
 // ── PATCH — submit review ───────────────────────────────────────────────────
@@ -110,7 +110,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Threat model not found' }, { status: 404 });
   }
 
-  const record = existing as ThreatModelRecord;
+  const record = existing as unknown as ThreatModelRecord;
   const updatedData: ThreatModelData = {
     ...record.data,
     status: status as ThreatModelStatus,

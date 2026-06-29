@@ -120,18 +120,23 @@ export async function GET(request: NextRequest) {
     // Optional client-side filter by product_version
     const version = request.nextUrl.searchParams.get('version');
 
-    const models: ThreatModelSummary[] = records
+    const models: ThreatModelSummary[] = (records as any[])
       .filter((r) => {
         if (!version) return true;
-        return r.data?.product_version === version;
+        const pVersion = r.product_version ?? r.data?.metadata?.product_version ?? r.data?.product_version;
+        return pVersion === version;
       })
       .map((r) => {
-        const d: ThreatModelData = r.data;
+        const d = r.data as any;
+        const versionVal = r.product_version ?? d?.metadata?.product_version ?? d?.product_version ?? 'unknown';
+        const statusRaw = r.status ?? d?.metadata?.status ?? d?.status ?? 'draft';
+        const cleanStatus = (statusRaw.toLowerCase().replace('modelstatus.', '')) as any;
+
         return {
           id: r.id,
           model_id: d?.model_id ?? r.id,
-          product_version: d?.product_version ?? 'unknown',
-          status: d?.status ?? 'draft',
+          product_version: versionVal,
+          status: cleanStatus,
           threat_count: d?.threat_model?.threats?.length ?? 0,
           gap_count: d?.gaps?.length ?? 0,
           recommendation_count: d?.recommendations?.length ?? 0,
@@ -153,11 +158,13 @@ export async function POST(request: NextRequest) {
   // Auth
   const supabase = await createClient();
   const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const user = session?.user;
+  if (!user || !session?.access_token) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+  const token = session.access_token;
 
   let body: { product_version?: string; target_frameworks?: string[]; skip_enrichment?: boolean };
   try {
@@ -193,7 +200,7 @@ export async function POST(request: NextRequest) {
       product_version,
       target_frameworks,
       skip_grc_enrichment: skip_enrichment,
-    });
+    }, token);
 
     return NextResponse.json({ success: true, data: result });
   } catch (err) {

@@ -32,12 +32,19 @@ async function searchDocumentsWithEngine(
   query: string,
   options: SearchDocumentsOptions = {}
 ): Promise<SearchDocumentResult[]> {
-  const { limit = 5 } = options;
+  const { limit = 5, categories = [] } = options;
+
+  let channel_filter: 'all' | 'gehc' | 'direct' = 'all';
+  if (categories.includes('B2B_GEHC') && !categories.includes('B2B_DIRECT')) {
+    channel_filter = 'gehc';
+  } else if (categories.includes('B2B_DIRECT') && !categories.includes('B2B_GEHC')) {
+    channel_filter = 'direct';
+  }
 
   const response = await ihosEngine.search({
     query,
     top_k: limit,
-    channel_filter: 'gehc',
+    channel_filter,
   });
 
   if (!response.results || !Array.isArray(response.results)) {
@@ -45,7 +52,7 @@ async function searchDocumentsWithEngine(
   }
 
   return response.results.map((result: SearchResult, index: number) => ({
-    id: index + 1,
+    id: parseInt(result.chunk_id, 10) || parseInt(result.document_id, 10) || (index + 1),
     content: result.content ?? '',
     similarity: result.score ?? 0,
     metadata: {
@@ -89,7 +96,7 @@ async function searchDocumentsWithSupabase(
     filter_framework: framework,
     filter_version_id: productVersionId,
     filter_categories: categories,
-  });
+  } as any);
 
   // Fallback: if the new signature doesn't exist yet, retry without filter_version_id/filter_categories
   if (error && (error.code === '42883' || error.message?.includes('function') || error.code === 'PGRST202')) {
@@ -100,7 +107,7 @@ async function searchDocumentsWithSupabase(
       match_threshold: threshold,
       match_count: limit,
       filter_framework: framework,
-    });
+    } as any);
     data = fallback.data;
     error = fallback.error;
   }
@@ -112,7 +119,7 @@ async function searchDocumentsWithSupabase(
 
   if (!data || !Array.isArray(data)) return [];
 
-  return data.map((row: Record<string, unknown>) => ({
+  return (data as any[]).map((row: Record<string, unknown>) => ({
     id: row.id as number,
     content: (row.content as string) ?? '',
     similarity: (row.similarity as number) ?? 0,

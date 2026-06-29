@@ -45,7 +45,7 @@ export default function DocumentsPage() {
         console.error("[documents] Fetch error:", error.message);
         setDocuments([]);
       } else {
-        setDocuments(data ?? []);
+        setDocuments((data ?? []) as unknown as ComplianceDocument[]);
       }
     } catch (err) {
       console.error("[documents] Unexpected error:", err);

@@ -60,7 +60,7 @@ export async function PATCH(request: NextRequest) {
 
   const { error: updateError } = await supabase
     .from("profiles")
-    .update({ preferences: merged })
+    .update({ preferences: merged as any })
     .eq("id", user.id);
 
   if (updateError) {

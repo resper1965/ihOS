@@ -30,14 +30,14 @@ export function VersionProvider({ children }: { children: React.ReactNode }) {
         if (error) throw error;
 
         const fetchedVersions = data || [];
-        setVersions(fetchedVersions);
+        setVersions(fetchedVersions as unknown as ProductVersion[]);
 
         // 1. Check localStorage for user override
         const storedVersionId = localStorage.getItem("ihos_active_version_id");
         if (storedVersionId) {
           const matched = fetchedVersions.find((v) => v.id === storedVersionId);
           if (matched) {
-            setActiveVersionState(matched);
+            setActiveVersionState(matched as unknown as ProductVersion);
             setIsLoading(false);
             return;
           } else if (storedVersionId === "global") {
@@ -60,7 +60,7 @@ export function VersionProvider({ children }: { children: React.ReactNode }) {
             (v) => v.id === defaultState.state_value
           );
           if (defaultVersion) {
-            setActiveVersionState(defaultVersion);
+            setActiveVersionState(defaultVersion as unknown as ProductVersion);
             setIsLoading(false);
             return;
           }
@@ -68,7 +68,7 @@ export function VersionProvider({ children }: { children: React.ReactNode }) {
 
         // 3. Fallback: first active version
         const active = fetchedVersions.find((v) => v.status === "active") || fetchedVersions[0] || null;
-        setActiveVersionState(active);
+        setActiveVersionState((active ?? null) as unknown as ProductVersion | null);
       } catch (err) {
         console.error("[VersionContext] Error fetching versions:", err);
       } finally {

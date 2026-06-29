@@ -17,7 +17,7 @@ export default async function PrintReportPage({ params }: PageProps) {
   const { data: snapshot, error } = await adminSupabase
     .from("intelligence_snapshots")
     .select("*")
-    .eq("id", id)
+    .eq("id", Number(id))
     .eq("snapshot_type", "full_report")
     .maybeSingle();
 

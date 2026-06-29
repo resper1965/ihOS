@@ -25,7 +25,7 @@ export function useUser(): UseUserReturn {
         .select("*")
         .eq("id", userId)
         .single();
-      setProfile(data ?? null);
+      setProfile((data ?? null) as unknown as Profile | null);
     }
 
     async function init() {

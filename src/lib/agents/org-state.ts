@@ -48,7 +48,7 @@ async function setOrgState(
         {
           user_id: userId,
           state_key: key,
-          state_value: value,
+          state_value: value as any,
           updated_at: new Date().toISOString(),
         },
         { onConflict: 'user_id,state_key' }

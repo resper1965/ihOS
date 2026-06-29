@@ -41,8 +41,8 @@ export function GoalsWidget() {
           .select("*")
           .order("deadline", { ascending: true });
 
-        setGoals(goalsData || []);
-        setTasks(tasksData || []);
+        setGoals((goalsData || []) as unknown as AgentGoal[]);
+        setTasks((tasksData || []) as unknown as AgentTask[]);
       } catch (err) {
         console.error("Error fetching widget data:", err);
         setGoals([]);

@@ -515,7 +515,7 @@ export async function GET(
   const { data: snapshot, error } = await supabase
     .from("intelligence_snapshots")
     .select("*")
-    .eq("id", id)
+    .eq("id", Number(id))
     .single();
 
   if (error || !snapshot) {

@@ -2,7 +2,7 @@
 // Follows the 3-tier fallback pattern: Supabase → fallback → empty state
 
 import { createClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@/lib/supabase/admin";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type {
   ThreatModelRecord,
   ThreatModelSummary,
@@ -21,23 +21,30 @@ export async function getRecentThreatModels(
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("threat_models")
-      .select("id, data, created_at")
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(limit);
 
     if (error || !data) return [];
 
-    return data.map((row: { id: string; data: ThreatModelData; created_at: string }) => ({
-      id: row.id,
-      model_id: row.data?.model_id ?? row.id,
-      product_version: row.data?.product_version ?? "unknown",
-      status: row.data?.status ?? "draft",
-      threat_count: row.data?.threat_model?.summary?.total_threats ?? 0,
-      gap_count: row.data?.gaps?.length ?? 0,
-      recommendation_count: row.data?.recommendations?.length ?? 0,
-      avg_rpn: row.data?.fmea?.summary?.avg_rpn ?? 0,
-      created_at: row.created_at,
-    }));
+    return (data as any[]).map((row: any) => {
+      const d = row.model_data || row.data;
+      const versionVal = row.product_version ?? d?.metadata?.product_version ?? d?.product_version ?? "unknown";
+      const statusRaw = row.status ?? d?.metadata?.status ?? d?.status ?? "draft";
+      const cleanStatus = (statusRaw.toLowerCase().replace("modelstatus.", "")) as any;
+
+      return {
+        id: row.id,
+        model_id: d?.model_id ?? row.id,
+        product_version: versionVal,
+        status: cleanStatus,
+        threat_count: d?.threat_model?.summary?.total_threats ?? d?.threat_model?.threats?.length ?? 0,
+        gap_count: d?.gaps?.length ?? 0,
+        recommendation_count: d?.recommendations?.length ?? 0,
+        avg_rpn: d?.fmea?.summary?.avg_rpn ?? 0,
+        created_at: row.created_at,
+      };
+    });
   } catch {
     return [];
   }
@@ -55,7 +62,7 @@ export async function getThreatModelById(
       .single();
 
     if (error || !data) return null;
-    return data as ThreatModelRecord;
+    return data as unknown as ThreatModelRecord;
   } catch {
     return null;
   }
@@ -79,7 +86,7 @@ export async function getLatestThreatModel(
     const { data, error } = await query.single();
     if (error || !data) return null;
 
-    const record = data as ThreatModelRecord;
+    const record = data as unknown as ThreatModelRecord;
 
     // Client-side version filter if specified
     if (productVersion && record.data?.product_version !== productVersion) {
@@ -117,7 +124,7 @@ export async function getThreatModelStats(): Promise<ThreatModelStats> {
     const supabase = createAdminClient();
     const { data, error } = await supabase
       .from("threat_models")
-      .select("data");
+      .select("model_data, status");
 
     if (error || !data || data.length === 0) return emptyStats;
 
@@ -129,8 +136,8 @@ export async function getThreatModelStats(): Promise<ThreatModelStats> {
     let approved = 0;
     let draft = 0;
 
-    for (const row of data) {
-      const d = row.data as ThreatModelData;
+    for (const row of (data as any[])) {
+      const d = row.model_data as ThreatModelData;
       if (!d) continue;
 
       const threats = d.threat_model?.threats ?? [];
@@ -146,8 +153,10 @@ export async function getThreatModelStats(): Promise<ThreatModelStats> {
 
       totalGaps += d.gaps?.length ?? 0;
 
-      if (d.status === "approved") approved++;
-      if (d.status === "draft") draft++;
+      const statusRaw = row.status ?? (d as any).metadata?.status ?? (d as any).status ?? "draft";
+      const cleanStatus = statusRaw.toLowerCase().replace("modelstatus.", "");
+      if (cleanStatus === "approved") approved++;
+      if (cleanStatus === "draft") draft++;
     }
 
     return {
@@ -180,7 +189,7 @@ export async function getThreatModelReports(
       .order("created_at", { ascending: false });
 
     if (error || !data) return [];
-    return data as ThreatModelReport[];
+    return data as unknown as ThreatModelReport[];
   } catch {
     return [];
   }
@@ -198,7 +207,7 @@ export async function getThreatModelReportById(
       .single();
 
     if (error || !data) return null;
-    return data as ThreatModelReport;
+    return data as unknown as ThreatModelReport;
   } catch {
     return null;
   }

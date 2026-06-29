@@ -73,7 +73,7 @@ export async function POST(req: Request) {
         compliant_controls: result.totalControlsCompliant,
         missing_controls: result.totalControlsMissing,
         implemented_control_ids: result.implementedControlIds,
-        framework_scores: result.frameworkScores,
+        framework_scores: result.frameworkScores as any,
         created_by: null,
       })
       .select('id')

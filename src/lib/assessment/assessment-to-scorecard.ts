@@ -5,29 +5,12 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { AssessmentResult, FrameworkScore } from './engine';
+import { resolveFrameworkName, resolveFrameworkIcon } from './framework-registry';
 import { Redis } from '@upstash/redis';
 
 const redisUrl = process.env.UPSTASH_REDIS_REST_URL || "";
 const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || "";
 const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
-
-const FRAMEWORK_ICONS: Record<string, string> = {
-  'BR-LGPD': '🇧🇷',
-  'HI-2013': '🏥',
-  'iso27001': '🔒',
-  'iso27701': '🛡️',
-  'EU-GDPR': '🇪🇺',
-  'IEC-62304': '⚕️',
-};
-
-const FRAMEWORK_NAMES: Record<string, string> = {
-  'BR-LGPD': 'LGPD',
-  'HI-2013': 'HIPAA',
-  'iso27001': 'ISO 27001:2022',
-  'iso27701': 'ISO 27701:2019',
-  'EU-GDPR': 'EU GDPR',
-  'IEC-62304': 'IEC 62304',
-};
 
 /**
  * After an assessment completes, sync its scores into intelligence_snapshots.
@@ -51,7 +34,7 @@ export async function syncScorecard(
       : null;
 
     const snapshotData = {
-      name: FRAMEWORK_NAMES[code] ?? code,
+      name: resolveFrameworkName(code),
       score,
       coverage,
       missing: fw.missingControls.length,
@@ -114,11 +97,11 @@ export async function syncScorecard(
 
     return {
       code,
-      name: FRAMEWORK_NAMES[code] ?? code,
+      name: resolveFrameworkName(code),
       score: calculatedScore,
       coverage: calculatedScore,
       missing: fw.missingControls.length,
-      icon: FRAMEWORK_ICONS[code] ?? '📋',
+      icon: resolveFrameworkIcon(code),
       implemented: fw.implementedCount,
       total_required: fw.totalRequired,
       // 2-Phase addition:

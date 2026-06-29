@@ -6,6 +6,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import * as standardApi from "@/lib/standard-api/client";
+import { resolveFrameworkName, resolveFrameworkIcon } from "@/lib/assessment/framework-registry";
 import { Redis } from "@upstash/redis";
 
 // ── Redis Setup ─────────────────────────────────────────────────────────────
@@ -191,21 +192,8 @@ export async function calculateFrameworkScoresLocally(supabase: any): Promise<Fr
       }
     }
 
-    const FRAMEWORK_NAMES: Record<string, string> = {
-      "iso27001": "ISO 27001:2022",
-      "iso27701": "ISO 27701:2019",
-      "BR-LGPD": "LGPD",
-      "HI-2013": "HIPAA",
-      "EU-GDPR": "EU GDPR",
-    };
-
-    const FRAMEWORK_ICONS: Record<string, string> = {
-      "BR-LGPD": "🇧🇷",
-      "HI-2013": "🏥",
-      "iso27001": "🔒",
-      "iso27701": "🛡️",
-      "EU-GDPR": "🇪🇺",
-    };
+    // Framework names and icons are resolved from the canonical registry
+    // (eliminates hardcoded duplication — Constitution Principle III)
 
     for (const code of frameworks) {
       const fwMappings = mappingsByFramework.get(code) || [];
@@ -215,7 +203,7 @@ export async function calculateFrameworkScoresLocally(supabase: any): Promise<Fr
       if (totalRequired === 0) {
         results.push({
           code,
-          name: FRAMEWORK_NAMES[code] ?? code,
+          name: resolveFrameworkName(code),
           score: null,
           coverage: null,
           missing: 0,
@@ -304,11 +292,11 @@ export async function calculateFrameworkScoresLocally(supabase: any): Promise<Fr
 
       results.push({
         code,
-        name: FRAMEWORK_NAMES[code] ?? code,
+        name: resolveFrameworkName(code),
         score,
         coverage,
         missing,
-        icon: FRAMEWORK_ICONS[code] ?? "📋",
+        icon: resolveFrameworkIcon(code),
         ismsScore,
         evidenceScore,
         conformingCount,

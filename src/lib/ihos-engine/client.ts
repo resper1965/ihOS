@@ -59,68 +59,78 @@ export const ihosEngine = {
   health: () => request<HealthResponse>('/api/health'),
 
   // Threat Modeling
-  generateThreatModel: (data: GenerateRequest) =>
+  generateThreatModel: (data: GenerateRequest, token?: string) =>
     request<ThreatModel>('/api/threat-model/generate', {
       method: 'POST',
       body: JSON.stringify(data),
+      ...(token && { headers: { 'Authorization': `Bearer ${token}` } }),
     }),
 
-  getThreatModel: (modelId: string) =>
-    request<ThreatModel>(`/api/threat-model/${modelId}`),
+  getThreatModel: (modelId: string, token?: string) =>
+    request<ThreatModel>(`/api/threat-model/${modelId}`, {
+      ...(token && { headers: { 'Authorization': `Bearer ${token}` } }),
+    }),
 
-  reviewThreatModel: (modelId: string, data: ReviewRequest) =>
+  reviewThreatModel: (modelId: string, data: ReviewRequest, token?: string) =>
     request<ThreatModel>(`/api/threat-model/${modelId}/review`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+      ...(token && { headers: { 'Authorization': `Bearer ${token}` } }),
     }),
 
-  correlateFmea: (modelId: string, data: FmeaCorrelateRequest) =>
+  correlateFmea: (modelId: string, data: FmeaCorrelateRequest, token?: string) =>
     request<Record<string, unknown>>(
       `/api/threat-model/${modelId}/correlate-fmea`,
       {
         method: 'POST',
         body: JSON.stringify(data),
+        ...(token && { headers: { 'Authorization': `Bearer ${token}` } }),
       }
     ),
 
   // RAG Search
-  search: (data: SearchRequest) =>
+  search: (data: SearchRequest, token?: string) =>
     request<{ results: SearchResult[]; total: number }>('/api/search', {
       method: 'POST',
       body: JSON.stringify(data),
+      ...(token && { headers: { 'Authorization': `Bearer ${token}` } }),
     }),
 
   // Gap Detection
-  detectGaps: (data: GapDetectRequest) =>
+  detectGaps: (data: GapDetectRequest, token?: string) =>
     request<{ gaps: Gap[]; summary: Record<string, number> }>(
       '/api/gaps/detect',
       {
         method: 'POST',
         body: JSON.stringify(data),
+        ...(token && { headers: { 'Authorization': `Bearer ${token}` } }),
       }
     ),
 
-  generateGapReport: (data: GapDetectRequest) =>
+  generateGapReport: (data: GapDetectRequest, token?: string) =>
     request<{ report: string; gaps: Gap[]; recommendations: Recommendation[] }>(
       '/api/gaps/report',
       {
         method: 'POST',
         body: JSON.stringify(data),
+        ...(token && { headers: { 'Authorization': `Bearer ${token}` } }),
       }
     ),
 
   // Recommendations
-  getRecommendations: (data: GapDetectRequest) =>
+  getRecommendations: (data: GapDetectRequest, token?: string) =>
     request<{ recommendations: Recommendation[] }>('/api/recommendations', {
       method: 'POST',
       body: JSON.stringify(data),
+      ...(token && { headers: { 'Authorization': `Bearer ${token}` } }),
     }),
 
   // Evidence
-  evaluateEvidence: (data: EvidenceEvaluateRequest) =>
+  evaluateEvidence: (data: EvidenceEvaluateRequest, token?: string) =>
     request<Record<string, unknown>>('/api/evidence/evaluate', {
       method: 'POST',
       body: JSON.stringify(data),
+      ...(token && { headers: { 'Authorization': `Bearer ${token}` } }),
     }),
 } as const;
 

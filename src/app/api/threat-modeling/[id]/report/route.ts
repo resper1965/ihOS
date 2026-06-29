@@ -103,7 +103,7 @@ export async function POST(
     return NextResponse.json({ error: 'Threat model not found' }, { status: 404 });
   }
 
-  const record = row as ThreatModelRecord;
+  const record = row as unknown as ThreatModelRecord;
   const d: ThreatModelData = record.data;
   const threats = d.threat_model?.threats ?? [];
   const fmeaItems = d.fmea?.items ?? [];

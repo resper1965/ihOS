@@ -694,7 +694,7 @@ export async function GET(
     );
   }
 
-  const report = reportRow as ThreatModelReport;
+  const report = reportRow as unknown as ThreatModelReport;
   const reportData: ThreatModelReportData = report.report_data;
 
   // ── Excel Export ────────────────────────────────────────────────────────

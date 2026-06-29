@@ -26,7 +26,7 @@ export async function GET(
     const { data: snapshot, error: snapshotError } = await supabase
       .from("intelligence_snapshots")
       .select("*")
-      .eq("id", id)
+      .eq("id", Number(id))
       .eq("snapshot_type", "full_report")
       .maybeSingle();
 

@@ -124,26 +124,44 @@ ihOS/
 ├── src/
 │   ├── app/                    # Next.js App Router
 │   │   ├── (auth)/             # Rotas de autenticação
-│   │   ├── (dashboard)/        # Rotas do dashboard
-│   │   └── api/                # API Routes
+│   │   ├── (dashboard)/        # Rotas do dashboard (13 módulos)
+│   │   │   ├── assessments/    # Assessment Engine
+│   │   │   ├── chat/           # Agentic Chat
+│   │   │   ├── compliance/     # Compliance Intelligence + SCRMS + Mappings
+│   │   │   ├── documents/      # Document Management + Clarity Gate
+│   │   │   ├── goals/          # Remediation Goals & Tasks
+│   │   │   ├── knowledge-base/ # RAG Health Dashboard
+│   │   │   ├── reports/        # Report Generation
+│   │   │   ├── settings/       # Settings + Product Versions
+│   │   │   ├── threat-modeling/ # STRIDE + FMEA Analysis
+│   │   │   └── admin/          # User Administration
+│   │   └── api/                # 12 API Route Groups
 │   ├── lib/                    # Lógica de negócio
-│   │   ├── agents/tools/       # Ferramentas do agente AI
-│   │   ├── standard-api/       # Client do Standard GRC API
-│   │   ├── supabase/           # Client e helpers Supabase
-│   │   └── context/            # Context providers React
-│   └── components/             # Componentes React
-│       ├── chat/               # Componentes do chat
-│       ├── dashboard/          # Componentes do dashboard
-│       └── ui/                 # Componentes base UI
-├── etl/                        # Scripts ETL (ingestão de dados)
-├── supabase/migrations/        # Migrações do banco de dados
-├── docs/architecture/          # Documentação arc42
-│   └── adrs/                   # Architecture Decision Records
+│   │   ├── agents/tools/       # Ferramentas do agente AI (14 tools)
+│   │   ├── assessment/         # Assessment engine + framework-registry + persistence
+│   │   ├── chat/               # Chat, RAG search, embeddings
+│   │   ├── standard-api/       # Client do Standard GRC Engine API
+│   │   ├── ihos-engine/        # ihOS Engine client
+│   │   ├── supabase/           # DB clients + types (generated + custom)
+│   │   ├── data/               # Server-side data fetchers
+│   │   └── context/            # React context providers
+│   ├── hooks/
+│   │   └── queries/            # React Query hooks (TanStack)
+│   └── components/             # 40+ Componentes React
+│       ├── assessments/        # RunAssessmentModal, EvidenceTable
+│       ├── chat/               # ChatPanel, ConversationList, AgentStatus
+│       ├── dashboard/          # 14 dashboard widgets
+│       ├── documents/          # UploadWizard, ClarityReport
+│       ├── onboarding/         # OnboardingGate, OnboardingWizard
+│       ├── risk/               # STRIDE, FMEA, RiskMatrix, ReviewPanel
+│       └── ui/                 # Button, Badge, Progress, Card, Dialog
+├── supabase/migrations/        # 34 migrações do banco de dados
 ├── tests/                      # Testes
-│   ├── unit/                   # Testes unitários
-│   ├── integration/            # Testes de integração
-│   └── e2e/                    # Testes end-to-end
-└── scripts/                    # Scripts de automação
+│   ├── unit/assessment/        # Testes unitários (framework-registry, persistence, engine)
+│   ├── e2e/                    # Testes E2E (Playwright)
+│   └── setup.ts                # Test setup
+├── docs/architecture/          # Documentação arc42 + ADRs
+└── .specify/memory/            # Spec Kit artifacts (constitution, spec, plan, tasks, checklist)
 ```
 
 ### Architecture Decision Records (ADRs)

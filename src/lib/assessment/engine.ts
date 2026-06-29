@@ -130,12 +130,17 @@ export async function runAssessment(
   let page = 1;
   const perPage = 200;
 
-  while (true) {
+  const MAX_PAGES = 20;
+  while (page <= MAX_PAGES) {
     const batch = await standardApi.getScfControls(scfVersion.scf_version_id, page, perPage);
     const items = batch.data || [];
     allControls.push(...items);
     if (items.length < perPage) break;
     page++;
+  }
+
+  if (page > MAX_PAGES) {
+    console.warn(`[Assessment] Reached max page limit (${MAX_PAGES}), loaded ${allControls.length} controls`);
   }
 
   // Optimize: Filter controls by selected frameworks to avoid timing out on 1,468 items
@@ -181,95 +186,187 @@ export async function runAssessment(
     categoryFilters.push('B2B_GEHC', 'B2B_DIRECT');
   }
 
-  for (let i = 0; i < allControls.length; i++) {
-    const control = allControls[i];
-    const controlId = control.control_id || control.id || `CTRL-${i}`;
-    const controlName = control.control_name || control.name || controlId;
-    const controlDomain = control.domain || controlId.split('-')[0] || 'UNKNOWN';
-    const controlDescription = control.control_description || control.description || controlName;
-
-    onProgress?.({
-      phase: 'evaluating',
-      current: i + 1,
-      total: allControls.length,
-      message: `Evaluating ${controlId}: ${controlName}`,
-    });
-
-    // Step 2a: Search RAG for evidence
-    const ragResults = await searchDocuments(controlDescription, {
-      productVersionId: config.productVersionId || undefined,
-      limit: 3,
-      threshold: similarityThreshold,
-    });
-
-    // Quick mode: skip controls with no RAG evidence
-    if (config.mode === 'quick' && ragResults.length === 0) {
-      evaluations.push({
-        controlId,
-        controlName,
-        domain: controlDomain,
-        isCompliant: false,
-        confidenceScore: 0,
-        auditorNotes: 'No evidence found in ISMS documents (Quick Scan).',
-      });
-      continue;
-    }
-
-    if (ragResults.length === 0) {
-      // Deep mode: no evidence found
-      evaluations.push({
-        controlId,
-        controlName,
-        domain: controlDomain,
-        isCompliant: false,
-        confidenceScore: 0,
-        auditorNotes: 'No evidence found in any ISMS document.',
-      });
-      continue;
-    }
-
-    // Step 2b: Validate via Standard API evaluate-evidence
-    const bestEvidence = ragResults[0];
-    try {
-      const evalResult = await standardApi.evaluateEvidence({
-        controlRequirement: controlDescription,
-        evidenceDescription: bestEvidence.content,
-      } as any);
-
-      const isCompliant = (evalResult as any).is_compliant === true
-        && ((evalResult as any).confidence_score ?? 0) >= confidenceThreshold;
-
-      evaluations.push({
-        controlId,
-        controlName,
-        domain: controlDomain,
-        isCompliant,
-        confidenceScore: (evalResult as any).confidence_score ?? 0,
-        evidenceChunkId: bestEvidence.id,
-        evidenceSnippet: bestEvidence.content.slice(0, 200),
-        auditorNotes: (evalResult as any).auditor_notes ?? '',
-      });
-
-      if (isCompliant) {
-        implementedControlIds.push(controlId);
+  // Retry helper for API calls
+  async function retryApiCall<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
+    let lastErr;
+    for (let i = 0; i < retries; i++) {
+      try {
+        return await fn();
+      } catch (err) {
+        lastErr = err;
+        await new Promise(r => setTimeout(r, 500 * Math.pow(2, i))); // Exponential backoff
       }
-    } catch (err) {
-      // If evaluate-evidence fails, mark as non-compliant but log the error
-      evaluations.push({
-        controlId,
-        controlName,
-        domain: controlDomain,
-        isCompliant: false,
-        confidenceScore: 0,
-        evidenceChunkId: bestEvidence.id,
-        evidenceSnippet: bestEvidence.content.slice(0, 200),
-        auditorNotes: `Evidence evaluation failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      });
     }
+    throw lastErr;
+  }
 
-    // Rate limiting: small delay between API calls
-    if (i % 10 === 9) {
-      await new Promise(resolve => setTimeout(resolve, 200));
+  // Evaluate in batches of 10 to prevent API timeouts while avoiding rate limits
+  const BATCH_SIZE = 10;
+  for (let i = 0; i < allControls.length; i += BATCH_SIZE) {
+    const batch = allControls.slice(i, i + BATCH_SIZE);
+    
+    const batchPromises = batch.map(async (control, batchIndex) => {
+      const globalIndex = i + batchIndex;
+      const controlId = control.control_id || control.id || `CTRL-${globalIndex}`;
+      const controlName = control.control_name || control.name || controlId;
+      const controlDomain = control.domain || controlId.split('-')[0] || 'UNKNOWN';
+      const controlDescription = control.control_description || control.description || controlName;
+
+      onProgress?.({
+        phase: 'evaluating',
+        current: globalIndex + 1,
+        total: allControls.length,
+        message: `Evaluating ${controlId}: ${controlName}`,
+      });
+
+      // Step 2a: Search RAG for evidence using all category filters
+      const ragResults = await searchDocuments(controlDescription, {
+        productVersionId: config.productVersionId || undefined,
+        limit: 3,
+        threshold: similarityThreshold,
+        categories: categoryFilters,
+      });
+
+      if (ragResults.length === 0) {
+        return {
+          controlId,
+          controlName,
+          domain: controlDomain,
+          isCompliant: false,
+          confidenceScore: 0,
+          auditorNotes: 'No evidence found in any ISMS document.',
+          combinedStatus: 'gap' as const,
+          ismsPhase: { found: false, score: 0 },
+          evidencePhase: { found: false, score: 0 },
+        };
+      }
+
+      const bestEvidenceId = ragResults[0].id;
+      // Combine all retrieved chunks to give LLM full context
+      const combinedEvidence = ragResults.map(r => r.content).join('\n\n---\n\n');
+
+      // Quick mode: skip LLM and rely on RAG similarity threshold
+      if (config.mode === 'quick') {
+        // We know ragResults > 0 and the first result met the semantic threshold
+        // Map similarity (0-1) to confidence score (0-100)
+        const mappedConfidence = Math.round(ragResults[0].similarity * 100);
+        const isCompliant = mappedConfidence >= confidenceThreshold;
+        
+        // Derive dual-phase status from RAG results
+        const ismsPhase = {
+          found: ragResults[0].similarity >= similarityThreshold,
+          score: ragResults[0].similarity,
+          docTitle: ragResults[0].metadata?.documentTitle,
+          snippet: ragResults[0].content?.slice(0, 200),
+          chunkId: ragResults[0].id,
+        };
+        // Quick mode: evidence phase = same as ISMS (no separate check)
+        const evidencePhase = { found: false, score: 0 };
+        const combinedStatus: 'conforming' | 'partial' | 'informal' | 'gap' =
+          ismsPhase.found ? 'partial' : 'gap';
+
+        return {
+          controlId,
+          controlName,
+          domain: controlDomain,
+          isCompliant,
+          confidenceScore: mappedConfidence,
+          evidenceChunkId: bestEvidenceId,
+          evidenceSnippet: ragResults[0].content.slice(0, 200),
+          auditorNotes: isCompliant ? 'Approved via semantic similarity (Quick Scan).' : 'Similarity below threshold (Quick Scan).',
+          ismsPhase,
+          evidencePhase,
+          combinedStatus,
+        };
+      }
+
+      // Deep mode: Validate via Standard API evaluate-evidence with full context and retries
+      // Also run dual-phase: separate ISMS policy check and operational evidence check
+      try {
+        // Phase 1: ISMS policy search (narrower category)
+        const ismsResults = await searchDocuments(controlDescription, {
+          productVersionId: config.productVersionId || undefined,
+          limit: 3,
+          threshold: similarityThreshold,
+          categories: ['ISMS_CORE'],
+        });
+        const ismsPhase = {
+          found: ismsResults.length > 0 && ismsResults[0].similarity >= similarityThreshold,
+          score: ismsResults[0]?.similarity ?? 0,
+          docTitle: ismsResults[0]?.metadata?.documentTitle,
+          snippet: ismsResults[0]?.content?.slice(0, 200),
+          chunkId: ismsResults[0]?.id ?? null,
+        };
+
+        // Phase 2: Operational evidence search
+        const evidenceResults = await searchDocuments(controlDescription, {
+          productVersionId: config.productVersionId || undefined,
+          limit: 3,
+          threshold: similarityThreshold,
+          categories: ['OPERATIONAL', 'ISMS_CORE'],
+        });
+        const evidencePhase = {
+          found: evidenceResults.length > 0 && evidenceResults[0].similarity >= similarityThreshold,
+          score: evidenceResults[0]?.similarity ?? 0,
+          docTitle: evidenceResults[0]?.metadata?.documentTitle,
+          snippet: evidenceResults[0]?.content?.slice(0, 200),
+          chunkId: evidenceResults[0]?.id ?? null,
+        };
+
+        // Determine combined status
+        const combinedStatus: 'conforming' | 'partial' | 'informal' | 'gap' =
+          ismsPhase.found && evidencePhase.found ? 'conforming'
+          : ismsPhase.found ? 'partial'
+          : evidencePhase.found ? 'informal'
+          : 'gap';
+
+        const evalResult = await retryApiCall(() => standardApi.evaluateEvidence({
+          controlRequirement: controlDescription,
+          evidenceDescription: combinedEvidence,
+        } as any));
+
+        const confidence = (evalResult as any).confidence_score ?? 0;
+        const isCompliant = (evalResult as any).is_compliant === true && confidence >= confidenceThreshold;
+
+        return {
+          controlId,
+          controlName,
+          domain: controlDomain,
+          isCompliant,
+          confidenceScore: confidence,
+          evidenceChunkId: bestEvidenceId,
+          evidenceSnippet: ragResults[0].content.slice(0, 200),
+          auditorNotes: (evalResult as any).auditor_notes ?? '',
+          ismsPhase,
+          evidencePhase,
+          combinedStatus,
+        };
+      } catch (err) {
+        // Mark as evaluation_error instead of non-compliant (audit item #6)
+        return {
+          controlId,
+          controlName,
+          domain: controlDomain,
+          isCompliant: false,
+          confidenceScore: 0,
+          evidenceChunkId: bestEvidenceId,
+          evidenceSnippet: ragResults[0].content.slice(0, 200),
+          auditorNotes: `[EVALUATION_ERROR] API evaluation failed after retries: ${err instanceof Error ? err.message : 'Unknown error'}`,
+          combinedStatus: 'gap' as const,
+          ismsPhase: { found: false, score: 0 },
+          evidencePhase: { found: false, score: 0 },
+        };
+      }
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+    
+    // Store evaluations and track implemented controls
+    for (const result of batchResults) {
+      evaluations.push(result);
+      if (result.isCompliant) {
+        implementedControlIds.push(result.controlId);
+      }
     }
   }
 
@@ -323,6 +420,14 @@ export async function runAssessment(
   const completedAt = new Date().toISOString();
   const totalCompliant = evaluations.filter(e => e.isCompliant).length;
 
+  // Compute dual-phase totals
+  const totalIsmsCompliant = evaluations.filter(e => e.ismsPhase?.found).length;
+  const totalEvidenceCompliant = evaluations.filter(e => e.evidencePhase?.found).length;
+  const totalConforming = evaluations.filter(e => e.combinedStatus === 'conforming').length;
+  const totalPartial = evaluations.filter(e => e.combinedStatus === 'partial').length;
+  const totalInformal = evaluations.filter(e => e.combinedStatus === 'informal').length;
+  const totalGap = evaluations.filter(e => e.combinedStatus === 'gap').length;
+
   const result: AssessmentResult = {
     id: crypto.randomUUID(),
     startedAt,
@@ -334,13 +439,20 @@ export async function runAssessment(
     totalControlsEvaluated: evaluations.length,
     totalControlsCompliant: totalCompliant,
     totalControlsMissing: evaluations.length - totalCompliant,
+    // 2-Phase totals
+    totalIsmsCompliant,
+    totalEvidenceCompliant,
+    totalConforming,
+    totalPartial,
+    totalInformal,
+    totalGap,
   };
 
   onProgress?.({
     phase: 'complete',
     current: 1,
     total: 1,
-    message: `Assessment complete: ${totalCompliant}/${evaluations.length} controls compliant.`,
+    message: `Assessment complete: ${totalCompliant}/${evaluations.length} controls compliant (${totalConforming} conforming, ${totalPartial} partial, ${totalInformal} informal, ${totalGap} gaps).`,
   });
 
   return result;

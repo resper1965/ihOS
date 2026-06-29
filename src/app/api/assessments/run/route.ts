@@ -1,9 +1,9 @@
-// src/app/api/assessments/run/route.ts
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runAssessment, DEFAULT_FRAMEWORKS } from '@/lib/assessment/engine';
 import { syncScorecard } from '@/lib/assessment/assessment-to-scorecard';
+import { RunAssessmentRequestSchema, buildEvidenceBatch } from '@/lib/assessment/persistence';
 import type { AssessmentConfig } from '@/lib/assessment/engine';
 
 export const maxDuration = 300; // 5 minutes for deep scans
@@ -19,12 +19,17 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const {
-      frameworks = DEFAULT_FRAMEWORKS.map(f => f.id),
-      mode = 'quick',
-      salesChannel = null,
-      productVersionId = null,
-    } = body;
+
+    // Validate request body
+    const parsed = RunAssessmentRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json(
+        { success: false, error: `Invalid request: ${parsed.error.issues.map(i => i.message).join(', ')}` },
+        { status: 400 },
+      );
+    }
+
+    const { frameworks, mode, salesChannel, productVersionId } = parsed.data;
 
     const config: AssessmentConfig = {
       frameworks,
@@ -54,7 +59,7 @@ export async function POST(req: Request) {
         compliant_controls: result.totalControlsCompliant,
         missing_controls: result.totalControlsMissing,
         implemented_control_ids: result.implementedControlIds,
-        framework_scores: result.frameworkScores,
+        framework_scores: result.frameworkScores as any,
         created_by: user.id,
       })
       .select('id')
@@ -71,28 +76,11 @@ export async function POST(req: Request) {
     if (assessmentRecord?.id && result.controlEvaluations.length > 0) {
       try {
         const adminSupabase = createAdminClient();
-
-        const evidenceBatch = result.controlEvaluations.map((evaluation) => ({
-          // Required columns (NOT NULL in schema)
-          chunk_id: evaluation.evidenceChunkId ?? 0,
-          scf_control_code: evaluation.controlId,
-          control_requirement: evaluation.controlName,
-          evidence_text: evaluation.evidenceSnippet ?? 'No evidence found',
-          needs_review: evaluation.confidenceScore > 0 && evaluation.confidenceScore < 70,
-          // Optional columns
-          control_code: evaluation.controlId,
-          domain_code: evaluation.domain,
-          control_name: evaluation.controlName,
-          is_compliant: evaluation.isCompliant,
-          confidence_score: evaluation.confidenceScore,
-          missing_elements: null,
-          auditor_notes: evaluation.auditorNotes || null,
-          trace_id: assessmentRecord.id,
-        }));
+        const evidenceBatch = buildEvidenceBatch(result.controlEvaluations, assessmentRecord.id);
 
         const { error: evidenceInsertError } = await adminSupabase
           .from('evidence_evaluations')
-          .insert(evidenceBatch);
+          .insert(evidenceBatch as any);
 
         if (evidenceInsertError) {
           console.error(

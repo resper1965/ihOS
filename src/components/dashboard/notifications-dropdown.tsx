@@ -65,7 +65,7 @@ export function NotificationsDropdown() {
         return;
       }
 
-      setNotifications(data ?? []);
+      setNotifications((data ?? []) as unknown as AgentNotification[]);
       setUnreadCount((data ?? []).filter((n) => !n.read).length);
     } catch (err) {
       console.warn("[notifications] unexpected error:", err);

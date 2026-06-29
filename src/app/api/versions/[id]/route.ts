@@ -80,7 +80,7 @@ export async function PATCH(
 
   const { data, error } = await supabase
     .from("product_versions")
-    .update(typed)
+    .update(typed as any)
     .eq("id", id)
     .select()
     .single();

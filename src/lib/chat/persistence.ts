@@ -63,5 +63,5 @@ export async function getMessages(conversationId: string, limit = 50): Promise<M
     .from('messages').select('*').eq('conversation_id', conversationId)
     .order('created_at', { ascending: true }).limit(limit);
   if (error) throw new Error(`Failed to fetch messages: ${error.message}`);
-  return data ?? [];
+  return (data ?? []) as unknown as Message[];
 }

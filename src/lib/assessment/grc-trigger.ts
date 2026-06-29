@@ -2,6 +2,7 @@ import { exec } from 'child_process';
 import { promisify } from 'util';
 import { runAssessment } from './engine';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { buildEvidenceBatch } from './persistence';
 
 const execAsync = promisify(exec);
 
@@ -15,7 +16,7 @@ export async function triggerGrcRecalibration(productVersionId: string, userId: 
   
   try {
     // 1. Run Python Calibration script
-    const pythonScriptPath = '/home/resper/ionic-txramp/run_scrms_calibration.py';
+    const pythonScriptPath = process.env.CALIBRATION_SCRIPT_PATH || '/home/resper/ihos-api/run_scrms_calibration.py';
     let stdout = '';
     let stderr = '';
     
@@ -72,7 +73,7 @@ export async function triggerGrcRecalibration(productVersionId: string, userId: 
         compliant_controls: result.totalControlsCompliant,
         missing_controls: result.totalControlsMissing,
         implemented_control_ids: result.implementedControlIds,
-        framework_scores: result.frameworkScores,
+        framework_scores: result.frameworkScores as any,
         created_by: userId,
         sales_channel: null,
       })
@@ -82,29 +83,18 @@ export async function triggerGrcRecalibration(productVersionId: string, userId: 
     if (insertError) {
       console.error('[GRC Trigger] Failed to persist auto-assessment:', insertError.message);
     } else if (assessmentRecord?.id && result.controlEvaluations.length > 0) {
-      // Persist evidence evaluations
-      const evidenceBatch = result.controlEvaluations.map((evaluation) => ({
-        chunk_id: evaluation.evidenceChunkId ?? 0,
-        scf_control_code: evaluation.controlId,
-        control_requirement: evaluation.controlName,
-        evidence_text: evaluation.evidenceSnippet ?? 'No evidence found',
-        needs_review: evaluation.confidenceScore > 0 && evaluation.confidenceScore < 70,
-        control_code: evaluation.controlId,
-        domain_code: evaluation.domain,
-        control_name: evaluation.controlName,
-        is_compliant: evaluation.isCompliant,
-        confidence_score: evaluation.confidenceScore,
-        missing_elements: null,
-        auditor_notes: evaluation.auditorNotes || null,
-        trace_id: assessmentRecord.id,
-      }));
+      // Persist evidence evaluations using shared utility
+      try {
+        const evidenceBatch = buildEvidenceBatch(result.controlEvaluations, assessmentRecord.id);
+        const { error: evidenceInsertError } = await adminSupabase
+          .from('evidence_evaluations')
+          .insert(evidenceBatch as any);
 
-      const { error: evidenceInsertError } = await adminSupabase
-        .from('evidence_evaluations')
-        .insert(evidenceBatch);
-        
-      if (evidenceInsertError) {
-        console.error('[GRC Trigger] Failed to persist evidence evaluations:', evidenceInsertError.message);
+        if (evidenceInsertError) {
+          console.error('[GRC Trigger] Failed to persist evidence evaluations:', evidenceInsertError.message);
+        }
+      } catch (evidenceErr) {
+        console.error('[GRC Trigger] Evidence persist threw:', evidenceErr instanceof Error ? evidenceErr.message : evidenceErr);
       }
     }
     

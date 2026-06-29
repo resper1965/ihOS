@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
 
   const { data, error } = await supabase
     .from("product_versions")
-    .insert(insert)
+    .insert(insert as any)
     .select()
     .single();
 

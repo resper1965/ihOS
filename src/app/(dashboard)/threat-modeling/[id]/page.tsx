@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, use } from "react";
+import { useState, useMemo, use, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useThreatModel } from "@/hooks/queries/use-threat-models";
 import {
@@ -23,6 +23,8 @@ import { FmeaTable } from "@/components/risk/fmea-table";
 import { ReviewPanel } from "@/components/risk/review-panel";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
+import { useVersion } from "@/lib/context/version-context";
 import type {
   ThreatModelRecord,
   ThreatModelData,
@@ -34,8 +36,36 @@ import type {
 // Tab definitions
 // ─────────────────────────────────────────────────────────────────────────────
 
-const TABS = ["Overview", "Threats", "FMEA", "Gaps", "Review"] as const;
+const TABS = ["Scope", "STRIDE", "FMEA", "Gaps", "Review"] as const;
 type Tab = (typeof TABS)[number];
+
+const TAB_STEPS: Record<Tab, { step: number; title: string; subtitle: string }> = {
+  Scope: {
+    step: 1,
+    title: "Scope & Decompose",
+    subtitle: "Identify assets, components, trust boundaries, and document sources.",
+  },
+  STRIDE: {
+    step: 2,
+    title: "Determine Threats",
+    subtitle: "Map potential threats to STRIDE security categories.",
+  },
+  FMEA: {
+    step: 3,
+    title: "FMEA Risk Quantification",
+    subtitle: "Quantify risk severity, occurrence, and detection likelihood.",
+  },
+  Gaps: {
+    step: 4,
+    title: "Verify & Validate",
+    subtitle: "Review compliance gaps and recommended security controls.",
+  },
+  Review: {
+    step: 5,
+    title: "Sign-off & Review",
+    subtitle: "Finalize, approve, or request revisions on the threat model.",
+  },
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Status badge helpers
@@ -115,11 +145,16 @@ export default function ThreatModelDetailPage({
   const { id } = use(params);
   const router = useRouter();
 
-  const { data: record, isLoading: loading, error: queryError } = useThreatModel(id);
+  const { data: record, isLoading: loading, error: queryError, refetch } = useThreatModel(id);
   const error = queryError ? queryError.message : null;
 
-  const [activeTab, setActiveTab] = useState<Tab>("Overview");
+  const [activeTab, setActiveTab] = useState<Tab>("Scope");
   const [reportLoading, setReportLoading] = useState(false);
+
+  // Compliance documents fetching and context
+  const { versions } = useVersion();
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [loadingDocs, setLoadingDocs] = useState(false);
 
   // ── Derived data ──────────────────────────────────────────────────────────
 
@@ -128,6 +163,15 @@ export default function ThreatModelDetailPage({
   const fmeaItems = useMemo(() => data?.fmea?.items ?? [], [data]);
   const gaps = useMemo(() => data?.gaps ?? [], [data]);
   const recommendations = useMemo(() => data?.recommendations ?? [], [data]);
+
+  const productVersion = useMemo(() => {
+    return (record as any)?.product_version ?? (data as any)?.metadata?.product_version ?? data?.product_version ?? "unknown";
+  }, [record, data]);
+
+  const status = useMemo(() => {
+    const raw = (record as any)?.status ?? (data as any)?.metadata?.status ?? data?.status ?? "draft";
+    return (raw.toLowerCase().replace("modelstatus.", "")) as ThreatModelStatus;
+  }, [record, data]);
 
   const summaryStats = useMemo(() => {
     if (!data) return { totalThreats: 0, criticalHigh: 0, avgRpn: 0, totalGaps: 0 };
@@ -140,6 +184,68 @@ export default function ThreatModelDetailPage({
       totalGaps: gaps.length,
     };
   }, [data, threats, gaps]);
+
+  // Find version object from context to get its database ID
+  const selectedVersionObj = useMemo(() => {
+    return versions.find((v) => v.version_code === productVersion);
+  }, [versions, productVersion]);
+
+  // Load published compliance documents
+  useEffect(() => {
+    async function fetchDocs() {
+      setLoadingDocs(true);
+      try {
+        const supabase = createClient();
+        const { data: docData, error: docError } = await supabase
+          .from("compliance_documents")
+          .select("id, product_version_id, filename, file_size_bytes, doc_type, status")
+          .eq("status", "published");
+        if (!docError && docData) {
+          setDocuments(docData);
+        }
+      } catch (err) {
+        console.error("[ThreatModelDetailPage] Error fetching docs:", err);
+      } finally {
+        setLoadingDocs(false);
+      }
+    }
+    fetchDocs();
+  }, []);
+
+  // Filter documents applicable to this product version (Global + Version-specific)
+  const applicableDocs = useMemo(() => {
+    if (!selectedVersionObj) return [];
+    return documents.filter(
+      (doc) =>
+        doc.product_version_id === null ||
+        doc.product_version_id === selectedVersionObj.id
+    );
+  }, [documents, selectedVersionObj]);
+
+  // Identified Architecture Components (derived from threats)
+  const identifiedComponents = useMemo(() => {
+    const componentsMap: Record<string, { name: string; total: number; criticalHigh: number; maxRpn: number }> = {};
+    
+    threats.forEach((t) => {
+      const compName = t.affected_component || "General / Unspecified";
+      if (!componentsMap[compName]) {
+        componentsMap[compName] = { name: compName, total: 0, criticalHigh: 0, maxRpn: 0 };
+      }
+      
+      const comp = componentsMap[compName];
+      comp.total += 1;
+      if (t.severity === "critical" || t.severity === "high") {
+        comp.criticalHigh += 1;
+      }
+      if (t.rpn && t.rpn > comp.maxRpn) {
+        comp.maxRpn = t.rpn;
+      }
+    });
+    
+    return Object.values(componentsMap).sort(
+      (a, b) => b.criticalHigh - a.criticalHigh || b.maxRpn - a.maxRpn
+    );
+  }, [threats]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -174,7 +280,7 @@ export default function ThreatModelDetailPage({
         body: JSON.stringify({ status, comment }),
       });
       if (!res.ok) throw new Error("Review submission failed");
-      await fetchModel(); // Refresh
+      refetch(); // Refresh using react-query refetch
     } catch (err) {
       console.error("[ThreatModeling] Review error:", err);
     }
@@ -252,7 +358,7 @@ export default function ThreatModelDetailPage({
             Threat <span className="text-primary">Modeling</span>
           </>
         }
-        subtitle={`${data.model_id} — ${data.product_version}`}
+        subtitle={`${data.model_id} — ${productVersion}`}
         icon={<AlertTriangle className="h-4 w-4 text-primary" />}
       />
 
@@ -262,12 +368,12 @@ export default function ThreatModelDetailPage({
           <span className="font-mono text-sm font-semibold text-primary bg-primary/10 rounded-lg px-2.5 py-1">
             {data.model_id}
           </span>
-          <span className="text-sm text-text-secondary">v{data.product_version}</span>
+          <span className="text-sm text-text-secondary">v{productVersion}</span>
           <span className="text-xs text-text-muted">
             {data.target_frameworks?.join(", ")}
           </span>
-          <Badge variant={statusVariant[data.status]} dot>
-            {statusLabel[data.status]}
+          <Badge variant={statusVariant[status]} dot>
+            {statusLabel[status]}
           </Badge>
           <span className="flex items-center gap-1.5 text-xs text-text-muted">
             <Calendar className="h-3.5 w-3.5" />
@@ -276,26 +382,52 @@ export default function ThreatModelDetailPage({
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex gap-1 border-b border-border-glass">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium transition-all border-b-2 -mb-px ${
-              activeTab === tab
-                ? "border-primary text-primary"
-                : "border-transparent text-text-muted hover:text-text-secondary"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
+      {/* Sequential stepper tab navigation */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-3 border-b border-border-glass pb-4">
+        {TABS.map((tab) => {
+          const info = TAB_STEPS[tab];
+          const isActive = activeTab === tab;
+          const isPast = TABS.indexOf(tab) < TABS.indexOf(activeTab);
+
+          return (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab)}
+              className={`flex flex-col items-start p-3 rounded-xl border text-left transition-all duration-300 ${
+                isActive
+                  ? "bg-primary/10 border-primary/40 text-primary shadow-[0_0_15px_rgba(var(--primary-rgb),0.1)]"
+                  : isPast
+                    ? "bg-emerald-500/5 border-emerald-500/20 text-emerald-400"
+                    : "bg-white/[0.02] border-white/5 text-text-muted hover:bg-white/5 hover:border-white/10"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span
+                  className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold transition-colors ${
+                    isActive
+                      ? "bg-primary text-white"
+                      : isPast
+                        ? "bg-emerald-500 text-white"
+                        : "bg-white/10 text-text-muted"
+                  }`}
+                >
+                  {isPast ? "✓" : info.step}
+                </span>
+                <span className="text-xs font-semibold uppercase tracking-wider">
+                  {tab}
+                </span>
+              </div>
+              <span className={`mt-1.5 text-xs font-medium ${isActive ? "text-text-primary" : "text-text-muted"}`}>
+                {info.title}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
-      {/* ═══════════════════ TAB: Overview ═══════════════════ */}
-      {activeTab === "Overview" && (
-        <div className="space-y-8">
+      {/* ═══════════════════ STEP 1: Scope & Decompose ═══════════════════ */}
+      {activeTab === "Scope" && (
+        <div className="space-y-8 animate-in fade-in duration-300">
           <RiskSummaryCards
             totalThreats={summaryStats.totalThreats}
             criticalHigh={summaryStats.criticalHigh}
@@ -303,46 +435,217 @@ export default function ThreatModelDetailPage({
             totalGaps={summaryStats.totalGaps}
           />
 
-          {threats.length > 0 && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <RiskMatrix threats={threats} />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {/* Scope details */}
+            <div className="glass-card p-6 space-y-4 lg:col-span-1">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">
+                System Boundary & Scope
+              </h3>
+              <div className="space-y-3 divide-y divide-white/5 text-sm">
+                <div className="flex justify-between py-2">
+                  <span className="text-text-muted">Model ID</span>
+                  <span className="font-mono font-medium text-text-primary">{data.model_id}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-text-muted">Target Version</span>
+                  <span className="font-medium text-text-primary">v{productVersion}</span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-text-muted">Target Frameworks</span>
+                  <span className="font-medium text-text-primary text-right">
+                    {data.target_frameworks?.join(", ") || "None"}
+                  </span>
+                </div>
+                <div className="flex justify-between py-2">
+                  <span className="text-text-muted">RAG Chunks</span>
+                  <span className="font-mono text-text-primary">{data.rag_chunks_analyzed || 0} chunks</span>
+                </div>
+                <div className="flex justify-between py-2 font-medium">
+                  <span className="text-text-muted">Status</span>
+                  <Badge variant={statusVariant[status]}>
+                    {statusLabel[status]}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+
+            {/* Document checklist/sources */}
+            <div className="glass-card p-6 space-y-4 lg:col-span-2">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">
+                Source Compliance Documents ({applicableDocs.length})
+              </h3>
+              {loadingDocs ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 text-primary animate-spin" />
+                  <span className="ml-2 text-sm text-text-muted">Loading documents...</span>
+                </div>
+              ) : applicableDocs.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="border-b border-white/5 text-text-muted font-medium">
+                        <th className="pb-2">Filename</th>
+                        <th className="pb-2">Type</th>
+                        <th className="pb-2">Size</th>
+                        <th className="pb-2 text-right">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-text-secondary">
+                      {applicableDocs.map((doc) => (
+                        <tr key={doc.id} className="hover:bg-white/[0.01]">
+                          <td className="py-2.5 font-medium text-text-primary max-w-xs truncate" title={doc.filename}>
+                            {doc.filename}
+                          </td>
+                          <td className="py-2.5 uppercase font-mono text-[10px]">{doc.doc_type}</td>
+                          <td className="py-2.5 text-text-muted">
+                            {doc.file_size_bytes
+                              ? `${(doc.file_size_bytes / 1024).toFixed(0)} KB`
+                              : "—"}
+                          </td>
+                          <td className="py-2.5 text-right">
+                            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-400">
+                              {doc.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-8 text-center text-text-muted">
+                  <p>No documents found for this product version.</p>
+                  <p className="text-xs text-text-muted mt-1">Upload compliance documents for version v{productVersion} to see them here.</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Identified Components */}
+          <div className="glass-card p-6 space-y-4">
+            <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted">
+              Identified Architecture Components ({identifiedComponents.length})
+            </h3>
+            {identifiedComponents.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-white/5 text-text-muted font-medium">
+                      <th className="pb-2">Component / Asset Name</th>
+                      <th className="pb-2 text-center">Total Threats</th>
+                      <th className="pb-2 text-center">Critical & High</th>
+                      <th className="pb-2 text-center">Max RPN</th>
+                      <th className="pb-2 text-right">Trust Exposure</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5 text-text-secondary">
+                    {identifiedComponents.map((comp) => {
+                      const riskColor =
+                        comp.criticalHigh > 0
+                          ? "text-red-400"
+                          : comp.maxRpn > 100
+                            ? "text-amber-400"
+                            : "text-emerald-400";
+
+                      const exposureLabel =
+                        comp.criticalHigh >= 3
+                          ? "High Exposure"
+                          : comp.criticalHigh > 0 || comp.maxRpn > 150
+                            ? "Medium Exposure"
+                            : "Low Exposure";
+
+                      const exposureBg =
+                        comp.criticalHigh >= 3
+                          ? "bg-red-500/10 text-red-400 border-red-500/20"
+                          : comp.criticalHigh > 0 || comp.maxRpn > 150
+                            ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
+                            : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+
+                      return (
+                        <tr key={comp.name} className="hover:bg-white/[0.01]">
+                          <td className="py-3 font-semibold text-text-primary">
+                            {comp.name}
+                          </td>
+                          <td className="py-3 text-center font-medium font-mono text-sm">
+                            {comp.total}
+                          </td>
+                          <td className="py-3 text-center font-medium font-mono text-sm text-red-400">
+                            {comp.criticalHigh}
+                          </td>
+                          <td className="py-3 text-center font-medium font-mono text-sm">
+                            {comp.maxRpn}
+                          </td>
+                          <td className="py-3 text-right">
+                            <span className={`inline-block rounded border px-2 py-0.5 text-[10px] font-medium ${exposureBg}`}>
+                              {exposureLabel}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="py-8 text-center text-text-muted text-sm">
+                No components identified in threat scenarios.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════ STEP 2: STRIDE Threats ═══════════════════ */}
+      {activeTab === "STRIDE" && (
+        <div className="space-y-8 animate-in fade-in duration-300">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-1 glass-card p-6 flex flex-col justify-center">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-4">
+                STRIDE Threat Distribution
+              </h3>
               <StrideRadar threats={threats} />
             </div>
-          )}
-        </div>
-      )}
-
-      {/* ═══════════════════ TAB: Threats ═══════════════════ */}
-      {activeTab === "Threats" && (
-        <div>
-          {threats.length > 0 ? (
-            <ThreatTable threats={threats} />
-          ) : (
-            <div className="glass-card flex flex-col items-center justify-center p-12 text-center">
-              <Shield className="h-8 w-8 text-text-muted mb-3" />
-              <p className="text-sm text-text-muted">No threats identified in this model.</p>
+            <div className="lg:col-span-2 space-y-4">
+              {threats.length > 0 ? (
+                <ThreatTable threats={threats} />
+              ) : (
+                <div className="glass-card flex flex-col items-center justify-center p-12 text-center h-full">
+                  <Shield className="h-8 w-8 text-text-muted mb-3" />
+                  <p className="text-sm text-text-muted">No threats identified in this model.</p>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
       )}
 
-      {/* ═══════════════════ TAB: FMEA ═══════════════════ */}
+      {/* ═══════════════════ STEP 3: FMEA Risk ═══════════════════ */}
       {activeTab === "FMEA" && (
-        <div>
-          {fmeaItems.length > 0 ? (
-            <FmeaTable items={fmeaItems} />
-          ) : (
-            <div className="glass-card flex flex-col items-center justify-center p-12 text-center">
-              <Shield className="h-8 w-8 text-text-muted mb-3" />
-              <p className="text-sm text-text-muted">No FMEA analysis available for this model.</p>
+        <div className="space-y-8 animate-in fade-in duration-300">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-1 glass-card p-6 flex flex-col justify-center">
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-4">
+                Risk Matrix (Likelihood vs Severity)
+              </h3>
+              <RiskMatrix threats={threats} />
             </div>
-          )}
+            <div className="lg:col-span-2 space-y-4">
+              {fmeaItems.length > 0 ? (
+                <FmeaTable items={fmeaItems} />
+              ) : (
+                <div className="glass-card flex flex-col items-center justify-center p-12 text-center h-full">
+                  <Shield className="h-8 w-8 text-text-muted mb-3" />
+                  <p className="text-sm text-text-muted">No FMEA analysis available for this model.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
-      {/* ═══════════════════ TAB: Gaps ═══════════════════ */}
+      {/* ═══════════════════ STEP 4: Gap Assessment ═══════════════════ */}
       {activeTab === "Gaps" && (
-        <div className="space-y-8">
+        <div className="space-y-8 animate-in fade-in duration-300">
           {/* Gap Cards */}
           {gaps.length > 0 ? (
             <div className="space-y-4">
@@ -456,13 +759,15 @@ export default function ThreatModelDetailPage({
         </div>
       )}
 
-      {/* ═══════════════════ TAB: Review ═══════════════════ */}
+      {/* ═══════════════════ STEP 5: Sign-off & Review ═══════════════════ */}
       {activeTab === "Review" && (
-        <ReviewPanel
-          modelId={id}
-          currentStatus={data.status}
-          onReviewSubmit={handleReviewSubmit}
-        />
+        <div className="animate-in fade-in duration-300">
+          <ReviewPanel
+            modelId={id}
+            currentStatus={status}
+            onReviewSubmit={handleReviewSubmit}
+          />
+        </div>
       )}
 
       {/* ═══════════════════ Sticky Action Bar ═══════════════════ */}
@@ -487,7 +792,7 @@ export default function ThreatModelDetailPage({
                 )
               }
               onClick={handleGenerateReport}
-              disabled={data.status !== "approved" || reportLoading}
+              disabled={status !== "approved" || reportLoading}
             >
               {reportLoading ? "Generating..." : "Generate Report"}
             </Button>
