@@ -31,7 +31,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       );
     }
 
-    const updates: Record<string, unknown> = {};
+    const updates: {
+      status?: string | null;
+      risk_acceptance_expires_at?: string | null;
+    } = {};
     if (parsed.data.status !== undefined) {
       updates.status = parsed.data.status;
     }

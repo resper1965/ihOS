@@ -7,6 +7,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import type { EvidenceEvaluation } from "@/hooks/queries/use-assessments";
+import { CreateGoalFromGap } from "@/components/assessments/create-goal-from-gap";
 
 // Re-export for convenience
 export type { EvidenceEvaluation };
@@ -17,12 +18,16 @@ export type { EvidenceEvaluation };
 export interface EvidenceTableProps {
   evaluations: EvidenceEvaluation[];
   loading: boolean;
+  /** Assessment ID for gap-to-goal linkage */
+  assessmentId?: string;
+  /** Framework code for gap-to-goal pre-fill */
+  frameworkCode?: string;
 }
 
 // ---------------------------------------------------------------------------
 // EvidenceTable
 // ---------------------------------------------------------------------------
-export function EvidenceTable({ evaluations, loading }: EvidenceTableProps) {
+export function EvidenceTable({ evaluations, loading, assessmentId, frameworkCode }: EvidenceTableProps) {
   return (
     <div className="mt-5 border-t border-[#53c4cd]/20 pt-5 animate-in fade-in slide-in-from-top-2 duration-200">
       <h4 className="text-xs font-semibold uppercase tracking-wider text-[#53c4cd] mb-3">
@@ -52,6 +57,9 @@ export function EvidenceTable({ evaluations, loading }: EvidenceTableProps) {
                 <th className="px-3 py-2 text-center font-semibold">Status</th>
                 <th className="px-3 py-2 text-center font-semibold">Confidence</th>
                 <th className="px-3 py-2 text-left font-semibold">Auditor Notes</th>
+                {assessmentId && frameworkCode && (
+                  <th className="px-3 py-2 text-center font-semibold">Actions</th>
+                )}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
@@ -104,6 +112,19 @@ export function EvidenceTable({ evaluations, loading }: EvidenceTableProps) {
                     <td className="px-3 py-2.5 text-text-secondary max-w-[250px] truncate" title={ev.auditor_notes || undefined}>
                       {ev.auditor_notes || "—"}
                     </td>
+                    {assessmentId && frameworkCode && (
+                      <td className="px-3 py-2.5 text-center">
+                        {!ev.is_compliant && (
+                          <CreateGoalFromGap
+                            controlCode={ev.control_code ?? ev.scf_control_code ?? ""}
+                            controlName={ev.control_name}
+                            missingElements={null}
+                            frameworkCode={frameworkCode}
+                            assessmentId={assessmentId}
+                          />
+                        )}
+                      </td>
+                    )}
                   </tr>
                 );
               })}

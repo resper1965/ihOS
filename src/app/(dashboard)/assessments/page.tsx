@@ -278,7 +278,10 @@ export default function AssessmentsPage() {
 
                   {/* T007: Expandable Evidence Evaluations via EvidenceTable */}
                   {isExpanded && (
-                    <ExpandedEvidence assessmentId={item.id} />
+                    <ExpandedEvidence
+                      assessmentId={item.id}
+                      frameworkCode={item.frameworks?.[0] ?? ""}
+                    />
                   )}
                 </div>
               </div>
@@ -303,13 +306,15 @@ export default function AssessmentsPage() {
 // ---------------------------------------------------------------------------
 // Helper: Expanded evidence section using React Query
 // ---------------------------------------------------------------------------
-function ExpandedEvidence({ assessmentId }: { assessmentId: string }) {
+function ExpandedEvidence({ assessmentId, frameworkCode }: { assessmentId: string; frameworkCode: string }) {
   const { data: evaluations = [], isLoading } = useAssessmentEvidence(assessmentId);
 
   return (
     <EvidenceTable
       evaluations={evaluations}
       loading={isLoading}
+      assessmentId={assessmentId}
+      frameworkCode={frameworkCode}
     />
   );
 }

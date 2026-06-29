@@ -119,9 +119,10 @@ export function useCreateGoal() {
           description: body.description ?? null,
           status: 'not_started',
           progress: 0,
+          // Gap-to-goal linkage (columns available after migration 20260629)
           ...(body.source_assessment_id ? { source_assessment_id: body.source_assessment_id } : {}),
           ...(body.source_control_code ? { source_control_code: body.source_control_code } : {}),
-        })
+        } as any)
         .select()
         .single();
 

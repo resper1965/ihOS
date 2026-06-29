@@ -18,13 +18,30 @@ import {
   ChevronDown,
   ChevronUp,
   Loader2,
+  Plus,
+  Clock,
+  Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useAssessment, useAssessmentEvidence } from "@/hooks/queries/use-assessments";
+import { usePoamItems, useCreatePoamItem, useUpdatePoamStatus, useDeletePoamItem, type PoamStatus } from "@/hooks/queries/use-poam";
 import { resolveFrameworkName } from "@/lib/assessment/framework-registry";
+
+/* ------------------------------------------------------------------ */
+/*  POA&M status configuration                                        */
+/* ------------------------------------------------------------------ */
+
+const POAM_STATUS_CONFIG: Record<PoamStatus, { label: string; variant: "danger" | "warning" | "success" | "info" }> = {
+  open: { label: "Open", variant: "danger" },
+  in_progress: { label: "In Progress", variant: "warning" },
+  resolved: { label: "Resolved", variant: "success" },
+  risk_accepted: { label: "Risk Accepted", variant: "info" },
+};
+
+const POAM_STATUS_ORDER: PoamStatus[] = ["open", "in_progress", "resolved", "risk_accepted"];
 
 /* ------------------------------------------------------------------ */
 /*  Tab / Stepper definitions                                          */
@@ -160,10 +177,24 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<CombinedStatus | "all">("all");
   const [expandedControl, setExpandedControl] = useState<string | null>(null);
+  const [openPoamDropdown, setOpenPoamDropdown] = useState<string | null>(null);
 
   // React Query hooks
   const { data: assessment, isLoading: loadingAssessment, error: assessmentError } = useAssessment(id);
   const { data: evidence, isLoading: loadingEvidence } = useAssessmentEvidence(id);
+  const { data: poamItems, isLoading: loadingPoam } = usePoamItems(id);
+  const createPoam = useCreatePoamItem();
+  const updatePoamStatus = useUpdatePoamStatus();
+  const deletePoam = useDeletePoamItem();
+
+  // Map control_code → PoamItem for quick lookup
+  const poamByControl = useMemo(() => {
+    const map = new Map<string, typeof poamItems extends (infer T)[] | undefined ? T : never>();
+    for (const item of poamItems ?? []) {
+      if (item.control_code) map.set(item.control_code, item);
+    }
+    return map;
+  }, [poamItems]);
 
   // Process evidence into typed controls
   const controls: ProcessedControl[] = useMemo(() => {
@@ -230,7 +261,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
     return c;
   }, [controls]);
 
-  const isLoading = loadingAssessment || loadingEvidence;
+  const isLoading = loadingAssessment || loadingEvidence || loadingPoam;
 
   if (isLoading) return <LoadingSkeleton />;
 
@@ -635,6 +666,7 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                 const missingPhases = [];
                 if (!ctrl.ismsFound) missingPhases.push("ISMS Policy");
                 if (!ctrl.evidenceFound) missingPhases.push("Operational Evidence");
+                const existingPoam = poamByControl.get(ctrl.code);
 
                 return (
                   <div key={ctrl.code} className="flex items-start gap-3 p-4">
@@ -659,9 +691,32 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                         <p className="text-xs text-text-muted mt-1 line-clamp-2">{ctrl.auditorNotes}</p>
                       )}
                     </div>
-                    <Badge variant={ctrl.status === "gap" ? "danger" : ctrl.status === "partial" ? "warning" : "info"}>
-                      {cfg.label}
-                    </Badge>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {existingPoam ? (
+                        <Badge variant={POAM_STATUS_CONFIG[(existingPoam.status as PoamStatus) ?? "open"].variant} dot>
+                          POA&M: {POAM_STATUS_CONFIG[(existingPoam.status as PoamStatus) ?? "open"].label}
+                        </Badge>
+                      ) : (
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          icon={<Plus className="h-3 w-3" />}
+                          loading={createPoam.isPending}
+                          onClick={() =>
+                            createPoam.mutate({
+                              assessment_id: id,
+                              control_code: ctrl.code,
+                              status: "open",
+                            })
+                          }
+                        >
+                          Add to POA&M
+                        </Button>
+                      )}
+                      <Badge variant={ctrl.status === "gap" ? "danger" : ctrl.status === "partial" ? "warning" : "info"}>
+                        {cfg.label}
+                      </Badge>
+                    </div>
                   </div>
                 );
               })}
@@ -670,6 +725,152 @@ export default function AssessmentDetailPage({ params }: { params: Promise<{ id:
                 <CheckCircle2 className="h-10 w-10 text-emerald-400 mx-auto mb-3" />
                 <p className="text-sm text-text-primary font-medium">All controls are conforming!</p>
                 <p className="text-xs text-text-muted mt-1">No gaps or remediation items found.</p>
+              </div>
+            )}
+          </div>
+
+          {/* ── POA&M Tracker ──────────────────────────────────────────────── */}
+          <div className="glass-card">
+            <div className="p-4 border-b border-white/5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    POA&M Tracker
+                  </h3>
+                  <p className="text-xs text-text-muted mt-0.5">
+                    Plan of Action & Milestones — track remediation progress for non-compliant controls
+                  </p>
+                </div>
+                {poamItems && poamItems.length > 0 && (
+                  <div className="flex items-center gap-3">
+                    {POAM_STATUS_ORDER.map((s) => {
+                      const count = poamItems.filter((p) => p.status === s).length;
+                      if (count === 0) return null;
+                      return (
+                        <span key={s} className="text-[10px] text-text-muted">
+                          <Badge variant={POAM_STATUS_CONFIG[s].variant}>{count}</Badge>{" "}
+                          {POAM_STATUS_CONFIG[s].label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {(!poamItems || poamItems.length === 0) ? (
+              <div className="p-12 text-center">
+                <AlertTriangle className="h-8 w-8 text-text-muted mx-auto mb-3 opacity-50" />
+                <p className="text-sm text-text-muted">No POA&M items yet.</p>
+                <p className="text-xs text-text-muted mt-1">
+                  Use the &ldquo;Add to POA&M&rdquo; button above to start tracking gap remediation.
+                </p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/5">
+                {/* Table header */}
+                <div className="grid grid-cols-12 gap-3 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                  <div className="col-span-3">Control</div>
+                  <div className="col-span-3">Status</div>
+                  <div className="col-span-3">Risk Expiry</div>
+                  <div className="col-span-2">Created</div>
+                  <div className="col-span-1" />
+                </div>
+
+                {poamItems.map((item) => {
+                  const statusCfg = POAM_STATUS_CONFIG[(item.status as PoamStatus) ?? "open"];
+                  const isDropdownOpen = openPoamDropdown === item.id;
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="grid grid-cols-12 gap-3 px-4 py-3 items-center hover:bg-white/[0.03] transition-colors"
+                    >
+                      {/* Control code */}
+                      <div className="col-span-3">
+                        <span className="font-mono text-xs text-primary font-bold">
+                          {item.control_code ?? "—"}
+                        </span>
+                      </div>
+
+                      {/* Status dropdown */}
+                      <div className="col-span-3 relative">
+                        <button
+                          onClick={() => setOpenPoamDropdown(isDropdownOpen ? null : item.id)}
+                          className="inline-flex items-center gap-1.5 transition-all hover:opacity-80"
+                        >
+                          <Badge variant={statusCfg.variant} dot>
+                            {statusCfg.label}
+                          </Badge>
+                          <ChevronDown className={`h-3 w-3 text-text-muted transition-transform ${isDropdownOpen ? "rotate-180" : ""}`} />
+                        </button>
+
+                        {isDropdownOpen && (
+                          <div className="absolute top-full left-0 mt-1 z-50 w-44 rounded-xl border border-border-glass bg-bg-surface/95 backdrop-blur-xl shadow-xl py-1 animate-in fade-in slide-in-from-top-1 duration-150">
+                            {POAM_STATUS_ORDER.map((s) => (
+                              <button
+                                key={s}
+                                disabled={updatePoamStatus.isPending}
+                                onClick={() => {
+                                  updatePoamStatus.mutate(
+                                    { id: item.id, status: s },
+                                    { onSettled: () => setOpenPoamDropdown(null) }
+                                  );
+                                }}
+                                className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-white/5 ${
+                                  item.status === s ? "text-primary font-medium" : "text-text-secondary"
+                                }`}
+                              >
+                                <Badge variant={POAM_STATUS_CONFIG[s].variant}>
+                                  {POAM_STATUS_CONFIG[s].label}
+                                </Badge>
+                                {item.status === s && <CheckCircle2 className="h-3 w-3 text-primary ml-auto" />}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Risk expiry */}
+                      <div className="col-span-3">
+                        {item.risk_acceptance_expires_at ? (
+                          <span className={`text-xs ${
+                            new Date(item.risk_acceptance_expires_at) < new Date()
+                              ? "text-red-400 font-medium"
+                              : "text-text-secondary"
+                          }`}>
+                            {new Date(item.risk_acceptance_expires_at).toLocaleDateString()}
+                            {new Date(item.risk_acceptance_expires_at) < new Date() && (
+                              <span className="text-[10px] text-red-400 ml-1">(expired)</span>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-text-muted">—</span>
+                        )}
+                      </div>
+
+                      {/* Created */}
+                      <div className="col-span-2">
+                        <span className="text-xs text-text-muted">
+                          {item.created_at ? new Date(item.created_at).toLocaleDateString() : "—"}
+                        </span>
+                      </div>
+
+                      {/* Delete action */}
+                      <div className="col-span-1 flex justify-end">
+                        <button
+                          onClick={() => deletePoam.mutate(item.id)}
+                          disabled={deletePoam.isPending}
+                          className="p-1.5 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-all"
+                          title="Remove POA&M item"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
