@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { resolveFileType, extractText } from '@/lib/chat/document-extractor';
 import { verifyClarity } from '@/lib/chat/clarity-gate';
+import { logger } from '@/lib/logger';
 
 export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Clarity validation failed.';
-    console.error('[validate-clarity] Unexpected error:', message);
+    logger.error(message, { context: 'documents/validate-clarity', error: err });
     return NextResponse.json(
       { success: false, error: message },
       { status: 500 },

@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ihosEngine } from '@/lib/ihos-engine';
 import type { ThreatModelRecord, ThreatModelData, ThreatModelStatus } from '@/lib/supabase/types';
+import { logger } from '@/lib/logger';
 
 // ── GET — get single threat model ───────────────────────────────────────────
 
@@ -92,10 +93,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, model: result });
   } catch (engineErr) {
-    console.warn(
-      '[ThreatModeling] Engine review failed, falling back to direct update:',
-      engineErr instanceof Error ? engineErr.message : engineErr,
-    );
+    logger.warn('Engine review failed, falling back to direct update', { context: 'threat-modeling', error: engineErr });
   }
 
   // Fallback: update directly in Supabase
@@ -128,7 +126,7 @@ export async function PATCH(
     .single();
 
   if (updateError) {
-    console.error('[ThreatModeling] Review update error:', updateError.message);
+    logger.error('Review update error', { context: 'threat-modeling', meta: { error: updateError.message } });
     return NextResponse.json({ error: 'Failed to update threat model' }, { status: 500 });
   }
 

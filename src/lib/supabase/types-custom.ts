@@ -215,6 +215,9 @@ export type AgentGoal = {
   description: string | null;
   status: "not_started" | "in_progress" | "completed";
   progress: number;
+  // Gap-to-goal linkage (columns to add via migration)
+  source_assessment_id?: string | null;
+  source_control_code?: string | null;
   created_at: string | null;
   updated_at: string | null;
 }

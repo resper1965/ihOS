@@ -8,6 +8,7 @@ import { generateEmbeddings } from '@/lib/chat/embeddings';
 import { resolveFileType, extractText } from '@/lib/chat/document-extractor';
 import { verifyClarity } from '@/lib/chat/clarity-gate';
 import { extractDeltasFromDocument } from '@/lib/assessment/delta-extractor';
+import { logger } from '@/lib/logger';
 import { triggerGrcRecalibration } from '@/lib/assessment/grc-trigger';
 import { createAdminClient } from '@/lib/supabase/admin';
 
@@ -115,7 +116,7 @@ export async function POST(req: Request) {
       });
 
     if (storageError) {
-      console.error('[upload] Storage error:', storageError.message);
+      logger.error('Storage upload failed', { context: 'documents/upload', meta: { error: storageError.message } });
       return NextResponse.json(
         { success: false, error: 'Failed to upload document to storage.' },
         { status: 500 },
@@ -146,7 +147,7 @@ export async function POST(req: Request) {
       .single();
 
     if (insertError || !docRecord) {
-      console.error('[upload] Insert document error:', insertError?.message);
+      logger.error('Insert document record failed', { context: 'documents/upload', meta: { error: insertError?.message } });
       return NextResponse.json(
         { success: false, error: 'Failed to create document record.' },
         { status: 500 },
@@ -196,7 +197,7 @@ export async function POST(req: Request) {
       .insert(chunkRows);
 
     if (chunkInsertError) {
-      console.error('[upload] Insert chunks error:', chunkInsertError.message);
+      logger.error('Insert chunks failed', { context: 'documents/upload', meta: { error: chunkInsertError.message } });
       // Mark document as failed
       await supabase
         .from('compliance_documents')
@@ -237,13 +238,13 @@ export async function POST(req: Request) {
               .upsert(deltaRows, { onConflict: 'product_version_id,feature_slug' });
               
             if (deltaError) {
-              console.error('[Background Pipeline] Failed to upsert deltas:', deltaError.message);
+              logger.warn('Failed to upsert deltas', { context: 'documents/upload', meta: { error: deltaError.message } });
             }
           }
           
           await triggerGrcRecalibration(productVersionId, user.id);
         } catch (bgErr) {
-          console.error('[Background Pipeline] Failed to process document updates:', bgErr);
+          logger.error('Background pipeline failed', { context: 'documents/upload', error: bgErr });
         }
       })();
     }
@@ -262,7 +263,7 @@ export async function POST(req: Request) {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Document upload failed.';
-    console.error('[upload] Unexpected error:', message);
+    logger.error(message, { context: 'documents/upload', error: err });
 
     // Best-effort: mark document as errored if we have an ID
     if (documentId) {

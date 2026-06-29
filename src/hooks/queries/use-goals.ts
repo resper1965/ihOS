@@ -14,6 +14,8 @@ const GoalSchema = z.object({
   description: z.string().nullable().default(null),
   status: z.enum(['not_started', 'in_progress', 'completed']).catch('not_started'),
   progress: z.number().default(0),
+  source_assessment_id: z.string().nullable().optional(),
+  source_control_code: z.string().nullable().optional(),
   created_at: z.string().nullable().default(null),
   updated_at: z.string().nullable().default(null),
 });
@@ -104,6 +106,8 @@ export function useCreateGoal() {
       framework_code: string;
       title: string;
       description?: string | null;
+      source_assessment_id?: string | null;
+      source_control_code?: string | null;
     }) => {
       const supabase = createClient();
       const { data, error } = await supabase
@@ -115,6 +119,8 @@ export function useCreateGoal() {
           description: body.description ?? null,
           status: 'not_started',
           progress: 0,
+          ...(body.source_assessment_id ? { source_assessment_id: body.source_assessment_id } : {}),
+          ...(body.source_control_code ? { source_control_code: body.source_control_code } : {}),
         })
         .select()
         .single();
