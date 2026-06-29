@@ -89,10 +89,9 @@ export interface AssessmentResult {
 }
 
 // ---------------------------------------------------------------------------
-// Default frameworks (re-exported from shared module for backward compat)
-// ---------------------------------------------------------------------------
-
-export { DEFAULT_FRAMEWORKS } from './frameworks';
+// Default frameworks (re-exported from canonical registry)
+// Ponytail rung 2: import from the source, not a re-export barrel
+export { DEFAULT_FRAMEWORKS } from './framework-registry';
 
 // ---------------------------------------------------------------------------
 // Progress callback

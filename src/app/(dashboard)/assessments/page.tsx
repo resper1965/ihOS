@@ -20,6 +20,7 @@ import { useAssessments, useAssessmentEvidence } from "@/hooks/queries/use-asses
 import type { AssessmentRecord } from "@/hooks/queries/use-assessments";
 import { RunAssessmentModal } from "@/components/assessments/run-assessment-modal";
 import { EvidenceTable } from "@/components/assessments/evidence-table";
+import { resolveFrameworkName } from "@/lib/assessment/framework-registry";
 
 // ---------------------------------------------------------------------------
 // Page
@@ -45,21 +46,8 @@ export default function AssessmentsPage() {
       .catch((err) => console.error("Error loading frameworks:", err));
   }, []);
 
-  const resolveFrameworkName = useCallback((id: string) => {
-    const match = frameworks.find((f) => f.framework_code === id);
-    if (match) return match.framework_name;
-    
-    // Fallback mapping for older database records
-    const oldMapping: Record<string, string> = {
-      iso27001: 'ISO/IEC 27001:2022',
-      soc2: 'SOC 2 Type II',
-      hipaa: 'HIPAA',
-      nist_800_53: 'NIST 800-53',
-      iso27701: 'ISO/IEC 27701:2019',
-      fedramp: 'FedRAMP',
-    };
-    return oldMapping[id] || id;
-  }, [frameworks]);
+
+
 
   const toggleExpand = useCallback((assessmentId: string) => {
     setExpandedId((prev) => (prev === assessmentId ? null : assessmentId));
