@@ -1,6 +1,7 @@
 // src/app/api/chat/parse-questionnaire/route.ts
 // Accepts a questionnaire file upload (multipart/form-data) and extracts questions
 
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { parseQuestionnaire } from '@/lib/chat/parser';
 import { createClient } from '@/lib/supabase/server';
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Failed to parse questionnaire file.';
-    console.error('[parse-questionnaire] Error:', message);
+    logger.error("Parse questionnaire failed", { context: "chat/parse-questionnaire", meta: { error: message } });
 
     const status = message.includes('Unsupported file type') ? 422 : 500;
 

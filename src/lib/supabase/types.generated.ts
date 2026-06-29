@@ -70,6 +70,8 @@ export type Database = {
           framework_code: string
           id: string
           progress: number
+          source_assessment_id: string | null
+          source_control_code: string | null
           status: string
           title: string
           updated_at: string
@@ -81,6 +83,8 @@ export type Database = {
           framework_code: string
           id?: string
           progress?: number
+          source_assessment_id?: string | null
+          source_control_code?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -92,6 +96,8 @@ export type Database = {
           framework_code?: string
           id?: string
           progress?: number
+          source_assessment_id?: string | null
+          source_control_code?: string | null
           status?: string
           title?: string
           updated_at?: string

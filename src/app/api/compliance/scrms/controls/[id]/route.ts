@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -60,7 +61,7 @@ export async function PATCH(
     });
 
   } catch (err: any) {
-    console.error("[api/scrms/controls/[id]] PATCH error:", err);
+    logger.error("PATCH control failed", { context: "compliance/scrms/controls", error: err });
     return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
   }
 }

@@ -2,6 +2,7 @@
 // Receives extracted questions, generates embeddings, retrieves RAG context,
 // and produces compliance answers via OpenAI — batched 5 at a time.
 
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { embed, generateText } from 'ai';
 import { getOpenAI } from '@/lib/chat/openai';
@@ -49,10 +50,10 @@ async function processQuestion(
   );
 
   if (rpcError) {
-    console.error(
-      `[generate-answers] RPC error for ${question.questionId}:`,
-      rpcError.message,
-    );
+    logger.error("RPC error during hybrid document match", {
+      context: "chat/generate-answers",
+      meta: { questionId: question.questionId, error: rpcError.message }
+    });
   }
 
   const chunks: Array<Record<string, unknown>> =
@@ -126,10 +127,11 @@ async function processBatch(
     if (result.status === 'fulfilled') return result.value;
 
     const question = questions[idx];
-    console.error(
-      `[generate-answers] Failed ${question.questionId}:`,
-      result.reason,
-    );
+    logger.error("Failed to generate answer for question", {
+      context: "chat/generate-answers",
+      meta: { questionId: question.questionId },
+      error: result.reason
+    });
 
     return {
       questionId: question.questionId,
@@ -191,7 +193,7 @@ export async function POST(req: Request) {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Failed to generate answers.';
-    console.error('[generate-answers] Error:', message);
+    logger.error("Generate answers failed", { context: "chat/generate-answers", meta: { error: message } });
 
     return NextResponse.json(
       { success: false, error: message },

@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { chunkDocument } from '@/lib/chat/chunker';
@@ -81,7 +82,7 @@ export async function POST(
       .download(doc.filepath);
 
     if (downloadError || !fileData) {
-      console.error('[reindex] Storage download error:', downloadError?.message);
+      logger.error("Storage download error", { context: "documents/reindex", meta: { error: downloadError?.message } });
       return NextResponse.json(
         { success: false, error: `Failed to download file from storage: ${downloadError?.message}` },
         { status: 500 },
@@ -112,7 +113,7 @@ export async function POST(
       .eq('document_id', documentId);
 
     if (deleteError) {
-      console.error('[reindex] Failed to delete old chunks:', deleteError.message);
+      logger.error("Failed to delete old chunks", { context: "documents/reindex", meta: { error: deleteError.message } });
       return NextResponse.json(
         { success: false, error: 'Failed to delete previous document chunks.' },
         { status: 500 },
@@ -154,7 +155,7 @@ export async function POST(
       .insert(chunkRows);
 
     if (chunkInsertError) {
-      console.error('[reindex] Insert chunks error:', chunkInsertError.message);
+      logger.error("Insert chunks error", { context: "documents/reindex", meta: { error: chunkInsertError.message } });
       
       await supabase
         .from('compliance_documents')
@@ -196,13 +197,13 @@ export async function POST(
               .upsert(deltaRows, { onConflict: 'product_version_id,feature_slug' });
               
             if (deltaError) {
-              console.error('[Background Pipeline] Failed to upsert deltas:', deltaError.message);
+              logger.error("Failed to upsert deltas in background pipeline", { context: "documents/reindex", meta: { error: deltaError.message } });
             }
           }
           
           await triggerGrcRecalibration(productVersionId, user.id);
         } catch (bgErr) {
-          console.error('[Background Pipeline] Failed to process document updates:', bgErr);
+          logger.error("Failed to process document updates in background pipeline", { context: "documents/reindex", error: bgErr });
         }
       })();
     }
@@ -213,7 +214,7 @@ export async function POST(
     );
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Document re-indexing failed.';
-    console.error('[reindex] Unexpected error:', message);
+    logger.error("Reindex unexpected error", { context: "documents/reindex", meta: { error: message } });
     return NextResponse.json(
       { success: false, error: message },
       { status: 500 },

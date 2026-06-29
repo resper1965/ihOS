@@ -1,4 +1,5 @@
 // src/app/api/cron/agentic-triggers/route.ts
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import * as standardApi from '@/lib/standard-api/client';
@@ -13,7 +14,7 @@ export async function GET(req: Request) {
 
     // Risco S1 Hardening: Abort if CRON_SECRET is missing in production environment
     if (isProduction && !cronSecret) {
-      console.error('[CRON SECURITY ALERT] CRON_SECRET is missing in production environment. Aborting sweep.');
+      logger.error("CRON_SECRET is missing in production environment. Aborting sweep.", { context: "cron/agentic-triggers" });
       return NextResponse.json({ error: 'Internal configuration error' }, { status: 500 });
     }
 
@@ -226,7 +227,7 @@ export async function GET(req: Request) {
     try {
       localScores = await calculateFrameworkScoresLocally(supabase);
     } catch (err) {
-      console.error('[CRON] Local scorecard calculation failed:', err);
+      logger.error("Local scorecard calculation failed", { context: "cron/agentic-triggers", error: err });
     }
 
     // Index local scores by framework code
@@ -323,7 +324,7 @@ export async function GET(req: Request) {
               });
           }
         } catch (snapErr) {
-          console.error(`[CRON] Failed to save scorecard snapshot for ${framework}:`, snapErr);
+          logger.error("Failed to save scorecard snapshot", { context: "cron/agentic-triggers", meta: { framework }, error: snapErr });
         }
       }
     }
@@ -418,7 +419,7 @@ export async function GET(req: Request) {
             });
         }
       } catch (allErr) {
-        console.error('[CRON] Failed to save "all" scorecard snapshot:', allErr);
+        logger.error("Failed to save all scorecard snapshot", { context: "cron/agentic-triggers", error: allErr });
       }
     }
 
@@ -528,7 +529,7 @@ export async function GET(req: Request) {
         .in('id', expiredDocIds);
 
       if (updateError) {
-        console.error(`Failed to batch-update expired docs:`, updateError.message);
+        logger.error("Failed to batch-update expired docs", { context: "cron/agentic-triggers", meta: { error: updateError.message } });
       }
 
       // Fetch admins to notify (single query)
@@ -596,7 +597,7 @@ export async function GET(req: Request) {
       alerts_generated: alertsGenerated,
     });
   } catch (err) {
-    console.error('[CRON API ERROR]', err);
+    logger.error("Agentic sweep failed", { context: "cron/agentic-triggers", error: err });
     return NextResponse.json(
       { success: false, error: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 }

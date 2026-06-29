@@ -2,6 +2,7 @@
 // Promotes approved Q&A pairs into the knowledge base (document_chunks)
 // and records learning corrections when the user edited the AI draft.
 
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { embed } from 'ai';
 import { getOpenAI } from '@/lib/chat/openai';
@@ -73,10 +74,7 @@ export async function POST(req: Request) {
         });
 
       if (insertError) {
-        console.error(
-          `[promote-qa] Failed to insert chunk for ${item.questionId}:`,
-          insertError.message,
-        );
+        logger.error("Failed to insert chunk", { context: "chat/promote-qa", meta: { questionId: item.questionId, error: insertError.message } });
         continue; // skip but don't abort the whole batch
       }
 
@@ -99,10 +97,7 @@ export async function POST(req: Request) {
           .insert(correctionPayload);
 
         if (corrError) {
-          console.error(
-            `[promote-qa] Failed to insert correction for ${item.questionId}:`,
-            corrError.message,
-          );
+          logger.error("Failed to insert correction", { context: "chat/promote-qa", meta: { questionId: item.questionId, error: corrError.message } });
         } else {
           correctionsWritten++;
         }
@@ -118,7 +113,7 @@ export async function POST(req: Request) {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Failed to promote Q&A pairs.';
-    console.error('[promote-qa] Error:', message);
+    logger.error("Promote QA failed", { context: "chat/promote-qa", meta: { error: message } });
 
     return NextResponse.json(
       { success: false, error: message },

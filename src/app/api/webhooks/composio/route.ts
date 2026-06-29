@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from "next/server";
 
 /**
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (err) {
-    console.error("[composio-webhook] Error processing webhook:", err);
+    logger.error("Error processing Composio webhook", { context: "webhooks/composio", error: err });
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 },

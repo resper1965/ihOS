@@ -2,6 +2,7 @@
 // GET  — list threat models (optional ?version= filter)
 // POST — generate a new threat model via the GRC engine
 
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
 
     if (error) {
       // Table might not exist yet — return empty gracefully
-      console.warn('[ThreatModeling] List query error (table may not exist):', error.message);
+      logger.warn("List query error (table may not exist)", { context: "threat-modeling", meta: { error: error.message } });
       return NextResponse.json({ models: [] });
     }
 
@@ -147,7 +148,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ models });
   } catch (err) {
-    console.warn('[ThreatModeling] List catch:', err);
+    logger.warn("List catch error", { context: "threat-modeling", error: err });
     return NextResponse.json({ models: [] });
   }
 }
@@ -205,7 +206,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, data: result });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Threat model generation failed';
-    console.warn('[ThreatModeling] Engine error, falling back to mock:', message);
+    logger.warn("Engine error, falling back to mock", { context: "threat-modeling", meta: { message } });
     
     // Fallback to mock data if the engine fails (e.g. 500 error)
     const fallbackData = createMockThreatModel(product_version, target_frameworks);

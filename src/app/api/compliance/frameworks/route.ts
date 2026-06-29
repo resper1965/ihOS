@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -49,7 +50,7 @@ export async function GET() {
       data: frameworks,
     });
   } catch (error) {
-    console.error("[API] /compliance/frameworks error:", error);
+    logger.error("Fetch standard frameworks failed", { context: "compliance/frameworks", error: error });
     return NextResponse.json(
       {
         success: false,

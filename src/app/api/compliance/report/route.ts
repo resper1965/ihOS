@@ -2,6 +2,7 @@
 // Returns the full gap analysis report as JSON
 // Aggregates all data from evidence_evaluations + intelligence_snapshots
 
+import { logger } from '@/lib/logger';
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ihosEngine } from "@/lib/ihos-engine";
@@ -200,7 +201,7 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error("[API] /compliance/report error:", error);
+    logger.error("Fetch/Generate compliance report failed", { context: "compliance/report", error: error });
     return NextResponse.json(
       {
         error: "Failed to generate compliance report",
@@ -353,10 +354,10 @@ export async function POST(req: Request) {
 
       reportData.engineEnriched = true;
     } catch (engineErr) {
-      console.warn(
-        '[API] ihos-engine report enrichment failed, proceeding with base report:',
-        engineErr instanceof Error ? engineErr.message : engineErr,
-      );
+      logger.warn("ihos-engine report enrichment failed, proceeding with base report", {
+        context: "compliance/report",
+        error: engineErr
+      });
       reportData.engineEnriched = false;
     }
 
@@ -393,7 +394,7 @@ export async function POST(req: Request) {
       }
     });
   } catch (error) {
-    console.error("[API] /compliance/report POST error:", error);
+    logger.error("Generate compliance report failed", { context: "compliance/report", error: error });
     return NextResponse.json(
       {
         error: "Failed to generate compliance report",

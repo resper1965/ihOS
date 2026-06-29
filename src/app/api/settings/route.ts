@@ -1,6 +1,7 @@
 // src/app/api/settings/route.ts
 // PATCH — persist user preferences in profiles.preferences (JSONB)
 
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -64,7 +65,7 @@ export async function PATCH(request: NextRequest) {
     .eq("id", user.id);
 
   if (updateError) {
-    console.error("[Settings API] Update failed:", updateError.message);
+    logger.error("Update settings failed", { context: "settings", meta: { error: updateError.message } });
     return NextResponse.json({ error: updateError.message }, { status: 500 });
   }
 

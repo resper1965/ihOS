@@ -1,6 +1,7 @@
 // src/app/api/compliance/gaps/route.ts
 // Returns top compliance gaps sorted by confidence (ascending = lowest confidence first)
 
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -56,10 +57,10 @@ export async function GET(request: NextRequest) {
         });
       }
     } catch (engineErr) {
-      console.warn(
-        '[API] ihos-engine gap detection failed, falling back to database:',
-        engineErr instanceof Error ? engineErr.message : engineErr,
-      );
+      logger.warn("ihos-engine gap detection failed, falling back to database", {
+        context: "compliance/gaps",
+        error: engineErr
+      });
     }
 
     // Query non-compliant evaluations ordered by lowest confidence first
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
     const gaps = rawGaps as EvidenceEvaluation[] | null;
 
     if (error) {
-      console.error("[API] gaps query error:", error);
+      logger.error("Gaps query failed", { context: "compliance/gaps", error: error });
     }
 
     if (!error && gaps && gaps.length > 0) {
@@ -110,7 +111,7 @@ export async function GET(request: NextRequest) {
       gaps: filteredGaps.slice(0, limit),
     });
   } catch (error) {
-    console.error("[API] /compliance/gaps error:", error);
+    logger.error("Gaps fetch failed", { context: "compliance/gaps", error: error });
     return NextResponse.json(
       {
         error: "Failed to fetch compliance gaps",

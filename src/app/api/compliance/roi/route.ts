@@ -1,6 +1,7 @@
 // src/app/api/compliance/roi/route.ts
 // Returns ROI priority path from intelligence snapshots
 
+import { logger } from '@/lib/logger';
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -52,7 +53,7 @@ export async function GET() {
       })),
     });
   } catch (error) {
-    console.error("[API] /compliance/roi error:", error);
+    logger.error("ROI path fetch failed", { context: "compliance/roi", error: error });
     return NextResponse.json(
       {
         error: "Failed to fetch ROI priority path",

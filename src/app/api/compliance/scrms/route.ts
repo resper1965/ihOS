@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { triggerGrcRecalibration } from "@/lib/assessment/grc-trigger";
@@ -156,7 +157,7 @@ export async function GET() {
     });
 
   } catch (err: any) {
-    console.error("[api/scrms] GET error:", err);
+    logger.error("GET SCRM data failed", { context: "compliance/scrms", error: err });
     return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
   }
 }
@@ -213,7 +214,7 @@ export async function POST() {
 
     return NextResponse.json({ success: true, message: "Recalibration completed successfully." });
   } catch (err: any) {
-    console.error("[api/scrms] POST error:", err);
+    logger.error("POST SCRM recalibration failed", { context: "compliance/scrms", error: err });
     return NextResponse.json({ error: err.message || "Internal Server Error" }, { status: 500 });
   }
 }

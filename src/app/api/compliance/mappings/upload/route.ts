@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -95,7 +96,7 @@ export async function POST(request: NextRequest) {
       imported_count: rows.length,
     });
   } catch (err) {
-    console.error("[Upload Mappings API Error]", err);
+    logger.error("Upload mappings failed", { context: "compliance/mappings/upload", error: err });
     return NextResponse.json(
       { success: false, error: err instanceof Error ? err.message : "Unknown error" },
       { status: 500 }

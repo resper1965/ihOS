@@ -1,6 +1,7 @@
 // src/app/api/compliance/report/[id]/export/route.ts
 // Generates and downloads the compliance report in Excel (XLSX) format
 
+import { logger } from '@/lib/logger';
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import * as XLSX from "xlsx";
@@ -110,7 +111,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("[API] /compliance/report/[id]/export error:", error);
+    logger.error("Export compliance report failed", { context: "compliance/report/export", error: error });
     return NextResponse.json(
       {
         error: "Failed to export report",

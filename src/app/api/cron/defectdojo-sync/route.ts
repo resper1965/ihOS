@@ -1,6 +1,7 @@
 // src/app/api/cron/defectdojo-sync/route.ts
 // Periodic sync of DefectDojo findings into the ihOS compliance platform.
 
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createDefectDojoClient } from '@/lib/integrations/defectdojo/client';
 import { mapFindingToControls } from '@/lib/integrations/defectdojo/mapper';
@@ -16,7 +17,7 @@ export async function GET(req: Request) {
     const isProduction = process.env.NODE_ENV === 'production';
 
     if (isProduction && !cronSecret) {
-      console.error('[DD-SYNC] CRON_SECRET is missing in production. Aborting.');
+      logger.error("CRON_SECRET is missing in production. Aborting.", { context: "cron/defectdojo-sync" });
       return NextResponse.json({ error: 'Internal configuration error' }, { status: 500 });
     }
 
@@ -116,7 +117,7 @@ export async function GET(req: Request) {
       total_from_api: findingsResponse.count,
     });
   } catch (err) {
-    console.error('[DD-SYNC ERROR]', err);
+    logger.error("DefectDojo sync failed", { context: "cron/defectdojo-sync", error: err });
     return NextResponse.json(
       { success: false, error: err instanceof Error ? err.message : 'Unknown error' },
       { status: 500 },

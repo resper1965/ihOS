@@ -1,6 +1,7 @@
 // src/app/api/reports/[id]/export/route.ts
 // GET — generate and stream a PDF for a given intelligence_snapshot
 
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { renderToBuffer, Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
@@ -547,7 +548,7 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error("[PDF Export Error]", err);
+    logger.error("PDF Export Error", { context: "reports/export", error: err });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : "Failed to generate PDF" },
       { status: 500 }

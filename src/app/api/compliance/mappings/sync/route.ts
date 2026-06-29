@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
       try {
         embeddings = await generateEmbeddings(texts);
       } catch (e) {
-        console.warn("[Sync Mappings] Error generating embeddings:", e);
+        logger.warn("Error generating embeddings", { context: "compliance/mappings/sync", error: e });
       }
 
       const rows = batch.map((c, idx) => {
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
         .upsert(rows, { onConflict: "control_code" });
 
       if (upsertError) {
-        console.error("[Sync Mappings] Error upserting controls batch:", upsertError.message);
+        logger.error("Error upserting controls batch", { context: "compliance/mappings/sync", meta: { error: upsertError.message } });
       } else {
         syncedCount += rows.length;
       }
@@ -96,7 +97,7 @@ export async function POST(request: NextRequest) {
       controls_synced: syncedCount,
     });
   } catch (err) {
-    console.error("[Sync Mappings API Error]", err);
+    logger.error("Sync mappings failed", { context: "compliance/mappings/sync", error: err });
     return NextResponse.json(
       { success: false, error: err instanceof Error ? err.message : "Unknown error" },
       { status: 500 }

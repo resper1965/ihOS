@@ -2,6 +2,7 @@
 // Returns compliance scores for all frameworks
 // Source: intelligence_snapshots (scorecard type) + fallback to hardcoded data
 
+import { logger } from '@/lib/logger';
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -54,7 +55,7 @@ export async function GET() {
         });
       }
     } catch (calcError) {
-      console.error("[API] Local scorecard calculation failed:", calcError);
+      logger.error("Local scorecard calculation failed", { context: "compliance/scorecard", error: calcError });
     }
 
     // Final fallback: get framework scores using the async getter
@@ -65,7 +66,7 @@ export async function GET() {
       frameworks: scores,
     });
   } catch (error) {
-    console.error("[API] /compliance/scorecard error:", error);
+    logger.error("Scorecard fetch failed", { context: "compliance/scorecard", error: error });
     return NextResponse.json(
       {
         error: "Failed to fetch compliance scorecard",

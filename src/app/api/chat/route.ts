@@ -2,6 +2,7 @@
 // Next.js API route for the ihOS AI chat system
 // Uses Vercel AI SDK streamText with tool calling + Supabase persistence
 
+import { logger } from '@/lib/logger';
 import { z } from 'zod';
 import { streamText, stepCountIs } from 'ai';
 import { getOpenAI } from '@/lib/chat/openai';
@@ -85,7 +86,7 @@ export async function POST(req: Request) {
       if (!conversationId) conversationId = crypto.randomUUID();
     }
   } catch (err) {
-    console.error('[Chat] Persistence error (non-blocking):', err);
+    logger.error("Persistence error (non-blocking)", { context: "chat", error: err });
     if (!conversationId) conversationId = crypto.randomUUID();
   }
 
@@ -144,7 +145,7 @@ export async function POST(req: Request) {
           );
         }
       } catch (err) {
-        console.error('[Chat] Failed to persist assistant message:', err);
+        logger.error("Failed to persist assistant message", { context: "chat", error: err });
       }
 
       // Mark briefing notifications as read after successful delivery
@@ -156,7 +157,7 @@ export async function POST(req: Request) {
             .update({ read: true })
             .in('id', context.metadata.pendingNotificationIds);
         } catch (notifErr) {
-          console.warn('[Chat] Failed to mark notifications as read:', notifErr);
+          logger.warn("Failed to mark notifications as read", { context: "chat", error: notifErr });
         }
       }
     },

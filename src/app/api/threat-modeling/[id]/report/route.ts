@@ -2,6 +2,7 @@
 // POST — generate a threat model report
 // GET  — fetch the latest report for a threat model
 
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -132,10 +133,10 @@ export async function POST(
     engineEnriched = true;
     engineNarrative = gapReport.report;
   } catch (err) {
-    console.warn(
-      '[ThreatModeling] Engine narrative generation failed, using static summary:',
-      err instanceof Error ? err.message : err,
-    );
+    logger.warn("Engine narrative generation failed, using static summary", {
+      context: "threat-modeling/report",
+      error: err
+    });
     narrative =
       `Threat modeling analysis identified ${totalThreats} threats ` +
       `(${criticalCount} critical, ${highCount} high) with an average RPN of ${avgRpn.toFixed(1)}. ` +
@@ -198,7 +199,7 @@ export async function POST(
     .single();
 
   if (insertError) {
-    console.error('[ThreatModeling] Report insert error:', insertError.message);
+    logger.error("Report insert error", { context: "threat-modeling/report", meta: { error: insertError.message } });
     return NextResponse.json({ error: 'Failed to create report' }, { status: 500 });
   }
 
@@ -232,7 +233,7 @@ export async function GET(
     .maybeSingle();
 
   if (error) {
-    console.error('[ThreatModeling] Report fetch error:', error.message);
+    logger.error("Report fetch error", { context: "threat-modeling/report", meta: { error: error.message } });
     return NextResponse.json({ error: 'Failed to fetch report' }, { status: 500 });
   }
 

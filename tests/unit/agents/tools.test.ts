@@ -16,8 +16,8 @@ import { mockSupabaseAdmin, mockSupabaseServer } from '../../setup';
 // agentTools map
 // ---------------------------------------------------------------------------
 describe('agentTools map', () => {
-  it('contains exactly 13 tools', () => {
-    expect(Object.keys(agentTools)).toHaveLength(13);
+  it('contains exactly 16 tools', () => {
+    expect(Object.keys(agentTools)).toHaveLength(16);
   });
 
   it('has all expected tool names', () => {

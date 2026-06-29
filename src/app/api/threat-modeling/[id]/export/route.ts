@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -712,7 +713,7 @@ export async function GET(
         },
       });
     } catch (err) {
-      console.error('[ThreatModeling] Excel export error:', err);
+      logger.error("Excel export error", { context: "threat-modeling/export", error: err });
       return NextResponse.json(
         { error: err instanceof Error ? err.message : 'Failed to generate Excel export' },
         { status: 500 },
@@ -738,7 +739,7 @@ export async function GET(
       },
     });
   } catch (err) {
-    console.error('[ThreatModeling] PDF export error:', err);
+    logger.error("PDF export error", { context: "threat-modeling/export", error: err });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Failed to generate PDF' },
       { status: 500 },

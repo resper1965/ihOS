@@ -1,3 +1,4 @@
+import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createConversation, getConversations } from '@/lib/chat/persistence';
@@ -10,7 +11,7 @@ export async function GET() {
     const conversations = await getConversations(user.id);
     return NextResponse.json({ data: conversations });
   } catch (err) {
-    console.error('[API] GET /api/conversations error:', err);
+    logger.error("GET conversations failed", { context: "conversations", error: err });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -24,7 +25,7 @@ export async function POST(req: Request) {
     const conversation = await createConversation(user.id, body.title);
     return NextResponse.json({ data: conversation }, { status: 201 });
   } catch (err) {
-    console.error('[API] POST /api/conversations error:', err);
+    logger.error("POST conversation failed", { context: "conversations", error: err });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

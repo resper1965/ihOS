@@ -2,6 +2,7 @@
 // Receives the original questionnaire (base64) and approved answers,
 // writes answers into the spreadsheet cells, and returns the filled file.
 
+import { logger } from '@/lib/logger';
 import * as XLSX from 'xlsx';
 import type { DownloadPayload } from '@/lib/chat/questionnaire-types';
 
@@ -55,9 +56,10 @@ export async function POST(req: Request) {
       const targetSheetName = sheetName ?? workbook.SheetNames[0];
       const sheet = workbook.Sheets[targetSheetName];
       if (!sheet) {
-        console.warn(
-          `[download-filled] Sheet "${targetSheetName}" not found, skipping.`,
-        );
+        logger.warn("Sheet not found during questionnaire download", {
+          context: "chat/download-filled",
+          meta: { sheetName: targetSheetName }
+        });
         continue;
       }
 
@@ -77,9 +79,9 @@ export async function POST(req: Request) {
         });
         sheet[cellRef] = { t: 's', v: answer };
       } else {
-        console.warn(
-          '[download-filled] Answer entry missing cell coordinates, skipping.',
-        );
+        logger.warn("Answer entry missing cell coordinates during questionnaire download", {
+          context: "chat/download-filled"
+        });
       }
 
       // Update the sheet range so xlsx includes the new cells when writing
@@ -120,7 +122,7 @@ export async function POST(req: Request) {
   } catch (err) {
     const message =
       err instanceof Error ? err.message : 'Failed to generate filled file.';
-    console.error('[download-filled] Error:', message);
+    logger.error("Download filled questionnaire failed", { context: "chat/download-filled", meta: { error: message } });
 
     return new Response(
       JSON.stringify({ success: false, error: message }),

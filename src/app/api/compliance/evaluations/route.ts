@@ -2,6 +2,7 @@
 // Returns evidence evaluation summary and details
 // Supports query params: ?domain=PRI&status=non_compliant&limit=50
 
+import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     const evaluations = rawEvaluations as EvidenceEvaluation[] | null;
 
     if (error) {
-      console.error("[API] evidence_evaluations query error:", error);
+      logger.error("Evidence evaluations query failed", { context: "compliance/evaluations", error: error });
     }
 
     if (!error && evaluations && evaluations.length > 0) {
@@ -127,7 +128,7 @@ export async function GET(request: NextRequest) {
       })),
     });
   } catch (error) {
-    console.error("[API] /compliance/evaluations error:", error);
+    logger.error("Evaluations fetch failed", { context: "compliance/evaluations", error: error });
     return NextResponse.json(
       {
         error: "Failed to fetch compliance evaluations",
