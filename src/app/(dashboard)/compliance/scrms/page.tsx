@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   ShieldCheck,
   AlertTriangle,
@@ -19,6 +19,14 @@ import {
   Check,
   X
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  useScrmsData,
+  useRecalibrate,
+  useAcceptControl,
+  useRejectControl,
+  scrmsKeys,
+} from "@/hooks/queries/use-scrms";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -86,34 +94,27 @@ interface ScrmsBaseline {
 }
 
 export default function ScrmsPage() {
-  const [baseline, setBaseline] = useState<ScrmsBaseline | null>(null);
-  const [controls, setControls] = useState<ScrmsControl[]>([]);
-  const [stats, setStats] = useState<ScrmsStats | null>(null);
-  const [deltas, setDeltas] = useState<ProductDelta[]>([]);
-  const [ismsStats, setIsmsStats] = useState<IsmsStats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [calibrating, setCalibrating] = useState(false);
+  // ── React Query: data layer ──
+  const queryClient = useQueryClient();
+  const { data: scrmsData, isLoading: loading } = useScrmsData();
+  const recalibrate = useRecalibrate();
+  const acceptControl = useAcceptControl();
+  const rejectControl = useRejectControl();
 
-  const handleRecalibrate = async () => {
-    setCalibrating(true);
-    try {
-      const res = await fetch("/api/compliance/scrms", {
-        method: "POST",
-      });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        fetchData();
-      } else {
-        alert(`Error: ${data.error || "Failed to recalibrate"}`);
-      }
-    } catch (err) {
-      console.error("Error recalibrating:", err);
-      alert("Failed to connect to the recalibration service.");
-    } finally {
-      setCalibrating(false);
-    }
+  // Destructure query data with safe defaults
+  const baseline = (scrmsData?.baseline as unknown as ScrmsBaseline) ?? null;
+  const controls = (scrmsData?.controls as unknown as ScrmsControl[]) ?? [];
+  const stats = (scrmsData?.stats as unknown as ScrmsStats) ?? null;
+  const deltas = (scrmsData?.deltas as unknown as ProductDelta[]) ?? [];
+  const ismsStats = (scrmsData?.ismsStats as unknown as IsmsStats) ?? null;
+
+  // Derived state from mutations
+  const calibrating = recalibrate.isPending;
+
+  const handleRecalibrate = () => {
+    recalibrate.mutate();
   };
-  
+
   // Filtering & Search
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"PENDING" | "BASELINE">("PENDING");
@@ -124,77 +125,24 @@ export default function ScrmsPage() {
   // Dialog state for Rejection
   const [rejectingControl, setRejectingControl] = useState<ScrmsControl | null>(null);
   const [rationale, setRationale] = useState("");
-  const [submittingReject, setSubmittingReject] = useState(false);
-
-  // Load baseline & controls
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("/api/compliance/scrms");
-      const data = await res.json();
-      if (data.success) {
-        setBaseline(data.baseline);
-        setControls(data.controls);
-        setStats(data.stats);
-        setDeltas(data.deltas || []);
-        setIsmsStats(data.ismsStats || null);
-      }
-    } catch (err) {
-      console.error("Error loading SCRMS data:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   // Accept DSR Control
-  const handleAccept = async (id: string) => {
-    try {
-      const res = await fetch(`/api/compliance/scrms/controls/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "accepted" })
-      });
-      if (res.ok) {
-        fetchData();
-      } else {
-        const err = await res.json();
-        alert(`Error: ${err.error}`);
-      }
-    } catch (err) {
-      console.error("Error accepting DSR:", err);
-    }
+  const handleAccept = (id: string) => {
+    acceptControl.mutate(id);
   };
 
   // Reject DSR Control (Submit)
-  const handleRejectSubmit = async () => {
+  const handleRejectSubmit = () => {
     if (!rejectingControl) return;
-    setSubmittingReject(true);
-    try {
-      const res = await fetch(`/api/compliance/scrms/controls/${rejectingControl.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          status: "rejected",
-          rejection_rationale: rationale
-        })
-      });
-      if (res.ok) {
-        setRejectingControl(null);
-        setRationale("");
-        fetchData();
-      } else {
-        const err = await res.json();
-        alert(`Error: ${err.error}`);
+    rejectControl.mutate(
+      { controlId: rejectingControl.id, rationale },
+      {
+        onSuccess: () => {
+          setRejectingControl(null);
+          setRationale("");
+        },
       }
-    } catch (err) {
-      console.error("Error rejecting DSR:", err);
-    } finally {
-      setSubmittingReject(false);
-    }
+    );
   };
 
   const filteredControls = controls.filter((c) => {
@@ -710,7 +658,7 @@ export default function ScrmsPage() {
                                 method: "PATCH",
                                 headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ status: "pending_review" }),
-                              }).then(() => fetchData());
+                              }).then(() => queryClient.invalidateQueries({ queryKey: scrmsKeys.all }));
                             }}
                             className="text-xs text-text-muted hover:text-text-primary underline underline-offset-2 cursor-pointer transition-colors"
                           >
@@ -765,10 +713,10 @@ export default function ScrmsPage() {
               variant="danger"
               size="sm"
               onClick={handleRejectSubmit}
-              disabled={!rationale.trim() || submittingReject}
+              disabled={!rationale.trim() || rejectControl.isPending}
               className="cursor-pointer"
             >
-              {submittingReject ? "Submitting…" : "Confirm Risk Acceptance"}
+              {rejectControl.isPending ? "Submitting…" : "Confirm Risk Acceptance"}
             </Button>
           </div>
         </div>

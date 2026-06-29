@@ -9,6 +9,8 @@ export interface UploadStatus {
   state: UploadState;
   message?: string;
   fileName?: string;
+  /** Upload progress 0-100 (only during 'uploading' state) */
+  progress?: number;
 }
 
 interface UploadWizardProps {
@@ -135,21 +137,38 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
         }
       }
 
-      // Step 2: Upload and Index
+      // Step 2: Upload and Index (with progress tracking)
+      setUploadStatus({ 
+        state: "uploading", 
+        fileName: selectedFile.name, 
+        message: "Uploading document...",
+        progress: 0,
+      });
+
+      const result = await new Promise<{ success: boolean; error?: string; data?: { id: string; chunkCount?: number } }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            setUploadStatus(prev => ({ ...prev, progress: pct, message: pct < 100 ? `Uploading... ${pct}%` : 'Processing embeddings...' }));
+          }
+        };
+        xhr.onload = () => {
+          try { resolve(JSON.parse(xhr.responseText)); } catch { reject(new Error('Invalid response')); }
+        };
+        xhr.onerror = () => reject(new Error('Network error'));
+        xhr.open('POST', '/api/documents/upload');
+        xhr.send(formData);
+      });
+
       setUploadStatus({ 
         state: "processing", 
         fileName: selectedFile.name, 
-        message: "Clarity Gate approved. Extracting text and generating pgvector embeddings..." 
+        message: "Generating pgvector embeddings...",
+        progress: 100,
       });
 
-      const res = await fetch("/api/documents/upload", {
-        method: "POST",
-        body: formData,
-      });
-
-      const result = await res.json();
-
-      if (!res.ok || !result.success) {
+      if (!result.success) {
         setUploadStatus({
           state: "error",
           fileName: selectedFile.name,
@@ -161,7 +180,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
       setUploadStatus({
         state: "done",
         fileName: selectedFile.name,
-        message: `${result.data.chunkCount} chunks successfully indexed in RAG database!`,
+        message: `${result.data?.chunkCount ?? 0} chunks successfully indexed in RAG database!`,
       });
 
       onSuccess();
@@ -427,9 +446,15 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   {uploadStatus.state === "uploading" && (
                     <>
                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                      <div className="space-y-1">
-                        <p className="text-sm font-semibold text-white">Uploading file...</p>
-                        <p className="text-xs text-text-muted">Writing metadata to Supabase Storage.</p>
+                      <div className="space-y-2 flex-1">
+                        <p className="text-sm font-semibold text-white">{uploadStatus.message || "Uploading file..."}</p>
+                        <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                          <div
+                            className="bg-primary h-2 rounded-full transition-all duration-300 ease-out"
+                            style={{ width: `${uploadStatus.progress ?? 0}%` }}
+                          />
+                        </div>
+                        <p className="text-xs text-text-muted">{uploadStatus.progress ?? 0}% • {selectedFile?.name}</p>
                       </div>
                     </>
                   )}
