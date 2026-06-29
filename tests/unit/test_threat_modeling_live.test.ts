@@ -42,7 +42,7 @@ class MockRequest {
 }
 
 describe("Live Threat Modeling Route Handler", () => {
-  it.skip("should call the real engine and report the actual status/response", async () => {
+  it("should call the real engine and report the actual status/response", async () => {
     const req = new MockRequest({
       product_version: "v2.2.x",
       target_frameworks: ["ISO 27001", "LGPD"],

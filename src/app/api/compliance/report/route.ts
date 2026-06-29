@@ -3,6 +3,13 @@
 // Aggregates all data from evidence_evaluations + intelligence_snapshots
 
 import { logger } from '@/lib/logger';
+import type { Json } from "@/lib/supabase/types.generated";
+
+interface ReportMetadata {
+  title?: string;
+  type?: string;
+  status?: string;
+}
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { ihosEngine } from "@/lib/ihos-engine";
@@ -46,11 +53,11 @@ export async function GET(req: Request) {
         success: true,
         data: reports.map((r) => ({
           id: r.id.toString(), // Convert BigInt to string for safety in JSON
-          title: (r.metadata as any)?.title || `Compliance Report ${r.framework_code}`,
+          title: (r.metadata as ReportMetadata)?.title || `Compliance Report ${r.framework_code}`,
           framework: r.framework_code || "Multiple Frameworks",
           createdAt: r.created_at,
-          type: (r.metadata as any)?.type || "Gap Analysis",
-          status: (r.metadata as any)?.status || "ready",
+          type: (r.metadata as ReportMetadata)?.type || "Gap Analysis",
+          status: (r.metadata as ReportMetadata)?.status || "ready",
         })),
       });
     }
@@ -309,12 +316,12 @@ export async function POST(req: Request) {
         complianceRate: total > 0 ? Math.round((compliant / total) * 100) : 0,
       },
       frameworks: scorecardSnapshot?.snapshot_data
-        ? (scorecardSnapshot.snapshot_data as any).frameworks ?? null
+        ? (scorecardSnapshot.snapshot_data as Record<string, any>).frameworks ?? null
         : null,
       domainBreakdown: domains,
       topGaps: gaps,
       roiPath: roiSnapshot?.snapshot_data
-        ? (roiSnapshot.snapshot_data as any).roiPath ?? roiSnapshot.snapshot_data
+        ? (roiSnapshot.snapshot_data as Record<string, any>).roiPath ?? roiSnapshot.snapshot_data
         : null,
       evaluationCount: total,
     };
@@ -368,9 +375,9 @@ export async function POST(req: Request) {
         snapshot_type: "full_report",
         framework_code: frameworkCode,
         input_payload: { source: 'compliance_report', framework: frameworkCode },
-        result_payload: { summary: reportData.summary } as any,
+        result_payload: { summary: reportData.summary } as unknown as Json,
         score: (reportData.summary as Record<string, unknown>)?.complianceRate as number ?? null,
-        snapshot_data: reportData as any,
+        snapshot_data: reportData as unknown as Json,
         user_id: user.id,
         metadata: {
           title,

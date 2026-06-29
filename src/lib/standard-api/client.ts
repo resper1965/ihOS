@@ -121,7 +121,7 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
 
     clearTimeout(timeoutId);
 
-    const json = (await response.json()) as any;
+    const json = (await response.json()) as { data?: TRes; error?: StandardApiError };
 
     if (!response.ok) {
       if (response.status === 403 || response.status === 401) {
@@ -137,7 +137,7 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
       throw new StandardApiClientError(error.message, error.code, response.status, error.details);
     }
 
-    return json.data !== undefined ? json.data : json;
+    return (json.data !== undefined ? json.data : json) as TRes;
   } catch (err) {
     clearTimeout(timeoutId);
 
@@ -192,7 +192,7 @@ async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Pro
 
     clearTimeout(timeoutId);
 
-    const json = (await response.json()) as any;
+    const json = (await response.json()) as { data?: TRes; error?: StandardApiError };
 
     if (!response.ok) {
       if (response.status === 403 || response.status === 401) {
@@ -208,7 +208,7 @@ async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Pro
       throw new StandardApiClientError(error.message, error.code, response.status, error.details);
     }
 
-    return json.data !== undefined ? json.data : json;
+    return (json.data !== undefined ? json.data : json) as TRes;
   } catch (err) {
     clearTimeout(timeoutId);
 
@@ -431,14 +431,14 @@ async function localComplianceScore(
     const supabase = await createClient();
     
     // Fetch evidence evaluations
-    const { data: evals } = await (supabase as any)
+    const { data: evals } = await supabase
       .from("evidence_evaluations")
       .select("control_code, is_compliant, confidence_score");
 
     const frameworkCode = request.framework_code || request.regulation_id || "iso27001";
     
     // Fetch total required controls from mappings
-    const { data: mappings } = await (supabase as any)
+    const { data: mappings } = await supabase
       .from("scf_framework_mappings")
       .select("scf_control_code")
       .eq("framework_code", frameworkCode);
@@ -473,7 +473,7 @@ async function localCrossCoverage(
   console.log("[GRC Fallback] Running local cross-coverage analysis...");
   try {
     const supabase = await createClient();
-    const { data: mappings } = await (supabase as any)
+    const { data: mappings } = await supabase
       .from("scf_framework_mappings")
       .select("framework_code, scf_control_code")
       .in("framework_code", [request.source_framework, request.target_framework]);
@@ -536,12 +536,12 @@ async function localRoiPath(
     const supabase = await createClient();
     const targetFramework = request.target_framework || "iso27001";
     
-    const { data: mappings } = await (supabase as any)
+    const { data: mappings } = await supabase
       .from("scf_framework_mappings")
       .select("scf_control_code")
       .eq("framework_code", targetFramework);
 
-    const { data: evals } = await (supabase as any)
+    const { data: evals } = await supabase
       .from("evidence_evaluations")
       .select("control_code")
       .eq("is_compliant", true);
@@ -580,7 +580,7 @@ async function localBlastRadius(
   console.log("[GRC Fallback] Running local blast radius analysis...");
   try {
     const supabase = await createClient();
-    const { data: mappings } = await (supabase as any)
+    const { data: mappings } = await supabase
       .from("scf_framework_mappings")
       .select("framework_code, scf_control_code")
       .eq("scf_control_code", request.control_id);

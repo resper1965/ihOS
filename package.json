@@ -12,6 +12,8 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:unit": "vitest run --exclude 'tests/unit/test_threat_modeling_live.test.ts'",
+    "test:integration": "vitest run tests/unit/test_threat_modeling_live.test.ts",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test"

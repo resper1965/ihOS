@@ -21,40 +21,27 @@ export async function POST(request: NextRequest) {
     }
 
     switch (triggerName) {
-      // -----------------------------------------------------------------
-      // SharePoint: new document uploaded
-      // -----------------------------------------------------------------
       case "SHAREPOINT_ON_ITEM_CREATED": {
-        // TODO: Parse item metadata from body.payload
-        // TODO: Auto-classify document against compliance framework
-        // TODO: Route notification to document owner
-        // TODO: Trigger document ingestion pipeline if applicable
-        console.log(
-          "[composio-webhook] SharePoint item created:",
-          JSON.stringify(body.payload ?? {}).slice(0, 500),
-        );
+        logger.info("SharePoint item created trigger received", {
+          context: "webhooks/composio",
+          meta: { payload: body.payload }
+        });
         break;
       }
 
-      // -----------------------------------------------------------------
-      // SharePoint: existing document modified
-      // -----------------------------------------------------------------
       case "SHAREPOINT_ON_ITEM_MODIFIED": {
-        // TODO: Diff against previous version for compliance impact
-        // TODO: Update document_versions tracking table
-        // TODO: Re-run compliance checks if document is in scope
-        // TODO: Notify reviewers of modification
-        console.log(
-          "[composio-webhook] SharePoint item modified:",
-          JSON.stringify(body.payload ?? {}).slice(0, 500),
-        );
+        logger.info("SharePoint item modified trigger received", {
+          context: "webhooks/composio",
+          meta: { payload: body.payload }
+        });
         break;
       }
 
       default: {
-        console.log(
-          `[composio-webhook] Unhandled trigger: ${triggerName}`,
-        );
+        logger.info("Unhandled trigger received", {
+          context: "webhooks/composio",
+          meta: { triggerName }
+        });
       }
     }
 

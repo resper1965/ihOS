@@ -14,8 +14,7 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // 1. Fetch active baseline
-    const { data: baseline, error: baselineError } = await (supabase as any)
+    const { data: baseline, error: baselineError } = await supabase
       .from("msr_baselines")
       .select(`
         id,
@@ -42,15 +41,15 @@ export async function GET() {
     }
 
     // 2. Fetch version specific deltas
-    const { data: deltas, error: deltasError } = await (supabase as any)
+    const { data: deltas, error: deltasError } = await supabase
       .from("product_version_deltas")
       .select("feature_slug, description, affected_components, risk_level")
-      .eq("product_version_id", baseline.product_version_id);
+      .eq("product_version_id", baseline.product_version_id!);
 
     // 3. Fetch Core ISMS controls stats
     let ismsStats = { total: 0, implemented: 0 };
     if (baseline.isms_baseline_id) {
-      const { data: ismsControls, error: ismsError } = await (supabase as any)
+      const { data: ismsControls, error: ismsError } = await supabase
         .from("isms_controls")
         .select("status")
         .eq("isms_id", baseline.isms_baseline_id);
@@ -62,7 +61,7 @@ export async function GET() {
     }
 
     // 4. Fetch all controls for this baseline and join scf_controls information
-    const { data: controls, error: controlsError } = await (supabase as any)
+    const { data: controls, error: controlsError } = await supabase
       .from("msr_controls")
       .select(`
         id,
@@ -172,7 +171,7 @@ export async function POST() {
     }
 
     // Verify role (admin or ionic_user)
-    const { data: profile } = await (supabase as any)
+    const { data: profile } = await supabase
       .from("profiles")
       .select("role")
       .eq("id", user.id)
@@ -183,7 +182,7 @@ export async function POST() {
     }
 
     // 1. Fetch active baseline to get product_version_id
-    const { data: baseline } = await (supabase as any)
+    const { data: baseline } = await supabase
       .from("msr_baselines")
       .select("product_version_id")
       .eq("status", "active")

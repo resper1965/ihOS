@@ -6,9 +6,9 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import * as standardApi from '@/lib/standard-api/client';
 import { searchDocuments as ragSearch } from '@/lib/chat/rag-search';
-import { createClient as createServerClient } from '@/lib/supabase/server';
-const createClient = createServerClient as any;
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
+import type { Database } from '@/lib/supabase/types.generated';
 
 // ---------------------------------------------------------------------------
 // Tool: complianceScore
@@ -37,11 +37,11 @@ export const complianceScore = tool({
         .maybeSingle();
 
       if (rawSnapshot?.snapshot_data) {
-        const snapshotData = rawSnapshot.snapshot_data as any;
+        const snapshotData = rawSnapshot.snapshot_data as Record<string, any>;
         const frameworks = snapshotData.frameworks ?? snapshotData;
         const fw = Array.isArray(frameworks)
           ? frameworks.find(
-              (f: any) =>
+              (f) =>
                 f.code?.toLowerCase() === input.framework.toLowerCase() ||
                 f.name?.toLowerCase() === input.framework.toLowerCase()
             )
@@ -152,14 +152,14 @@ export const crossCoverage = tool({
       const { data: rawSnapshot } = await supabase
         .from('intelligence_snapshots')
         .select('*')
-        .eq('snapshot_type', 'cross_coverage' as any)
+        .eq('snapshot_type', 'cross_coverage')
         .eq('framework_code', input.targetFramework.toUpperCase().replace(/\s+/g, '-'))
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (rawSnapshot?.snapshot_data) {
-        const result = rawSnapshot.snapshot_data as any;
+        const result = rawSnapshot.snapshot_data as Record<string, any>;
         return {
           sourceFramework: result.source_framework || input.sourceFramework,
           targetFramework: result.target_framework || input.targetFramework,
@@ -252,14 +252,14 @@ export const blastRadius = tool({
       const { data: rawSnapshot } = await supabase
         .from('intelligence_snapshots')
         .select('*')
-        .eq('snapshot_type', 'blast_radius' as any)
+        .eq('snapshot_type', 'blast_radius')
         .contains('input_payload', { control_id: input.controlId })
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (rawSnapshot?.snapshot_data) {
-        const result = rawSnapshot.snapshot_data as any;
+        const result = rawSnapshot.snapshot_data as Record<string, any>;
         return {
           controlId: result.control_id,
           framework: input.framework,
@@ -355,8 +355,7 @@ export const listFrameworks = tool({
 
       if (error) throw error;
       if (data && data.length > 0) {
-        const mappings = data as any[];
-        const grouped = mappings.reduce<Record<string, number>>((acc, row) => {
+        const grouped = data.reduce<Record<string, number>>((acc, row) => {
           acc[row.framework_code] = (acc[row.framework_code] ?? 0) + 1;
           return acc;
         }, {});
@@ -413,7 +412,7 @@ export const getAssessmentStatus = tool({
       const { data, error } = await query.single();
       if (error) throw error;
       if (data) {
-        const row = data as any;
+        const row = data;
         return {
           assessmentId: row.id,
           framework: row.framework_code,
@@ -595,8 +594,10 @@ export const updateGoalProgress = tool({
 
     try {
       const supabase = await createClient();
-      const updates: Record<string, any> = { progress: input.progress };
-      if (input.status) updates.status = input.status;
+      const updates: Database['public']['Tables']['agent_goals']['Update'] = {
+        progress: input.progress,
+        ...(input.status ? { status: input.status } : {}),
+      };
 
       const { data, error } = await supabase
         .from('agent_goals')
