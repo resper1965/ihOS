@@ -7,6 +7,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { runLocalAssessment } from '@/lib/assessment/local-engine';
 import { syncScorecard } from '@/lib/assessment/assessment-to-scorecard';
 import type { AssessmentConfig } from '@/lib/assessment/engine';
+import { logger } from '@/lib/logger';
 
 export const maxDuration = 300; // 5 minutes for deep scans
 
@@ -42,7 +43,7 @@ export async function POST(req: Request) {
         .single();
       if (defaultVersion) {
         activeProductVersionId = defaultVersion.id;
-        console.log(`[Audit] Auto-linked to default nCommand Lite version: ${activeProductVersionId}`);
+        logger.info('Auto-linked to default version', { context: 'audit', meta: { versionId: activeProductVersionId } });
       }
     }
 
@@ -53,9 +54,9 @@ export async function POST(req: Request) {
       productVersionId: activeProductVersionId,
     };
 
-    console.log('[Audit] Starting LOCAL assessment:', JSON.stringify(config));
+    logger.info('Starting LOCAL assessment', { context: 'audit', meta: config as unknown as Record<string, unknown> });
     const result = await runLocalAssessment(config);
-    console.log(`[Audit] Assessment complete: ${result.totalControlsCompliant}/${result.totalControlsEvaluated} controls with evidence`);
+    logger.info('Assessment complete', { context: 'audit', meta: { compliant: result.totalControlsCompliant, evaluated: result.totalControlsEvaluated } });
 
     // Persist to Supabase via admin client (no RLS)
     const { data: assessmentRecord, error: insertError } = await adminSupabase
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
       .single();
 
     if (insertError) {
-      console.error('[Audit] Failed to persist assessment:', insertError.message);
+      logger.error('Failed to persist assessment', { context: 'audit', meta: { error: insertError.message } });
     }
 
     // Batch-insert evidence evaluations
@@ -117,18 +118,18 @@ export async function POST(req: Request) {
         .insert(evidenceBatch);
 
       if (evidenceError) {
-        console.error('[Audit] Evidence insert error:', evidenceError.message);
+        logger.error('Evidence insert error', { context: 'audit', meta: { error: evidenceError.message } });
       } else {
-        console.log(`[Audit] Persisted ${evidenceBatch.length} evidence evaluations`);
+        logger.info(`Persisted ${evidenceBatch.length} evidence evaluations`, { context: 'audit' });
       }
     }
 
     // Sync scorecard → dashboard will reflect real scores
     try {
       await syncScorecard(assessmentRecord?.id ?? result.id, result);
-      console.log('[Audit] Scorecard synced successfully');
+      logger.info('Scorecard synced', { context: 'audit' });
     } catch (scorecardErr) {
-      console.error('[Audit] Scorecard sync failed:', scorecardErr instanceof Error ? scorecardErr.message : scorecardErr);
+      logger.warn('Scorecard sync failed', { context: 'audit', error: scorecardErr });
     }
 
     return NextResponse.json({
@@ -143,7 +144,7 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Audit assessment failed.';
-    console.error('[Audit] Error:', message);
+    logger.error(message, { context: 'audit', error: err });
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

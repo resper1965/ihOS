@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import {
   Layers,
   Plus,
@@ -12,7 +12,8 @@ import {
 } from "lucide-react";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Badge } from "@/components/ui/badge";
-import type { ProductVersion, ProductVersionUpdate } from "@/lib/supabase/types";
+import { useVersions, useCreateVersion, useUpdateVersion } from "@/hooks/queries/use-versions";
+import type { ProductVersion } from "@/lib/supabase/types";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Status helpers
@@ -34,43 +35,28 @@ function StatusBadge({ status }: { status: ProductVersion["status"] }) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function NewVersionForm({
-  onCreated,
   onCancel,
 }: {
-  onCreated: (v: ProductVersion) => void;
   onCancel: () => void;
 }) {
   const [productName, setProductName] = useState("nCommand Lite");
   const [versionCode, setVersionCode] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const createVersion = useCreateVersion();
+
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!versionCode.trim()) return;
-    setIsSubmitting(true);
-    setError(null);
 
-    try {
-      const res = await fetch("/api/versions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ product_name: productName, version_code: versionCode }),
-      });
-
-      const ct = res.headers.get("content-type") ?? "";
-      if (!res.ok) {
-        const msg = ct.includes("json") ? (await res.json()).error : `HTTP ${res.status}`;
-        throw new Error(msg);
+    createVersion.mutate(
+      { product_name: productName, version_code: versionCode },
+      {
+        onSuccess: () => {
+          setVersionCode("");
+          onCancel();
+        },
       }
-
-      const data = await res.json();
-      onCreated(data.version);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error creating version");
-    } finally {
-      setIsSubmitting(false);
-    }
+    );
   };
 
   return (
@@ -102,20 +88,20 @@ function NewVersionForm({
         </div>
       </div>
 
-      {error && (
+      {createVersion.error && (
         <p className="mt-3 flex items-center gap-2 text-xs text-red-400">
           <AlertTriangle className="h-3.5 w-3.5" />
-          {error}
+          {createVersion.error instanceof Error ? createVersion.error.message : "Error creating version"}
         </p>
       )}
 
       <div className="mt-4 flex items-center gap-3">
         <button
           type="submit"
-          disabled={isSubmitting || !versionCode.trim()}
+          disabled={createVersion.isPending || !versionCode.trim()}
           className="flex items-center gap-2 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary transition-colors disabled:opacity-50"
         >
-          {isSubmitting ? (
+          {createVersion.isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <Check className="h-4 w-4" />
@@ -141,34 +127,23 @@ function NewVersionForm({
 
 function VersionRow({
   version,
-  onUpdate,
 }: {
   version: ProductVersion;
-  onUpdate: (updated: ProductVersion) => void;
 }) {
-  const [isLoading, setIsLoading] = useState(false);
   const [showActions, setShowActions] = useState(false);
 
-  const patch = useCallback(
-    async (payload: { status: ProductVersion["status"] }) => {
-      setIsLoading(true);
-      try {
-        const res = await fetch(`/api/versions/${version.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          onUpdate(data.version);
-        }
-      } finally {
-        setIsLoading(false);
-        setShowActions(false);
+  const updateVersion = useUpdateVersion();
+
+  const patch = (status: ProductVersion["status"]) => {
+    updateVersion.mutate(
+      { id: version.id, status },
+      {
+        onSettled: () => {
+          setShowActions(false);
+        },
       }
-    },
-    [version.id, onUpdate]
-  );
+    );
+  };
 
   return (
     <div className="flex items-center justify-between gap-4 py-4 border-b border-white/5 last:border-0">
@@ -198,10 +173,10 @@ function VersionRow({
         <div className="relative">
           <button
             onClick={() => setShowActions((s) => !s)}
-            disabled={isLoading}
+            disabled={updateVersion.isPending}
             className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-text-secondary hover:bg-white/10 transition-all"
           >
-            {isLoading ? (
+            {updateVersion.isPending ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <>Actions <ChevronDown className="h-3 w-3" /></>
@@ -212,7 +187,7 @@ function VersionRow({
             <div className="absolute right-0 top-8 z-20 w-44 overflow-hidden rounded-xl border border-white/10 bg-[#1e293b] shadow-2xl shadow-black/40">
               {version.status !== "active" && (
                 <button
-                  onClick={() => patch({ status: "active" })}
+                  onClick={() => patch("active")}
                   className="w-full px-4 py-2.5 text-left text-xs text-emerald-400 hover:bg-white/5 transition-colors"
                 >
                   ✅ Set as Active
@@ -220,7 +195,7 @@ function VersionRow({
               )}
               {version.status !== "supported" && (
                 <button
-                  onClick={() => patch({ status: "supported" })}
+                  onClick={() => patch("supported")}
                   className="w-full px-4 py-2.5 text-left text-xs text-primary hover:bg-white/5 transition-colors"
                 >
                   🔵 Set as Supported
@@ -228,7 +203,7 @@ function VersionRow({
               )}
               {version.status !== "deprecated" && (
                 <button
-                  onClick={() => patch({ status: "deprecated" })}
+                  onClick={() => patch("deprecated")}
                   className="w-full px-4 py-2.5 text-left text-xs text-red-400 hover:bg-white/5 transition-colors"
                 >
                   🗑️ Deprecate
@@ -247,44 +222,8 @@ function VersionRow({
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function VersionsPage() {
-  const [versions, setVersions] = useState<ProductVersion[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { data: versions = [], isLoading, error } = useVersions();
   const [showForm, setShowForm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchVersions = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch("/api/versions");
-      if (res.ok) {
-        const data = await res.json();
-        setVersions(data.versions);
-      }
-    } catch {
-      setError("Failed to load versions");
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchVersions(); }, [fetchVersions]);
-
-  const handleCreated = (v: ProductVersion) => {
-    setVersions((prev) => [v, ...prev]);
-    setShowForm(false);
-  };
-
-  const handleUpdate = (updated: ProductVersion) => {
-    setVersions((prev) => {
-      // If version was set to active, demote previous active ones
-      if (updated.status === "active") {
-        return prev.map((v) =>
-          v.id === updated.id ? updated : v.status === "active" ? { ...v, status: "supported" as const } : v
-        );
-      }
-      return prev.map((v) => (v.id === updated.id ? updated : v));
-    });
-  };
 
   const activeVersion = versions.find((v) => v.status === "active");
 
@@ -331,13 +270,13 @@ export default function VersionsPage() {
         </div>
 
         {showForm && (
-          <NewVersionForm onCreated={handleCreated} onCancel={() => setShowForm(false)} />
+          <NewVersionForm onCancel={() => setShowForm(false)} />
         )}
 
         {error && (
           <div className="mt-4 flex items-center gap-2 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
             <AlertTriangle className="h-4 w-4 shrink-0" />
-            {error}
+            {error instanceof Error ? error.message : "Failed to load versions"}
           </div>
         )}
 
@@ -352,7 +291,7 @@ export default function VersionsPage() {
         ) : (
           <div>
             {versions.map((v) => (
-              <VersionRow key={v.id} version={v} onUpdate={handleUpdate} />
+              <VersionRow key={v.id} version={v} />
             ))}
           </div>
         )}

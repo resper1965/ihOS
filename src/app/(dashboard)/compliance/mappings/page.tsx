@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { 
   Database, 
   RefreshCw, 
@@ -13,108 +13,49 @@ import {
   FileSpreadsheet,
   X
 } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
+import { useGrcMappings, useSyncMappings, grcMappingKeys } from "@/hooks/queries/use-grc-mappings";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 
-interface MappingItem {
-  id: number;
-  framework_code: string;
-  target_control_id: string;
-  scf_control_code: string;
-  synced_at: string | null;
-  scf_controls?: {
-    control_name: string;
-    description: string;
-  } | null;
-}
-
 export default function MappingsPage() {
-  const [mappings, setMappings] = useState<MappingItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+
+  // ── React Query hooks ──────────────────────────────────────────────────────
+  const { data: mappings = [], isLoading: loading } = useGrcMappings();
+  const syncMutation = useSyncMappings();
+
+  // ── Local UI state ─────────────────────────────────────────────────────────
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("ALL");
-  const [syncing, setSyncing] = useState(false);
-  const [syncResult, setSyncResult] = useState<any>(null);
-  
+  const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
+
   // Upload modal state
   const [isUploadOpen, setIsUploadOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [uploadResult, setUploadResult] = useState<any>(null);
-
-  const supabase = createClient() as any;
-
-  const fetchMappings = async () => {
-    setLoading(true);
-    try {
-      // Query scf_framework_mappings and join scf_controls
-      const { data, error } = await supabase
-        .from("scf_framework_mappings")
-        .select(`
-          id,
-          framework_code,
-          target_control_id,
-          scf_control_code,
-          synced_at,
-          scf_controls:scf_control_code (
-            control_name,
-            description
-          )
-        `);
-
-      if (error) throw error;
-      setMappings(data || []);
-    } catch (err) {
-      console.error("Error fetching mappings:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchMappings();
-  }, []);
+  const [uploadResult, setUploadResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Sync handler
-  const handleSync = async () => {
-    setSyncing(true);
+  const handleSync = () => {
     setSyncResult(null);
-    try {
-      const res = await fetch("/api/compliance/mappings/sync", {
-        method: "POST",
-        headers: { "Accept": "application/json" },
-      });
-
-      const contentType = res.headers.get("content-type") ?? "";
-      if (!contentType.includes("application/json")) {
-        throw new Error(`Server returned ${res.status} — sync route not found. Check deployment.`);
-      }
-
-      const data = await res.json();
-      if (data.success) {
+    syncMutation.mutate(undefined, {
+      onSuccess: (data) => {
         setSyncResult({
           success: true,
           message: `Synchronization complete! ${data.controls_synced} SCF controls updated to version ${data.scf_version}.`
         });
-        fetchMappings();
-      } else {
+      },
+      onError: (err) => {
         setSyncResult({
           success: false,
-          message: `Error: ${data.error}`
+          message: err instanceof Error ? err.message : "Network error connecting to sync service."
         });
-      }
-    } catch (err) {
-      setSyncResult({
-        success: false,
-        message: err instanceof Error ? err.message : "Network error connecting to sync service."
-      });
-    } finally {
-      setSyncing(false);
-    }
+      },
+    });
   };
 
   // Upload handler
@@ -147,7 +88,7 @@ export default function MappingsPage() {
           message: `Success! Imported ${data.imported_count} control mappings successfully.`
         });
         setUploadFile(null);
-        fetchMappings();
+        queryClient.invalidateQueries({ queryKey: grcMappingKeys.lists() });
       } else {
         setUploadResult({
           success: false,
@@ -197,10 +138,10 @@ export default function MappingsPage() {
             id="mappings-sync-button"
             variant="primary"
             onClick={handleSync}
-            disabled={syncing}
-            icon={<RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />}
+            disabled={syncMutation.isPending}
+            icon={<RefreshCw className={`h-4 w-4 ${syncMutation.isPending ? "animate-spin" : ""}`} />}
           >
-            {syncing ? "Synchronizing..." : "Synchronize SCF"}
+            {syncMutation.isPending ? "Synchronizing..." : "Synchronize SCF"}
           </Button>
         </div>
       </div>

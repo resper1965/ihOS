@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState } from "react";
 import { FileText, Upload, Sparkles, Layers, RefreshCw, Globe, Box, Handshake } from "lucide-react";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { createClient } from "@/lib/supabase/client";
 import { useVersion } from "@/lib/context/version-context";
-import type { ComplianceDocument } from "@/lib/supabase/types";
+import { useDocuments, useDeleteDocument } from "@/hooks/queries/use-documents";
 
 // Extracted Components
 import { UploadWizard } from "@/components/documents/UploadWizard";
@@ -24,66 +23,26 @@ const TABS: { key: DocTab; label: string; icon: React.ReactNode; description: st
 
 export default function DocumentsPage() {
   const { versions, activeVersion } = useVersion();
-  const [documents, setDocuments] = useState<ComplianceDocument[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const { data: documents = [], isLoading: loading, refetch } = useDocuments();
+  const deleteDocument = useDeleteDocument();
   const [activeTab, setActiveTab] = useState<DocTab>("all");
   
   // Wizard state
   const [isWizardOpen, setIsWizardOpen] = useState(false);
-  const supabase = createClient();
 
-  const fetchDocuments = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("compliance_documents")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (error) {
-        console.error("[documents] Fetch error:", error.message);
-        setDocuments([]);
-      } else {
-        setDocuments((data ?? []) as unknown as ComplianceDocument[]);
-      }
-    } catch (err) {
-      console.error("[documents] Unexpected error:", err);
-      setDocuments([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [supabase]);
-
-  useEffect(() => {
-    fetchDocuments();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const deletingId = deleteDocument.isPending ? (deleteDocument.variables ?? null) : null;
 
   const handleDelete = async (docId: number) => {
-    if (deletingId) return;
+    if (deleteDocument.isPending) return;
 
     const confirmDelete = window.confirm("Are you sure you want to delete this document and all its vector chunks from the RAG?");
     if (!confirmDelete) return;
 
-    setDeletingId(docId);
     try {
-      const { error } = await supabase
-        .from("compliance_documents")
-        .delete()
-        .eq("id", docId);
-
-      if (error) {
-        console.error("[documents] Delete error:", error.message);
-        alert("Failed to delete document.");
-      } else {
-        setDocuments((prev) => prev.filter((d) => d.id !== docId));
-      }
+      await deleteDocument.mutateAsync(docId);
     } catch (err) {
       console.error("[documents] Delete failed:", err);
-      alert("Unexpected error while deleting.");
-    } finally {
-      setDeletingId(null);
+      alert("Failed to delete document.");
     }
   };
 
@@ -121,7 +80,7 @@ export default function DocumentsPage() {
             variant="ghost"
             size="sm"
             icon={<RefreshCw className="h-4 w-4" />}
-            onClick={fetchDocuments}
+            onClick={() => refetch()}
             loading={loading}
           >
             Refresh
@@ -193,7 +152,7 @@ export default function DocumentsPage() {
           activeVersion={activeVersion}
           onDelete={handleDelete}
           deletingId={deletingId}
-          onRefresh={fetchDocuments}
+          onRefresh={() => refetch()}
         />
       </div>
 
@@ -201,7 +160,7 @@ export default function DocumentsPage() {
       <UploadWizard 
         isOpen={isWizardOpen}
         onClose={() => setIsWizardOpen(false)}
-        onSuccess={fetchDocuments}
+        onSuccess={() => refetch()}
         versions={versions}
         activeVersion={activeVersion}
       />

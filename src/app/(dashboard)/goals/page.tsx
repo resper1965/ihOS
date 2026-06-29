@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState } from "react";
 import { 
   Target, 
   Plus, 
@@ -18,20 +18,26 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { useUser } from "@/hooks/use-user";
+import { useGoals, useGoalTasks, useCreateGoal, useCreateTask, useToggleTask } from "@/hooks/queries/use-goals";
+import type { Goal, Task } from "@/hooks/queries/use-goals";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import type { AgentGoal, AgentTask } from "@/lib/supabase/types";
 
 export default function GoalsPage() {
-  const { user, isLoading: userLoading } = useUser();
-  const [goals, setGoals] = useState<AgentGoal[]>([]);
-  const [tasks, setTasks] = useState<AgentTask[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useUser();
+
+  // React Query hooks
+  const { data: goals = [], isLoading: loading, error: goalsError } = useGoals();
+  const { data: tasks = [] } = useGoalTasks();
+  const createGoal = useCreateGoal();
+  const createTask = useCreateTask();
+  const toggleTask = useToggleTask();
+
+  const error = goalsError ? "Unable to load data." : null;
 
   // Filter/Search states
   const [search, setSearch] = useState("");
@@ -50,18 +56,14 @@ export default function GoalsPage() {
   const [newGoalTitle, setNewGoalTitle] = useState("");
   const [newGoalDesc, setNewGoalDesc] = useState("");
   const [newGoalFramework, setNewGoalFramework] = useState("ISO-27001");
-  const [goalModalLoading, setGoalModalLoading] = useState(false);
 
   // New Task form states
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDesc, setNewTaskDesc] = useState("");
   const [newTaskDeadline, setNewTaskDeadline] = useState("");
   const [newTaskAgent, setNewTaskAgent] = useState("Compliance Agent");
-  const [taskModalLoading, setTaskModalLoading] = useState(false);
 
-  const [isPending, startTransition] = useTransition();
-
-  // Typecast to any to bypass Supabase schema generic inference issues in Client Component
+  // Supabase client for inline goal progress updates (complex logic kept inline)
   let supabase: any = null;
   try {
     supabase = createClient();
@@ -69,66 +71,15 @@ export default function GoalsPage() {
     // Safe fallback for Next.js static build prerendering
   }
 
-  useEffect(() => {
-    if (userLoading) return;
-    fetchData();
-  }, [user, userLoading]);
-
-  async function fetchData() {
-    setLoading(true);
-    setError(null);
-    try {
-      if (!user || !supabase) {
-        // No user or Supabase client — show empty state
-        setGoals([]);
-        setTasks([]);
-        setLoading(false);
-        return;
-      }
-
-      // Fetch goals
-      const { data: goalsData, error: goalsError } = await supabase
-        .from("agent_goals")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (goalsError) throw goalsError;
-
-      // Fetch tasks
-      const { data: tasksData, error: tasksError } = await supabase
-        .from("agent_tasks")
-        .select("*")
-        .order("deadline", { ascending: true });
-
-      if (tasksError) throw tasksError;
-
-      setGoals(goalsData || []);
-      setTasks(tasksData || []);
-    } catch (err) {
-      console.error("Error fetching goals/tasks:", err);
-      setError("Unable to load data.");
-      setGoals([]);
-      setTasks([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   // Recalculates progress for a goal and updates it in DB
-  async function updateGoalProgress(goalId: string, updatedTasks: AgentTask[]) {
-    const goalTasks = updatedTasks.filter((t) => t.goal_id === goalId);
+  // Kept inline — complex optimistic + DB logic that doesn't map cleanly to a single mutation
+  async function updateGoalProgress(goalId: string) {
+    const goalTasks = tasks.filter((t) => t.goal_id === goalId);
     const total = goalTasks.length;
     const completed = goalTasks.filter((t) => t.status === "completed").length;
     
     const progressVal = total > 0 ? Math.round((completed / total) * 100) : 0;
     const statusVal = (progressVal === 100 ? "completed" : progressVal > 0 ? "in_progress" : "not_started") as "not_started" | "in_progress" | "completed";
-
-    // Optimistically update local state first
-    setGoals((prev) =>
-      prev.map((g) =>
-        g.id === goalId ? { ...g, progress: progressVal, status: statusVal } : g
-      )
-    );
 
     if (!user || !supabase) return; // skip DB write in demo mode
 
@@ -142,131 +93,69 @@ export default function GoalsPage() {
     }
   }
 
-  async function handleToggleTaskStatus(task: AgentTask) {
-    const newStatus = (task.status === "completed" ? "pending" : "completed") as "pending" | "in_progress" | "completed";
-    
-    // Update local state first
-    const updatedTasks = tasks.map((t) =>
-      t.id === task.id ? { ...t, status: newStatus } : t
+  async function handleToggleTaskStatus(task: Task) {
+    toggleTask.mutate(
+      { taskId: task.id, currentStatus: task.status },
+      {
+        onSuccess: () => {
+          // Recalculate goal progress after toggle completes
+          updateGoalProgress(task.goal_id);
+        },
+      }
     );
-    setTasks(updatedTasks);
-
-    // Trigger progress update
-    await updateGoalProgress(task.goal_id, updatedTasks);
-
-    if (!user || !supabase) return; // skip DB write in demo mode
-
-    try {
-      await supabase
-        .from("agent_tasks")
-        .update({ status: newStatus })
-        .eq("id", task.id);
-    } catch (err) {
-      console.error("Error updating task status:", err);
-    }
   }
 
-  async function handleCreateGoal(e: React.FormEvent) {
+  function handleCreateGoal(e: React.FormEvent) {
     e.preventDefault();
     if (!newGoalTitle.trim()) return;
 
-    setGoalModalLoading(true);
-    try {
-      const newGoalObj: Omit<AgentGoal, "id" | "created_at" | "updated_at"> = {
+    createGoal.mutate(
+      {
         user_id: user?.id || "demo-user",
         framework_code: newGoalFramework,
         title: newGoalTitle,
         description: newGoalDesc || null,
-        status: "not_started",
-        progress: 0,
-      };
-
-      if (user && supabase) {
-        const { data, error: insertError } = await supabase
-          .from("agent_goals")
-          .insert(newGoalObj)
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
-        if (data) setGoals((prev) => [data as AgentGoal, ...prev]);
-      } else {
-        // Demo mode fallback
-        const mockNewGoal: AgentGoal = {
-          ...newGoalObj,
-          id: crypto.randomUUID(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-        setGoals((prev) => [mockNewGoal, ...prev]);
+      },
+      {
+        onSuccess: () => {
+          setNewGoalTitle("");
+          setNewGoalDesc("");
+          setIsGoalModalOpen(false);
+        },
       }
-
-      // Reset form
-      setNewGoalTitle("");
-      setNewGoalDesc("");
-      setIsGoalModalOpen(false);
-    } catch (err) {
-      console.error("Error creating goal:", err);
-    } finally {
-      setGoalModalLoading(false);
-    }
+    );
   }
 
-  async function handleCreateTask(e: React.FormEvent) {
+  function handleCreateTask(e: React.FormEvent) {
     e.preventDefault();
     if (!newTaskTitle.trim() || !selectedGoalIdForTask) return;
 
-    setTaskModalLoading(true);
-    try {
-      const newTaskObj: Omit<AgentTask, "id" | "created_at" | "updated_at"> = {
-        goal_id: selectedGoalIdForTask,
+    const goalId = selectedGoalIdForTask;
+
+    createTask.mutate(
+      {
+        goal_id: goalId,
         title: newTaskTitle,
         description: newTaskDesc || null,
-        status: "pending",
         deadline: newTaskDeadline ? new Date(newTaskDeadline).toISOString() : null,
         assigned_agent: newTaskAgent || null,
-      };
+      },
+      {
+        onSuccess: () => {
+          // Auto-expand goal accordion to show new task
+          setExpandedGoals((prev) => ({ ...prev, [goalId]: true }));
 
-      let createdTask: AgentTask;
+          // Recalculate goal progress
+          updateGoalProgress(goalId);
 
-      if (user && supabase) {
-        const { data, error: insertError } = await supabase
-          .from("agent_tasks")
-          .insert(newTaskObj)
-          .select()
-          .single();
-
-        if (insertError) throw insertError;
-        createdTask = data as AgentTask;
-      } else {
-        // Demo mode fallback
-        createdTask = {
-          ...newTaskObj,
-          id: crypto.randomUUID(),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
+          // Reset form
+          setNewTaskTitle("");
+          setNewTaskDesc("");
+          setNewTaskDeadline("");
+          setIsTaskModalOpen(false);
+        },
       }
-
-      const updatedTasks = [...tasks, createdTask];
-      setTasks(updatedTasks);
-      
-      // Auto-expand goal accordion to show new task
-      setExpandedGoals((prev) => ({ ...prev, [selectedGoalIdForTask]: true }));
-
-      // Recalculate goal progress
-      await updateGoalProgress(selectedGoalIdForTask, updatedTasks);
-
-      // Reset form
-      setNewTaskTitle("");
-      setNewTaskDesc("");
-      setNewTaskDeadline("");
-      setIsTaskModalOpen(false);
-    } catch (err) {
-      console.error("Error creating task:", err);
-    } finally {
-      setTaskModalLoading(false);
-    }
+    );
   }
 
   function toggleExpandGoal(goalId: string) {
@@ -632,7 +521,7 @@ export default function GoalsPage() {
             <Button variant="ghost" type="button" onClick={() => setIsGoalModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" loading={goalModalLoading}>
+            <Button variant="primary" type="submit" loading={createGoal.isPending}>
               Create Project
             </Button>
           </div>
@@ -695,7 +584,7 @@ export default function GoalsPage() {
             <Button variant="ghost" type="button" onClick={() => setIsTaskModalOpen(false)}>
               Cancel
             </Button>
-            <Button variant="primary" type="submit" loading={taskModalLoading}>
+            <Button variant="primary" type="submit" loading={createTask.isPending}>
               Save Task
             </Button>
           </div>

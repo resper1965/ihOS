@@ -5,6 +5,7 @@ import { runAssessment, DEFAULT_FRAMEWORKS } from '@/lib/assessment/engine';
 import { syncScorecard } from '@/lib/assessment/assessment-to-scorecard';
 import { RunAssessmentRequestSchema, buildEvidenceBatch } from '@/lib/assessment/persistence';
 import type { AssessmentConfig } from '@/lib/assessment/engine';
+import { logger } from '@/lib/logger';
 
 export const maxDuration = 300; // 5 minutes for deep scans
 
@@ -66,7 +67,7 @@ export async function POST(req: Request) {
       .single();
 
     if (insertError) {
-      console.error('[Assessment] Failed to persist:', insertError.message);
+      logger.error('Failed to persist assessment', { context: 'assessments/run', meta: { error: insertError.message } });
       // Return result anyway even if persistence fails
     }
 
@@ -83,20 +84,12 @@ export async function POST(req: Request) {
           .insert(evidenceBatch as any);
 
         if (evidenceInsertError) {
-          console.error(
-            '[Assessment] Failed to persist evidence evaluations:',
-            evidenceInsertError.message,
-          );
+          logger.error('Failed to persist evidence evaluations', { context: 'assessments/run', meta: { error: evidenceInsertError.message } });
         } else {
-          console.log(
-            `[Assessment] Persisted ${evidenceBatch.length} evidence evaluations for assessment ${assessmentRecord.id}`,
-          );
+          logger.info(`Persisted ${evidenceBatch.length} evidence evaluations`, { context: 'assessments/run', meta: { assessmentId: assessmentRecord.id } });
         }
       } catch (evidenceErr) {
-        console.error(
-          '[Assessment] Evidence evaluation insert threw:',
-          evidenceErr instanceof Error ? evidenceErr.message : evidenceErr,
-        );
+        logger.error('Evidence evaluation insert threw', { context: 'assessments/run', error: evidenceErr });
       }
     }
 
@@ -104,12 +97,9 @@ export async function POST(req: Request) {
     // This ensures the dashboard always reflects REAL evaluated data.
     try {
       await syncScorecard(assessmentRecord?.id ?? result.id, result);
-      console.log('[Assessment] Scorecard synced successfully');
+      logger.info('Scorecard synced', { context: 'assessments/run' });
     } catch (scorecardErr) {
-      console.error(
-        '[Assessment] Scorecard sync failed (non-fatal):',
-        scorecardErr instanceof Error ? scorecardErr.message : scorecardErr,
-      );
+      logger.warn('Scorecard sync failed (non-fatal)', { context: 'assessments/run', error: scorecardErr });
     }
 
     return NextResponse.json({
@@ -121,7 +111,7 @@ export async function POST(req: Request) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Assessment failed.';
-    console.error('[Assessment] Error:', message);
+    logger.error(message, { context: 'assessments/run', error: err });
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }

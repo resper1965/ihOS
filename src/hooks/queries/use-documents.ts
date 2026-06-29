@@ -15,7 +15,7 @@ const DocumentSchema = z.object({
   title: z.string().nullable().default(null),
   language: z.string().nullable().default(null),
   year: z.number().nullable().default(null),
-  category: z.string().nullable().default(null),
+  category: z.enum(["ISMS_CORE", "B2B_GEHC", "B2B_DIRECT", "OPERATIONAL"]).nullable().default(null),
   file_format: z.string().nullable().default(null),
   file_size_bytes: z.number().nullable().default(null),
   total_chunks: z.number().nullable().default(null),
