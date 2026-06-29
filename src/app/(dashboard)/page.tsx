@@ -36,15 +36,15 @@ async function getDashboardStats() {
       frameworkScores,
       evaluationSummary,
     ] = await Promise.all([
-      // Distinct framework count from compliance_assessments
-      supabase.from("compliance_assessments").select("framework_code"),
+      // Fetch frameworks from assessments
+      supabase.from("assessments").select("frameworks"),
       // Total documents
       supabase
         .from("compliance_documents")
         .select("id", { count: "exact", head: true }),
       // Total assessments
       supabase
-        .from("compliance_assessments")
+        .from("assessments")
         .select("id", { count: "exact", head: true }),
       // Latest score from intelligence_snapshots
       supabase
@@ -60,12 +60,18 @@ async function getDashboardStats() {
     ]);
 
     // Count distinct frameworks — prefer Supabase, fall back to compliance-data
-    const distinctFrameworks = frameworksResult.data
-      ? new Set(frameworksResult.data.map((r) => r.framework_code)).size
-      : 0;
+    const distinctFrameworks = new Set<string>();
+    if (frameworksResult.data) {
+      for (const row of frameworksResult.data) {
+        const fws = (row as any).frameworks;
+        if (Array.isArray(fws)) {
+          fws.forEach((fw: string) => distinctFrameworks.add(fw));
+        }
+      }
+    }
     const frameworkCount =
-      distinctFrameworks > 0
-        ? distinctFrameworks.toString()
+      distinctFrameworks.size > 0
+        ? distinctFrameworks.size.toString()
         : frameworkScores.length > 0
           ? frameworkScores.length.toString()
           : "0";

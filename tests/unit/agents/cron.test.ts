@@ -67,6 +67,7 @@ vi.mock('@/lib/supabase/admin', () => {
     builder.not = vi.fn().mockReturnThis();
     builder.lte = vi.fn().mockReturnThis();
     builder.update = vi.fn().mockReturnThis();
+    builder.range = vi.fn().mockReturnThis();
 
     builder.single = vi.fn().mockImplementation(async () => {
       const data = getMockData();
@@ -75,9 +76,11 @@ vi.mock('@/lib/supabase/admin', () => {
       }
       return { data: Array.isArray(data) ? data[0] : data, error: null };
     });
+    builder.maybeSingle = builder.single;
 
     builder.insert = vi.fn().mockResolvedValue({ error: null });
     builder.upsert = vi.fn().mockResolvedValue({ error: null });
+    builder.delete = vi.fn().mockReturnThis();
 
     builder.then = (resolve: any) => {
       const data = getMockData();
