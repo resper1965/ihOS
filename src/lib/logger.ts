@@ -2,6 +2,9 @@
 // Structured logger for API routes — replaces raw console.error/warn calls.
 // Outputs JSON in production for log aggregation (Vercel, Datadog, etc).
 // Falls back to human-readable format in development.
+// Integrates with Sentry: errors → captureException, info/warn → breadcrumbs.
+
+import * as Sentry from '@sentry/nextjs';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -54,12 +57,27 @@ function log(level: LogLevel, message: string, opts?: { context?: string; meta?:
       break;
     case 'info':
       console.info(formatted);
+      Sentry.addBreadcrumb({ category: opts?.context ?? 'app', message, level: 'info', data: opts?.meta });
       break;
     case 'warn':
       console.warn(formatted);
+      Sentry.addBreadcrumb({ category: opts?.context ?? 'app', message, level: 'warning', data: opts?.meta });
       break;
     case 'error':
       console.error(formatted);
+      // Report to Sentry with context tags
+      if (opts?.error instanceof Error) {
+        Sentry.captureException(opts.error, {
+          tags: { context: opts?.context },
+          extra: opts?.meta,
+        });
+      } else {
+        Sentry.captureMessage(message, {
+          level: 'error',
+          tags: { context: opts?.context },
+          extra: opts?.meta,
+        });
+      }
       break;
   }
 }
