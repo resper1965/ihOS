@@ -120,7 +120,7 @@ export function useQuestionnaire() {
 
         if (!parseRes.ok) {
           const body = await parseRes.json().catch(() => ({}));
-          throw new Error(body.error ?? `Erro ao analisar arquivo (${parseRes.status})`);
+          throw new Error(body.error ?? `Error analyzing file (${parseRes.status})`);
         }
 
         const parseBody = await parseRes.json();
@@ -143,7 +143,7 @@ export function useQuestionnaire() {
 
         if (!genRes.ok) {
           const body = await genRes.json().catch(() => ({}));
-          throw new Error(body.error ?? `Erro ao gerar respostas (${genRes.status})`);
+          throw new Error(body.error ?? `Error generating answers (${genRes.status})`);
         }
 
         const genBody = await genRes.json();
@@ -174,7 +174,7 @@ export function useQuestionnaire() {
         patch({ state: "reviewing", answers: answersWithCoords, progress: 100 });
       } catch (err: unknown) {
         if (err instanceof DOMException && err.name === "AbortError") return;
-        fail(err instanceof Error ? err.message : "Erro desconhecido");
+        fail(err instanceof Error ? err.message : "Unknown error");
       }
     },
     [patch, fail],

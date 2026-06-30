@@ -13,7 +13,7 @@ function relativeTime(isoDate: string | null): string {
   if (!isoDate) return "";
   const diffMs = Date.now() - new Date(isoDate).getTime();
   const diffMin = Math.floor(diffMs / 60_000);
-  if (diffMin < 1) return "agora";
+  if (diffMin < 1) return "just now";
   if (diffMin < 60) return `${diffMin}m`;
   const diffHours = Math.floor(diffMin / 60);
   if (diffHours < 24) return `${diffHours}h`;
@@ -22,7 +22,7 @@ function relativeTime(isoDate: string | null): string {
 }
 
 function truncateTitle(title: string | null): string {
-  if (!title) return "Nova Conversa";
+  if (!title) return "New Conversation";
   return title.length > 40 ? title.slice(0, 40) + "…" : title;
 }
 
@@ -98,7 +98,7 @@ export const ConversationList = forwardRef<ConversationListHandle, ConversationL
 
     // Delete conversation
     async function handleDelete(id: string) {
-      const confirmed = window.confirm("Tem certeza que deseja excluir esta conversa?");
+      const confirmed = window.confirm("Are you sure you want to delete this conversation?");
       if (!confirmed) return;
 
       setDeletingId(id);
@@ -125,7 +125,7 @@ export const ConversationList = forwardRef<ConversationListHandle, ConversationL
       <div className="flex h-full flex-col">
         {/* Header + New button */}
         <div className="flex items-center justify-between border-b border-border-glass px-4 py-3">
-          <h3 className="text-sm font-semibold text-text-primary">Conversas</h3>
+          <h3 className="text-sm font-semibold text-text-primary">Conversations</h3>
           <button
             onClick={handleCreate}
             disabled={creating}
@@ -136,7 +136,7 @@ export const ConversationList = forwardRef<ConversationListHandle, ConversationL
             ) : (
               <Plus className="h-3.5 w-3.5" />
             )}
-            Nova
+            New
           </button>
         </div>
 
@@ -158,7 +158,7 @@ export const ConversationList = forwardRef<ConversationListHandle, ConversationL
             <div className="flex flex-col items-center justify-center px-4 py-10">
               <MessageSquare className="mb-2 h-8 w-8 text-slate-600" />
               <p className="text-center text-sm text-text-muted">
-                Nenhuma conversa ainda. Envie uma mensagem para iniciar.
+                No conversations yet. Send a message to start.
               </p>
             </div>
           ) : (
@@ -213,7 +213,7 @@ export const ConversationList = forwardRef<ConversationListHandle, ConversationL
                         }}
                         disabled={deletingId === conv.id}
                         className="shrink-0 rounded-lg p-1.5 text-slate-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
-                        aria-label="Excluir conversa"
+                        aria-label="Delete conversation"
                       >
                         {deletingId === conv.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />

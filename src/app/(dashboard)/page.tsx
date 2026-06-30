@@ -127,7 +127,7 @@ export default function DashboardPage() {
       icon: ShieldCheck,
       color: "text-primary",
       bgColor: "bg-primary/10",
-      tooltipContent: "Quantidade de regulamentações ativas com auditorias iniciadas (ex: ISO 27001, SOC 2, ISO 27701).",
+      tooltipContent: "Number of active regulations with initiated audits (e.g., ISO 27001, SOC 2, ISO 27701).",
     },
     {
       label: "Analyzed Documents",
@@ -135,7 +135,7 @@ export default function DashboardPage() {
       icon: FileText,
       color: "text-accent",
       bgColor: "bg-accent/10",
-      tooltipContent: "Total de documentos ingeridos e indexados na base vetorial RAG (Políticas, Evidências, Relatórios).",
+      tooltipContent: "Total documents ingested and indexed in the RAG vector base (Policies, Evidence, Reports).",
     },
     {
       label: "Active Assessments",
@@ -143,7 +143,7 @@ export default function DashboardPage() {
       icon: ClipboardCheck,
       color: "text-warning",
       bgColor: "bg-warning/10",
-      tooltipContent: "Número de auditorias em andamento ou recentemente concluídas para análise de gap.",
+      tooltipContent: "Number of audits in progress or recently completed for gap analysis.",
     },
     {
       label: "Compliance Score",
@@ -151,7 +151,7 @@ export default function DashboardPage() {
       icon: TrendingUp,
       color: "text-accent",
       bgColor: "bg-accent/10",
-      tooltipContent: "Média agregada das avaliações de conformidade de todos os frameworks monitorados.",
+      tooltipContent: "Aggregated average of compliance evaluations across all monitored frameworks.",
     },
   ] as const;
 

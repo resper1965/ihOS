@@ -274,8 +274,8 @@ function HelpTrigger() {
     <button
       onClick={toggleHelp}
       className="flex h-8 w-8 items-center justify-center rounded-xl bg-black/5 dark:bg-white/5 text-text-secondary hover:bg-black/10 dark:hover:bg-white/10 hover:text-text-primary transition-colors"
-      aria-label="Abrir Ajuda"
-      title="Central de Ajuda"
+      aria-label="Open Help"
+      title="Help Center"
     >
       <HelpCircle className="h-4.5 w-4.5 stroke-[1.5]" />
     </button>

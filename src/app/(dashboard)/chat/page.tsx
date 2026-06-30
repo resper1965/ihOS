@@ -27,9 +27,9 @@ import { Progress } from "@/components/ui/progress";
 import type { UIMessage } from "ai";
 
 const SUGGESTION_CHIPS = [
-  { text: "Qual nosso score ISO 27001?", icon: ShieldCheck },
-  { text: "Analise gaps ISO 27701", icon: FileSearch },
-  { text: "Resumo executivo", icon: BarChart3 },
+  { text: "What is our ISO 27001 score?", icon: ShieldCheck },
+  { text: "Analyze ISO 27701 gaps", icon: FileSearch },
+  { text: "Executive summary", icon: BarChart3 },
 ] as const;
 
 const ACCEPTED_FILE_TYPES = ".xlsx,.csv,.pdf";
@@ -66,7 +66,7 @@ export default function ChatPage({ conversationId: initialConversationId }: Chat
       const res = await fetch(`/api/conversations/${convId}`);
       if (!res.ok) {
         if (res.status === 404) {
-          setChatError("Conversa não encontrada.");
+          setChatError("Conversation not found.");
           return;
         }
         throw new Error(`Failed to load conversation: ${res.status}`);
@@ -82,7 +82,7 @@ export default function ChatPage({ conversationId: initialConversationId }: Chat
       setInitialMessages(uiMessages);
     } catch (err) {
       console.error("[ChatPage] Load conversation error:", err);
-      setChatError("Erro ao carregar conversa.");
+      setChatError("Error loading conversation.");
     } finally {
       setIsLoadingConversation(false);
     }
@@ -126,7 +126,7 @@ export default function ChatPage({ conversationId: initialConversationId }: Chat
     }),
     onError: (error) => {
       console.error("[ChatPage] Chat error:", error);
-      setChatError(error.message || "Erro ao processar mensagem. Tente novamente.");
+      setChatError(error.message || "Error processing message. Please try again.");
     },
   });
 
@@ -277,7 +277,7 @@ export default function ChatPage({ conversationId: initialConversationId }: Chat
         {isLoadingConversation ? (
           <div className="flex h-full flex-col items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
-            <p className="mt-2 text-sm text-text-muted">Carregando conversa…</p>
+            <p className="mt-2 text-sm text-text-muted">Loading conversation...</p>
           </div>
         ) : isEmpty ? (
           /* ─── Empty State ─── */
@@ -311,7 +311,7 @@ export default function ChatPage({ conversationId: initialConversationId }: Chat
                 </div>
                 <div className="glass-card flex items-center gap-2 px-4 py-3">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                  <span className="text-sm text-text-muted">Analisando…</span>
+                  <span className="text-sm text-text-muted">Analyzing...</span>
                 </div>
               </div>
             )}
@@ -327,7 +327,7 @@ export default function ChatPage({ conversationId: initialConversationId }: Chat
           <div className="flex items-center gap-3 rounded-xl border border-red-500/20 bg-red-950/20 px-4 py-3">
             <AlertCircle className="h-4 w-4 shrink-0 text-red-400" />
             <span className="text-sm text-red-400">
-              {chatError || chatHookError?.message || "Erro inesperado."}
+              {chatError || chatHookError?.message || "Unexpected error."}
             </span>
             <button
               onClick={() => setChatError(null)}

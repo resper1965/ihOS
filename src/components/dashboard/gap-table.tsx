@@ -240,7 +240,7 @@ export function GapTable({ gaps }: GapTableProps) {
                     currentDir={sortDir}
                     onSort={handleSort}
                   />
-                  <HelpTooltip content="Gravidade da lacuna (Critical/High/Medium/Low) baseada no impacto regulatório e na ausência de controles." />
+                  <HelpTooltip content="Gap severity (Critical/High/Medium/Low) based on regulatory impact and absence of controls." />
                 </div>
               </th>
               <th className="px-4 py-3 text-left">
@@ -252,7 +252,7 @@ export function GapTable({ gaps }: GapTableProps) {
                     currentDir={sortDir}
                     onSort={handleSort}
                   />
-                  <HelpTooltip content="Certeza estatística da IA (0-100%) na resposta, calculada a partir da precisão das evidências e políticas encontradas." />
+                  <HelpTooltip content="AI statistical confidence (0-100%) in the response, calculated from the precision of evidence and policies found." />
                 </div>
               </th>
               <th className="w-10 px-4 py-3" />

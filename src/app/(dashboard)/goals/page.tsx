@@ -252,10 +252,10 @@ export default function GoalsPage() {
           </div>
           <input
             type="text"
-            placeholder="Buscar metas..."
+            placeholder="Search goals..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            aria-label="Buscar metas"
+            aria-label="Search goals"
             className="w-full rounded-xl border border-border-glass bg-white/5 py-2 pl-9 pr-4 text-sm text-text-primary outline-none transition-all duration-300 focus:border-primary/50"
           />
         </div>
