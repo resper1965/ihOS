@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { getFrameworkScores, getEvaluationSummary } from "@/lib/data/compliance-data";
 import * as Sentry from "@sentry/nextjs";
@@ -9,7 +9,20 @@ export const dynamic = "force-dynamic";
 // Helpers
 // ---------------------------------------------------------------------------
 
-async function getDashboardStats(supabase: any) {
+async function getDashboardStats(supabase: any, versionId: string | null) {
+  const frameworksQuery = supabase.from("assessments").select("frameworks");
+  if (versionId) frameworksQuery.eq("product_version_id", versionId);
+
+  const docsQuery = supabase
+    .from("compliance_documents")
+    .select("id", { count: "exact", head: true });
+  if (versionId) docsQuery.or(`product_version_id.is.null,product_version_id.eq.${versionId}`);
+
+  const assessmentsQuery = supabase
+    .from("assessments")
+    .select("id", { count: "exact", head: true });
+  if (versionId) assessmentsQuery.eq("product_version_id", versionId);
+
   const [
     frameworksResult,
     docsResult,
@@ -18,16 +31,9 @@ async function getDashboardStats(supabase: any) {
     frameworkScores,
     evaluationSummary,
   ] = await Promise.all([
-    // Fetch frameworks from assessments
-    supabase.from("assessments").select("frameworks"),
-    // Total documents
-    supabase
-      .from("compliance_documents")
-      .select("id", { count: "exact", head: true }),
-    // Total assessments
-    supabase
-      .from("assessments")
-      .select("id", { count: "exact", head: true }),
+    frameworksQuery,
+    docsQuery,
+    assessmentsQuery,
     // Latest score from intelligence_snapshots
     supabase
       .from("intelligence_snapshots")
@@ -121,9 +127,9 @@ async function getRecentActivity(supabase: any) {
   return [];
 }
 
-async function getMSRBaselineData(supabase: any) {
+async function getMSRBaselineData(supabase: any, versionId: string | null) {
   // 1. Fetch active baseline
-  const { data: baseline, error: baselineError } = await supabase
+  const query = supabase
     .from("msr_baselines")
     .select(`
       id,
@@ -135,7 +141,13 @@ async function getMSRBaselineData(supabase: any) {
         version_code
       )
     `)
-    .eq("status", "active")
+    .eq("status", "active");
+
+  if (versionId) {
+    query.eq("product_version_id", versionId);
+  }
+
+  const { data: baseline, error: baselineError } = await query
     .limit(1)
     .maybeSingle();
 
@@ -197,7 +209,7 @@ async function getMSRBaselineData(supabase: any) {
       id: baseline.id,
       name: baseline.name,
       description: baseline.description,
-      version_code: baseline.product_versions?.version_code || "v2.2.x",
+      version_code: baseline.product_versions?.version_code || "Global Baseline",
     },
     stats: {
       totalMCR,
@@ -215,7 +227,7 @@ async function getMSRBaselineData(supabase: any) {
 // GET Route
 // ---------------------------------------------------------------------------
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -224,10 +236,12 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const versionId = req.nextUrl.searchParams.get("versionId");
+
     const [stats, activities, msrData] = await Promise.all([
-      getDashboardStats(supabase),
+      getDashboardStats(supabase, versionId),
       getRecentActivity(supabase).catch(() => []),
-      getMSRBaselineData(supabase).catch(() => null),
+      getMSRBaselineData(supabase, versionId).catch(() => null),
     ]);
 
     return NextResponse.json({

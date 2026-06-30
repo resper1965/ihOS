@@ -17,6 +17,7 @@ import { RealtimeRefresher } from "@/components/dashboard/realtime-refresher";
 import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
 import { useDashboardStats } from "@/hooks/queries/use-dashboard";
+import { useVersion } from "@/lib/context/version-context";
 
 // ---------------------------------------------------------------------------
 // Dashboard Skeleton Loader
@@ -101,7 +102,8 @@ function DashboardSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function DashboardPage() {
-  const { data, isLoading, error } = useDashboardStats();
+  const { activeVersion } = useVersion();
+  const { data, isLoading, error } = useDashboardStats(activeVersion?.id ?? null);
 
   if (isLoading) {
     return <DashboardSkeleton />;

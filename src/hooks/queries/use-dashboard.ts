@@ -52,14 +52,17 @@ export type DashboardData = z.infer<typeof DashboardDataSchema>;
 
 export const dashboardKeys = {
   all: ['dashboard'] as const,
-  stats: () => [...dashboardKeys.all, 'stats'] as const,
+  stats: (versionId: string | null) => [...dashboardKeys.all, 'stats', versionId] as const,
 };
 
-export function useDashboardStats() {
+export function useDashboardStats(versionId: string | null = null) {
   return useQuery<DashboardData>({
-    queryKey: dashboardKeys.stats(),
+    queryKey: dashboardKeys.stats(versionId),
     queryFn: async () => {
-      const res = await fetch('/api/dashboard/stats');
+      const url = versionId 
+        ? `/api/dashboard/stats?versionId=${encodeURIComponent(versionId)}` 
+        : '/api/dashboard/stats';
+      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to load dashboard stats');
       const json = await res.json();
       if (!json.success) throw new Error(json.error || 'Failed to load dashboard stats');
