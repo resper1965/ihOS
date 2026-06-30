@@ -63,8 +63,12 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Missing ID' }, { status: 400 });
     }
 
-    // Rely on database ON DELETE CASCADE for evidence_evaluations if applicable,
-    // or just delete the assessment directly.
+    // Manually delete related records to avoid foreign key constraint errors
+    // since the database might not have ON DELETE CASCADE configured.
+    await supabase.from('poam_items').delete().eq('assessment_id', id);
+    await supabase.from('evidence_evaluations').delete().eq('assessment_id', id);
+    await supabase.from('intelligence_snapshots').delete().eq('assessment_id', id);
+
     const { error } = await supabase
       .from('assessments')
       .delete()
