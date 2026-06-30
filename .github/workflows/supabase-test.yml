@@ -24,7 +24,6 @@ jobs:
 
       - name: Start Supabase Local Containers
         run: |
-          supabase init
           supabase start
 
       - name: Run pgTap Database Tests
