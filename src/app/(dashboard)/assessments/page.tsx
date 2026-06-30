@@ -11,12 +11,14 @@ import {
   ScanSearch,
   ChevronDown,
   ChevronUp,
+  Edit2,
+  Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { useVersion } from "@/lib/context/version-context";
-import { useAssessments, useAssessmentEvidence } from "@/hooks/queries/use-assessments";
+import { useAssessments, useAssessmentEvidence, useUpdateAssessment, useDeleteAssessment } from "@/hooks/queries/use-assessments";
 import type { AssessmentRecord } from "@/hooks/queries/use-assessments";
 import { RunAssessmentModal } from "@/components/assessments/run-assessment-modal";
 import { EvidenceTable } from "@/components/assessments/evidence-table";
@@ -34,6 +36,8 @@ export default function AssessmentsPage() {
 
   // T005: React Query hook replaces raw Supabase fetch
   const { data: assessments = [], isLoading: loading } = useAssessments(activeVersion?.id ?? null);
+  const updateAssessment = useUpdateAssessment();
+  const deleteAssessment = useDeleteAssessment();
 
   useEffect(() => {
     fetch("/api/compliance/frameworks")
@@ -52,6 +56,29 @@ export default function AssessmentsPage() {
   const toggleExpand = useCallback((assessmentId: string) => {
     setExpandedId((prev) => (prev === assessmentId ? null : assessmentId));
   }, []);
+
+  const handleEdit = async (id: string, currentName: string) => {
+    const newName = window.prompt("Enter new assessment name:", currentName);
+    if (newName !== null && newName.trim() !== "" && newName !== currentName) {
+      try {
+        await updateAssessment.mutateAsync({ id, data: { name: newName.trim() } });
+      } catch (err) {
+        console.error("Failed to update assessment", err);
+        alert("Failed to update assessment.");
+      }
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this assessment? This action cannot be undone.")) {
+      try {
+        await deleteAssessment.mutateAsync(id);
+      } catch (err) {
+        console.error("Failed to delete assessment", err);
+        alert("Failed to delete assessment.");
+      }
+    }
+  };
 
   const filtered = assessments.filter((a) => {
     const matchesSearch = a.name
@@ -205,7 +232,23 @@ export default function AssessmentsPage() {
                         {item.status === "completed" ? "Complete" : "Running"}
                       </Badge>
                       <button
-                        onClick={() => toggleExpand(item.id)}
+                        onClick={(e) => { e.preventDefault(); handleEdit(item.id, item.name); }}
+                        className="rounded-lg p-1.5 hover:bg-white/10 transition-colors text-text-muted hover:text-primary"
+                        aria-label="Edit assessment name"
+                        disabled={updateAssessment.isPending}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.preventDefault(); handleDelete(item.id); }}
+                        className="rounded-lg p-1.5 hover:bg-red-500/10 transition-colors text-text-muted hover:text-red-400"
+                        aria-label="Delete assessment"
+                        disabled={deleteAssessment.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={(e) => { e.preventDefault(); toggleExpand(item.id); }}
                         className="rounded-lg p-1.5 hover:bg-white/10 transition-colors text-text-muted hover:text-[#53c4cd]"
                         aria-label={isExpanded ? "Collapse evidence" : "Expand evidence"}
                       >

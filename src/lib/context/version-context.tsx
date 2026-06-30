@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { ProductVersion } from "@/lib/supabase/types";
+import { useVersions } from "@/hooks/queries/use-versions";
 
 interface VersionContextType {
   versions: ProductVersion[];
@@ -14,40 +15,46 @@ interface VersionContextType {
 const VersionContext = createContext<VersionContextType | undefined>(undefined);
 
 export function VersionProvider({ children }: { children: React.ReactNode }) {
-  const [versions, setVersions] = useState<ProductVersion[]>([]);
+  const { data: versionsData = [], isLoading: isQueryLoading } = useVersions();
+  const versions = versionsData as unknown as ProductVersion[];
+  
   const [activeVersion, setActiveVersionState] = useState<ProductVersion | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isInit, setIsInit] = useState(false);
+  const [isLoadingDefault, setIsLoadingDefault] = useState(true);
 
   useEffect(() => {
-    async function fetchVersions() {
+    if (isQueryLoading) return;
+    if (isInit) {
+      // Ensure activeVersion is still valid if versions updated
+      if (activeVersion && !versions.find(v => v.id === activeVersion.id)) {
+        setActiveVersionState(null);
+      }
+      return;
+    }
+
+    async function initActiveVersion() {
       try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from("product_versions")
-          .select("*")
-          .order("version_code", { ascending: false });
-
-        if (error) throw error;
-
-        const fetchedVersions = data || [];
-        setVersions(fetchedVersions as unknown as ProductVersion[]);
-
+        const fetchedVersions = versions;
+        
         // 1. Check localStorage for user override
         const storedVersionId = localStorage.getItem("ihos_active_version_id");
         if (storedVersionId) {
           const matched = fetchedVersions.find((v) => v.id === storedVersionId);
           if (matched) {
-            setActiveVersionState(matched as unknown as ProductVersion);
-            setIsLoading(false);
+            setActiveVersionState(matched);
+            setIsInit(true);
+            setIsLoadingDefault(false);
             return;
           } else if (storedVersionId === "global") {
             setActiveVersionState(null);
-            setIsLoading(false);
+            setIsInit(true);
+            setIsLoadingDefault(false);
             return;
           }
         }
 
         // 2. Fetch server-side default from agent_org_state
+        const supabase = createClient();
         const { data: defaultState } = await supabase
           .from("agent_org_state")
           .select("state_value")
@@ -60,24 +67,26 @@ export function VersionProvider({ children }: { children: React.ReactNode }) {
             (v) => v.id === defaultState.state_value
           );
           if (defaultVersion) {
-            setActiveVersionState(defaultVersion as unknown as ProductVersion);
-            setIsLoading(false);
+            setActiveVersionState(defaultVersion);
+            setIsInit(true);
+            setIsLoadingDefault(false);
             return;
           }
         }
 
         // 3. Fallback: first active version
         const active = fetchedVersions.find((v) => v.status === "active") || fetchedVersions[0] || null;
-        setActiveVersionState((active ?? null) as unknown as ProductVersion | null);
+        setActiveVersionState(active);
+        setIsInit(true);
       } catch (err) {
-        console.error("[VersionContext] Error fetching versions:", err);
+        console.error("[VersionContext] Error initializing active version:", err);
       } finally {
-        setIsLoading(false);
+        setIsLoadingDefault(false);
       }
     }
 
-    fetchVersions();
-  }, []);
+    initActiveVersion();
+  }, [isQueryLoading, versions, isInit, activeVersion]);
 
   const setActiveVersion = (version: ProductVersion | null) => {
     setActiveVersionState(version);
@@ -87,6 +96,8 @@ export function VersionProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem("ihos_active_version_id", "global");
     }
   };
+
+  const isLoading = isQueryLoading || isLoadingDefault;
 
   return (
     <VersionContext.Provider value={{ versions, activeVersion, setActiveVersion, isLoading }}>

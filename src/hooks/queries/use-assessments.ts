@@ -169,3 +169,45 @@ export function useRunAssessment() {
     },
   });
 }
+
+export function useDeleteAssessment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/assessments/${id}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to delete assessment');
+      }
+      return json.success;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assessmentKeys.lists() });
+    },
+  });
+}
+
+export function useUpdateAssessment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: { name?: string } }) => {
+      const res = await fetch(`/api/assessments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok || !json.success) {
+        throw new Error(json.error || 'Failed to update assessment');
+      }
+      return json.success;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: assessmentKeys.lists() });
+    },
+  });
+}
