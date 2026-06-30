@@ -3,57 +3,19 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Target, Calendar, ArrowRight, ListTodo, AlertCircle } from "lucide-react";
-import { createClient } from "@/lib/supabase/client";
 import { useUser } from "@/hooks/use-user";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import type { AgentGoal, AgentTask } from "@/lib/supabase/types";
+import { useGoals, useGoalTasks, type Goal, type Task } from "@/hooks/queries/use-goals";
 
 export function GoalsWidget() {
   const { user, isLoading: userLoading } = useUser();
-  const [goals, setGoals] = useState<AgentGoal[]>([]);
-  const [tasks, setTasks] = useState<AgentTask[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (userLoading) return;
-    
-    async function fetchData() {
-      try {
-        const supabase = createClient();
-        
-        if (!user) {
-          setGoals([]);
-          setTasks([]);
-          setLoading(false);
-          return;
-        }
+  // Query goals and tasks using React Query hooks
+  const { data: goals = [], isLoading: goalsLoading } = useGoals();
+  const { data: tasks = [], isLoading: tasksLoading } = useGoalTasks();
 
-        // Fetch goals
-        const { data: goalsData } = await supabase
-          .from("agent_goals")
-          .select("*")
-          .order("created_at", { ascending: false });
-
-        // Fetch tasks
-        const { data: tasksData } = await supabase
-          .from("agent_tasks")
-          .select("*")
-          .order("deadline", { ascending: true });
-
-        setGoals((goalsData || []) as unknown as AgentGoal[]);
-        setTasks((tasksData || []) as unknown as AgentTask[]);
-      } catch (err) {
-        console.error("Error fetching widget data:", err);
-        setGoals([]);
-        setTasks([]);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchData();
-  }, [user, userLoading]);
+  const loading = userLoading || goalsLoading || tasksLoading;
 
   // Compute stats
   const activeGoals = goals.filter((g) => g.status !== "completed");

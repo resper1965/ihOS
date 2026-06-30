@@ -1,37 +1,65 @@
+"use client";
+
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Card } from "@/components/ui/card";
 import { Database, Activity, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { createClient } from "@/lib/supabase/server";
+import { useKbHealth } from "@/hooks/queries/use-kb-health";
 
-export default async function KnowledgeBasePage() {
-  const supabase = await createClient();
+// ---------------------------------------------------------------------------
+// Skeleton Loader
+// ---------------------------------------------------------------------------
 
-  const { count: totalDocs } = await supabase
-    .from("compliance_documents")
-    .select("*", { count: "exact", head: true });
+function KnowledgeBaseSkeleton() {
+  return (
+    <div className="w-full space-y-8 animate-pulse">
+      {/* Page Title skeleton */}
+      <div className="space-y-2">
+        <div className="h-8 w-64 rounded bg-white/10" />
+        <div className="h-4 w-96 rounded bg-white/5" />
+      </div>
 
-  const { count: totalChunks } = await supabase
-    .from("document_chunks")
-    .select("*", { count: "exact", head: true });
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="glass-card p-6 space-y-4">
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-5 rounded bg-white/10" />
+              <div className="h-4 w-32 rounded bg-white/10" />
+            </div>
+            <div className="h-8 w-20 rounded bg-white/10 mt-2" />
+            <div className="h-3 w-40 rounded bg-white/5 mt-2" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-  const { count: missingIndexDocs } = await supabase
-    .from("compliance_documents")
-    .select("*", { count: "exact", head: true })
-    .eq("total_chunks", 0);
+// ---------------------------------------------------------------------------
+// Page Component
+// ---------------------------------------------------------------------------
 
-  // Approximate ISO coverage by counting chunks that have iso_controls
-  const { data: chunksWithIso } = await supabase
-    .from("document_chunks")
-    .select("id")
-    .not("iso_controls", "is", null);
-    
-  const isoCoverageCount = chunksWithIso?.length || 0;
-  const isoPercentage = totalChunks && totalChunks > 0 
-    ? Math.round((isoCoverageCount / totalChunks) * 100) 
-    : 0;
+export default function KnowledgeBasePage() {
+  const { data, isLoading, error } = useKbHealth();
+
+  if (isLoading) {
+    return <KnowledgeBaseSkeleton />;
+  }
+
+  if (error || !data) {
+    return (
+      <div className="w-full text-center py-12">
+        <h2 className="text-xl font-bold text-red-400">Error loading Knowledge Base metrics</h2>
+        <p className="text-sm text-text-muted mt-2">
+          {error instanceof Error ? error.message : "Failed to load GRC vector index stats"}
+        </p>
+      </div>
+    );
+  }
+
+  const { totalDocs, totalChunks, missingIndexDocs, isoCoverageCount, isoPercentage } = data;
 
   return (
-    <div className="w-full space-y-8">
+    <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
       <PageTitleRegistrar
         title="Knowledge Base Health"
         subtitle="RAG indexing metrics and ISO-27001 coverage"
@@ -41,19 +69,19 @@ export default async function KnowledgeBasePage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card title="Ingested Documents" icon={<Database className="h-5 w-5 text-primary" />}>
           <div className="mt-2">
-            <span className="text-3xl font-bold text-text-primary">{totalDocs || 0}</span>
+            <span className="text-3xl font-bold text-text-primary">{totalDocs}</span>
           </div>
         </Card>
 
         <Card title="Vectorized Chunks" icon={<Activity className="h-5 w-5 text-purple-400" />}>
           <div className="mt-2">
-            <span className="text-3xl font-bold text-text-primary">{totalChunks || 0}</span>
+            <span className="text-3xl font-bold text-text-primary">{totalChunks}</span>
           </div>
         </Card>
 
         <Card title="Indexing Failures" icon={<AlertTriangle className="h-5 w-5 text-red-400" />}>
           <div className="mt-2">
-            <span className="text-3xl font-bold text-text-primary">{missingIndexDocs || 0}</span>
+            <span className="text-3xl font-bold text-text-primary">{missingIndexDocs}</span>
             <p className="text-xs text-text-muted mt-1">Docs with no processed chunks.</p>
           </div>
         </Card>
@@ -65,7 +93,6 @@ export default async function KnowledgeBasePage() {
           </div>
         </Card>
       </div>
-
     </div>
   );
 }
