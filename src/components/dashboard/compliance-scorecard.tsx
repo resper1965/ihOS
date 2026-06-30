@@ -49,6 +49,13 @@ function getEffectiveScore(fw: FrameworkScore): number | null {
   return fw.score ?? fw.coverage ?? null;
 }
 
+function getComplianceLabel(score: number | null): string {
+  if (score === null) return "Pending Evaluation";
+  if (score >= 80) return "Compliant";
+  if (score >= 50) return "Partial Compliance";
+  return "Non-Compliant";
+}
+
 export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -94,7 +101,7 @@ export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
               {effectiveScore !== null && (
                 <span className={`text-sm font-medium ${getScoreColor(effectiveScore)}`}>%</span>
               )}
-              <span className="ml-2 text-xs text-text-muted">Overall Compliance (Compliant)</span>
+              <span className="ml-2 text-xs text-text-muted">Overall Compliance ({getComplianceLabel(effectiveScore)})</span>
             </div>
 
             {/* Dual Phase Progress Bars */}

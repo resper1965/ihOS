@@ -118,33 +118,29 @@ const DOMAIN_FULL_NAMES: Record<string, string> = {
 
 export async function calculateFrameworkScoresLocally(supabase: any): Promise<FrameworkScore[]> {
   try {
-    // 1. Fetch all framework mappings for the 5 main frameworks in pages of 1000
-    const frameworks = ["iso27001", "iso27701", "BR-LGPD", "HI-2013", "EU-GDPR"];
+    // 1. Fetch all framework mappings in pages of 1000
     let mappings: any[] = [];
+    let page = 0;
+    const pageSize = 1000;
     
-    for (const code of frameworks) {
-      let page = 0;
-      const pageSize = 1000;
-      while (true) {
-        const { data, error } = await supabase
-          .from("scf_framework_mappings")
-          .select("framework_code, target_control_id, scf_control_code")
-          .eq("framework_code", code)
-          .range(page * pageSize, (page + 1) * pageSize - 1);
-          
-        if (error) {
-          console.error(`[compliance-data] Error fetching mappings for ${code}:`, error);
-          break;
-        }
-        if (!data || data.length === 0) {
-          break;
-        }
-        mappings = mappings.concat(data);
-        if (data.length < pageSize) {
-          break;
-        }
-        page++;
+    while (true) {
+      const { data, error } = await supabase
+        .from("scf_framework_mappings")
+        .select("framework_code, target_control_id, scf_control_code")
+        .range(page * pageSize, (page + 1) * pageSize - 1);
+        
+      if (error) {
+        console.error(`[compliance-data] Error fetching mappings:`, error);
+        break;
       }
+      if (!data || data.length === 0) {
+        break;
+      }
+      mappings = mappings.concat(data);
+      if (data.length < pageSize) {
+        break;
+      }
+      page++;
     }
 
 
@@ -192,10 +188,9 @@ export async function calculateFrameworkScoresLocally(supabase: any): Promise<Fr
       }
     }
 
-    // Framework names and icons are resolved from the canonical registry
-    // (eliminates hardcoded duplication — Constitution Principle III)
+    const dynamicFrameworks = Array.from(mappingsByFramework.keys());
 
-    for (const code of frameworks) {
+    for (const code of dynamicFrameworks) {
       const fwMappings = mappingsByFramework.get(code) || [];
       const controlCodes = Array.from(new Set(fwMappings.map(m => m.scf_control_code)));
       const totalRequired = controlCodes.length;

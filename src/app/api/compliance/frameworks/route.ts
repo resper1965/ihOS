@@ -1,6 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getScfFrameworks } from "@/lib/standard-api/client";
 
 export const dynamic = "force-dynamic";
 
@@ -36,14 +37,33 @@ export async function GET() {
       "cis_v8": "CIS Controls v8"
     };
 
-    // Ensure we always return at least this rich set of common frameworks
-    const baseCodes = Object.keys(fallbackNames);
-    const combinedCodes = [...new Set([...baseCodes, ...uniqueCodes])];
+    // Try to fetch from Standard API
+    let apiFrameworks: Array<{ framework_code: string; framework_name: string }> = [];
+    try {
+      const rawApiFrameworks = await getScfFrameworks();
+      if (Array.isArray(rawApiFrameworks) && rawApiFrameworks.length > 0) {
+        apiFrameworks = rawApiFrameworks.map(f => ({
+          framework_code: f.framework_code || f.id,
+          framework_name: f.framework_name || f.name || f.framework_code || f.id
+        }));
+      }
+    } catch (apiError) {
+      logger.warn("Failed to fetch frameworks from Standard API, falling back to local/DB only", { error: apiError });
+    }
 
-    const frameworks = combinedCodes.map(code => ({
-      framework_code: code,
-      framework_name: fallbackNames[code] || fallbackNames[code.toLowerCase()] || code
-    }));
+    // Merge API frameworks with local mappings and fallback names
+    const apiCodes = apiFrameworks.map(f => f.framework_code);
+    const baseCodes = Object.keys(fallbackNames);
+    const combinedCodes = [...new Set([...apiCodes, ...baseCodes, ...uniqueCodes])];
+
+    const frameworks = combinedCodes.map(code => {
+      // Prefer API name, then fallback name, then code
+      const apiMatch = apiFrameworks.find(f => f.framework_code === code);
+      return {
+        framework_code: code,
+        framework_name: apiMatch?.framework_name || fallbackNames[code] || fallbackNames[code.toLowerCase()] || code
+      };
+    });
 
     return NextResponse.json({
       success: true,

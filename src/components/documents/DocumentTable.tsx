@@ -81,10 +81,6 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
       (doc.category?.toLowerCase().includes(q) ?? false)
     );
     
-    if (activeVersion) {
-      return matchesSearch && (doc.product_version_id === null || doc.product_version_id === activeVersion.id);
-    }
-    
     return matchesSearch;
   });
 

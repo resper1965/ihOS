@@ -443,16 +443,24 @@ async function localComplianceScore(
       .select("scf_control_code")
       .eq("framework_code", frameworkCode);
 
-    const totalControls = mappings?.length || 114;
-    const implementedControls = evals ? evals.filter((e: any) => e.is_compliant).map((e: any) => e.control_code) : [];
-    const score = totalControls > 0 ? Math.round((implementedControls.length / totalControls) * 100) : 75;
+    const totalControls = mappings?.length || 0;
+    
+    // Only count implemented controls that actually belong to this framework
+    const frameworkControlIds = new Set(mappings?.map((m: any) => m.scf_control_code) || []);
+    
+    let implementedCount = 0;
+    if (evals && frameworkControlIds.size > 0) {
+      implementedCount = evals.filter((e: any) => e.is_compliant && frameworkControlIds.has(e.control_code)).length;
+    }
+
+    const score = totalControls > 0 ? Math.round((implementedCount / totalControls) * 100) : 0;
 
     return {
       framework_code: frameworkCode,
       regulation_id: frameworkCode,
       score,
       overall_score: score,
-      scf_controls_implemented_count: implementedControls.length,
+      scf_controls_implemented_count: implementedCount,
       total_required_controls: totalControls,
       assessed_at: new Date().toISOString(),
       message: "Computed locally via active evidence evaluations",

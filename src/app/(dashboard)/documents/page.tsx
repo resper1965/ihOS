@@ -46,8 +46,16 @@ export default function DocumentsPage() {
     }
   };
 
+  // Apply activeVersion filter first
+  const versionFilteredDocs = documents.filter(doc => {
+    if (activeVersion) {
+      return doc.product_version_id === null || doc.product_version_id === activeVersion.id;
+    }
+    return true;
+  });
+
   // Filter documents by active tab
-  const filteredByTab = documents.filter((doc) => {
+  const filteredByTab = versionFilteredDocs.filter((doc) => {
     switch (activeTab) {
       case "global":
         return doc.product_version_id === null && doc.category !== "B2B_GEHC" && doc.category !== "B2B_DIRECT";
@@ -60,10 +68,10 @@ export default function DocumentsPage() {
     }
   });
 
-  const totalChunks = documents.reduce((sum, d) => sum + (d.total_chunks ?? 0), 0);
-  const globalCount = documents.filter(d => d.product_version_id === null && d.category !== "B2B_GEHC" && d.category !== "B2B_DIRECT").length;
-  const productCount = documents.filter(d => d.product_version_id !== null).length;
-  const b2bCount = documents.filter(d => d.category === "B2B_GEHC" || d.category === "B2B_DIRECT").length;
+  const totalChunks = versionFilteredDocs.reduce((sum, d) => sum + (d.total_chunks ?? 0), 0);
+  const globalCount = versionFilteredDocs.filter(d => d.product_version_id === null && d.category !== "B2B_GEHC" && d.category !== "B2B_DIRECT").length;
+  const productCount = versionFilteredDocs.filter(d => d.product_version_id !== null).length;
+  const b2bCount = versionFilteredDocs.filter(d => d.category === "B2B_GEHC" || d.category === "B2B_DIRECT").length;
 
   return (
     <div className="w-full space-y-8">
@@ -100,7 +108,7 @@ export default function DocumentsPage() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card title="ISMS Documents" icon={<FileText className="h-5 w-5 text-primary" />}>
           <div className="mt-2">
-            <span className="text-3xl font-bold text-text-primary">{documents.length}</span>
+            <span className="text-3xl font-bold text-text-primary">{versionFilteredDocs.length}</span>
             <p className="text-xs text-text-muted mt-1">Total guidelines and specifications.</p>
           </div>
         </Card>
@@ -137,7 +145,7 @@ export default function DocumentsPage() {
             <span className={`ml-1 text-[10px] font-mono px-1 py-0.5 rounded ${
               activeTab === tab.key ? "bg-primary/20 text-primary" : "bg-white/5 text-slate-500"
             }`}>
-              {tab.key === "all" ? documents.length : tab.key === "global" ? globalCount : tab.key === "product" ? productCount : b2bCount}
+              {tab.key === "all" ? versionFilteredDocs.length : tab.key === "global" ? globalCount : tab.key === "product" ? productCount : b2bCount}
             </span>
           </button>
         ))}
