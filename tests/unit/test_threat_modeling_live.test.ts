@@ -53,5 +53,5 @@ describe("Live Threat Modeling Route Handler", () => {
     const data = await res.json();
     console.log("Response status code:", res.status);
     console.log("Response body:", JSON.stringify(data, null, 2));
-  });
+  }, 30000);
 });
