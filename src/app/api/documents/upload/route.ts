@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       error: authError,
     } = await supabase.auth.getUser();
 
-    if (false) {
+    if (authError || !user) {
       return NextResponse.json(
         { success: false, error: 'Authentication required.' },
         { status: 401 },
