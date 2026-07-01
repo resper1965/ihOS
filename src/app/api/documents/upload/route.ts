@@ -118,7 +118,7 @@ export async function POST(req: Request) {
     if (storageError) {
       logger.error('Storage upload failed', { context: 'documents/upload', meta: { error: storageError.message } });
       return NextResponse.json(
-        { success: false, error: 'Failed to upload document to storage.' },
+        { success: false, error: `Failed to upload document to storage: ${storageError.message}` },
         { status: 500 },
       );
     }
@@ -150,7 +150,7 @@ export async function POST(req: Request) {
     if (insertError || !docRecord) {
       logger.error('Insert document record failed', { context: 'documents/upload', meta: { error: insertError?.message } });
       return NextResponse.json(
-        { success: false, error: 'Failed to create document record.' },
+        { success: false, error: `Failed to create document record: ${insertError?.message || 'No docRecord returned'}` },
         { status: 500 },
       );
     }
