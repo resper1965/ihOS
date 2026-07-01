@@ -209,7 +209,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
         className="hidden"
         aria-label="Select evidence file"
       />
-      <div className="glass-card w-full max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-[#1e293b] shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-[#1e293b] shadow-2xl flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
           <div className="flex items-center gap-2">
