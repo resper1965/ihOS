@@ -190,6 +190,8 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  let generatedData: any;
+
   try {
     console.log('[ThreatModeling] Generating threat model:', {
       product_version,
@@ -197,19 +199,45 @@ export async function POST(request: NextRequest) {
       skip_enrichment,
     });
 
+
     const result = await ihosEngine.generateThreatModel({
       product_version,
       target_frameworks,
       skip_grc_enrichment: skip_enrichment,
     }, token);
-
-    return NextResponse.json({ success: true, data: result });
+    
+    generatedData = result as any;
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Threat model generation failed';
     logger.warn("Engine error, falling back to mock", { context: "threat-modeling", meta: { message } });
     
     // Fallback to mock data if the engine fails (e.g. 500 error)
-    const fallbackData = createMockThreatModel(product_version, target_frameworks);
-    return NextResponse.json({ success: true, data: fallbackData });
+    generatedData = createMockThreatModel(product_version, target_frameworks);
   }
+
+  // Save the generated (or mock) model to the database
+  const admin = createAdminClient();
+
+  const { data: inserted, error: insertError } = await admin
+    .from('threat_models')
+    .insert({
+      id: crypto.randomUUID(),
+      model_data: generatedData,
+      product_version: product_version,
+      target_frameworks: target_frameworks,
+      status: 'draft',
+    })
+    .select('*')
+    .single();
+
+  if (insertError || !inserted) {
+    logger.error('Failed to save generated threat model to database', { 
+      context: 'threat-modeling', 
+      meta: { error: insertError?.message } 
+    });
+    return NextResponse.json({ error: 'Failed to save threat model to database' }, { status: 500 });
+  }
+
+  return NextResponse.json({ success: true, data: { ...(inserted.model_data as any), id: inserted.id } });
 }
+
