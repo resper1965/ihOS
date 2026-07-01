@@ -204,7 +204,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.txt,.md,.csv"
+        accept=".pdf,.docx,.txt,.md,.csv"
         onChange={handleFileChange}
         className="hidden"
         aria-label="Select evidence file"
@@ -433,7 +433,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                         ) : (
                           <div className="space-y-1">
                             <p className="text-sm font-semibold text-white">Select document</p>
-                            <p className="text-xs text-text-muted">PDF, TXT, MD, CSV (Max 20MB)</p>
+                            <p className="text-xs text-text-muted">PDF, DOCX, TXT, MD, CSV (Max 20MB)</p>
                           </div>
                         )}
                       </div>

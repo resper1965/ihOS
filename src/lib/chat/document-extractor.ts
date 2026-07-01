@@ -6,6 +6,7 @@ const ACCEPTED_TYPES = new Map<string, string>([
   ['text/plain', 'txt'],
   ['text/markdown', 'md'],
   ['text/csv', 'csv'],
+  ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'docx'],
   // Common MIME aliases
   ['application/x-pdf', 'pdf'],
   ['text/x-markdown', 'md'],
@@ -16,6 +17,7 @@ const EXTENSION_MAP: Record<string, string> = {
   '.txt': 'txt',
   '.md': 'md',
   '.csv': 'csv',
+  '.docx': 'docx',
 };
 
 export function resolveFileType(file: File): string | null {
@@ -43,6 +45,14 @@ export async function extractText(file: File, fileType: string): Promise<string>
     const result = await parser.getText();
     await parser.destroy();
     return result.text;
+  }
+
+  if (fileType === 'docx') {
+    const arrayBuf = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuf);
+    const mammoth = await import('mammoth');
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value;
   }
 
   // txt, md, csv — read as UTF-8

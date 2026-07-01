@@ -71,7 +71,7 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           success: false,
-          error: `Unsupported file type "${file.type || 'unknown'}". Accepted: pdf, txt, md, csv.`,
+          error: `Unsupported file type "${file.type || 'unknown'}". Accepted: pdf, txt, md, csv, docx.`,
         },
         { status: 400 },
       );
