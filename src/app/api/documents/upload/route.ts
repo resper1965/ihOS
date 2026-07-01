@@ -101,6 +101,8 @@ export async function POST(req: Request) {
       }
     }
 
+    const adminSupabase = createAdminClient();
+    
     // ── 4c. Upload file to Supabase Storage ──────────────────────────────
     const fileBytes = await file.arrayBuffer();
     const buffer = Buffer.from(fileBytes);
@@ -108,7 +110,7 @@ export async function POST(req: Request) {
     const uniqueFilename = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
     const storagePath = `${category}/${uniqueFilename}`;
 
-    const { error: storageError } = await supabase.storage
+    const { error: storageError } = await adminSupabase.storage
       .from('compliance_documents')
       .upload(storagePath, buffer, {
         contentType: file.type || 'application/octet-stream',
@@ -124,7 +126,7 @@ export async function POST(req: Request) {
     }
 
     // ── 5. Insert document record (status: processing) ──────────────────
-    const { data: docRecord, error: insertError } = await supabase
+    const { data: docRecord, error: insertError } = await adminSupabase
       .from('compliance_documents')
       .insert({
         filename: file.name,
@@ -161,7 +163,7 @@ export async function POST(req: Request) {
     const chunks = chunkDocument(text);
 
     if (chunks.length === 0) {
-      await supabase
+      await adminSupabase
         .from('compliance_documents')
         .update({ total_chunks: 0 })
         .eq('id', documentId);
@@ -193,14 +195,14 @@ export async function POST(req: Request) {
       scf_controls: null,
     }));
 
-    const { error: chunkInsertError } = await supabase
+    const { error: chunkInsertError } = await adminSupabase
       .from('document_chunks')
       .insert(chunkRows);
 
     if (chunkInsertError) {
       logger.error('Insert chunks failed', { context: 'documents/upload', meta: { error: chunkInsertError.message } });
       // Mark document as failed
-      await supabase
+      await adminSupabase
         .from('compliance_documents')
         .update({ total_chunks: 0 })
         .eq('id', documentId);
@@ -212,7 +214,7 @@ export async function POST(req: Request) {
     }
 
     // ── 9. Update document status ────────────────────────────────────────
-    await supabase
+    await adminSupabase
       .from('compliance_documents')
       .update({ total_chunks: chunks.length })
       .eq('id', documentId);
@@ -269,8 +271,8 @@ export async function POST(req: Request) {
     // Best-effort: mark document as errored if we have an ID
     if (documentId) {
       try {
-        const sb = await createClient();
-        await sb
+        const adminSb = createAdminClient();
+        await adminSb
           .from('compliance_documents')
           .update({ total_chunks: 0 })
           .eq('id', documentId);
