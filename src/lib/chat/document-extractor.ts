@@ -30,6 +30,13 @@ export function resolveFileType(file: File): string | null {
 
 export async function extractText(file: File, fileType: string): Promise<string> {
   if (fileType === 'pdf') {
+    // Polyfill missing browser DOM APIs required by newer pdfjs-dist
+    if (typeof globalThis !== 'undefined') {
+      if (!globalThis.DOMMatrix) (globalThis as any).DOMMatrix = class DOMMatrix {};
+      if (!globalThis.ImageData) (globalThis as any).ImageData = class ImageData {};
+      if (!globalThis.Path2D) (globalThis as any).Path2D = class Path2D {};
+    }
+
     const arrayBuf = await file.arrayBuffer();
     const { PDFParse } = await import('pdf-parse');
     const parser = new PDFParse({ data: new Uint8Array(arrayBuf) });
