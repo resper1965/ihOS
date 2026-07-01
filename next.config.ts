@@ -11,6 +11,9 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
 
+  // Fix PDF worker issues in Next.js Server environments
+  serverExternalPackages: ['pdf-parse', 'pdfjs-dist'],
+
   // Otimização de imagens com Supabase Storage
   images: {
     remotePatterns: [
