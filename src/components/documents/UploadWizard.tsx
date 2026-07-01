@@ -169,7 +169,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-[#1e293b] shadow-2xl flex flex-col max-h-[90vh]">
+      <div className="dark w-full max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-[#1e293b] shadow-2xl flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
           <div className="flex items-center gap-2">
@@ -470,15 +470,14 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
 
               {wizardStep === 3 && uploadStatus.state === "idle" && (
                 clarityReport ? (
-                  <Button
+                  <button
                     type="submit"
                     name="forceIndex"
                     value="true"
-                    variant="secondary"
-                    className="border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50"
+                    className="inline-flex items-center justify-center font-medium transition-all duration-300 ease-out h-10 px-4 text-sm rounded-xl gap-2 border border-amber-500/30 bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 hover:border-amber-500/50"
                   >
                     Force Indexing
-                  </Button>
+                  </button>
                 ) : (
                   <Button
                     type="submit"
