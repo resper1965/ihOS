@@ -170,7 +170,7 @@ export default function ThreatModelDetailPage({
 
   const status = useMemo(() => {
     const raw = (record as any)?.status ?? (data as any)?.metadata?.status ?? data?.status ?? "draft";
-    return (raw.toLowerCase().replace("modelstatus.", "")) as ThreatModelStatus;
+    return (String(raw).toLowerCase().replace("modelstatus.", "")) as ThreatModelStatus;
   }, [record, data]);
 
   const summaryStats = useMemo(() => {
@@ -342,11 +342,11 @@ export default function ThreatModelDetailPage({
 
   // ── Format helpers ────────────────────────────────────────────────────────
 
-  const formattedDate = new Date(data.created_at).toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
+  const rawCreatedAt = record?.created_at ?? (data as any)?.metadata?.generated_at ?? data?.created_at;
+  const parsedDate = rawCreatedAt ? new Date(rawCreatedAt) : null;
+  const formattedDate = parsedDate && !isNaN(parsedDate.getTime())
+    ? parsedDate.toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" })
+    : "—";
 
   // ── Render ────────────────────────────────────────────────────────────────
 
@@ -358,7 +358,7 @@ export default function ThreatModelDetailPage({
             Threat <span className="text-primary">Modeling</span>
           </>
         }
-        subtitle={`${data.model_id} — ${productVersion}`}
+        subtitle={`${data?.model_id ?? (data as any)?.id ?? id} — ${productVersion}`}
         icon={<AlertTriangle className="h-4 w-4 text-primary" />}
       />
 
@@ -366,11 +366,11 @@ export default function ThreatModelDetailPage({
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <span className="font-mono text-sm font-semibold text-primary bg-primary/10 rounded-lg px-2.5 py-1">
-            {data.model_id}
+            {data?.model_id ?? (data as any)?.id ?? id}
           </span>
           <span className="text-sm text-text-secondary">v{productVersion}</span>
           <span className="text-xs text-text-muted">
-            {data.target_frameworks?.join(", ")}
+            {(data?.target_frameworks ?? (record as any)?.target_frameworks ?? (data as any)?.metadata?.target_frameworks)?.join(", ")}
           </span>
           <Badge variant={statusVariant[status]} dot>
             {statusLabel[status]}
@@ -444,7 +444,7 @@ export default function ThreatModelDetailPage({
               <div className="space-y-3 divide-y divide-white/5 text-sm">
                 <div className="flex justify-between py-2">
                   <span className="text-text-muted">Model ID</span>
-                  <span className="font-mono font-medium text-text-primary">{data.model_id}</span>
+                  <span className="font-mono font-medium text-text-primary">{data?.model_id ?? (data as any)?.id ?? id}</span>
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="text-text-muted">Target Version</span>
@@ -453,12 +453,12 @@ export default function ThreatModelDetailPage({
                 <div className="flex justify-between py-2">
                   <span className="text-text-muted">Target Frameworks</span>
                   <span className="font-medium text-text-primary text-right">
-                    {data.target_frameworks?.join(", ") || "None"}
+                    {(data?.target_frameworks ?? (record as any)?.target_frameworks ?? (data as any)?.metadata?.target_frameworks)?.join(", ") || "None"}
                   </span>
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="text-text-muted">RAG Chunks</span>
-                  <span className="font-mono text-text-primary">{data.rag_chunks_analyzed || 0} chunks</span>
+                  <span className="font-mono text-text-primary">{data?.rag_chunks_analyzed ?? (data as any)?.rag_context?.chunks_used ?? 0} chunks</span>
                 </div>
                 <div className="flex justify-between py-2 font-medium">
                   <span className="text-text-muted">Status</span>

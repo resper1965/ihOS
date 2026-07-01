@@ -131,11 +131,11 @@ export async function GET(request: NextRequest) {
         const d = r.data as any;
         const versionVal = r.product_version ?? d?.metadata?.product_version ?? d?.product_version ?? 'unknown';
         const statusRaw = r.status ?? d?.metadata?.status ?? d?.status ?? 'draft';
-        const cleanStatus = (statusRaw.toLowerCase().replace('modelstatus.', '')) as any;
+        const cleanStatus = (String(statusRaw).toLowerCase().replace('modelstatus.', '')) as any;
 
         return {
           id: r.id,
-          model_id: d?.model_id ?? r.id,
+          model_id: d?.model_id ?? d?.id ?? r.id,
           product_version: versionVal,
           status: cleanStatus,
           threat_count: d?.threat_model?.threats?.length ?? 0,
