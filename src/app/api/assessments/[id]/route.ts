@@ -21,7 +21,7 @@ export async function PATCH(
     const body = await request.json();
     
     // Construct updates object
-    const updates: Record<string, any> = {};
+    const updates: { name?: string } = {};
     if (body.name !== undefined) updates.name = body.name;
 
     if (Object.keys(updates).length === 0) {
@@ -66,8 +66,6 @@ export async function DELETE(
     // Manually delete related records to avoid foreign key constraint errors
     // since the database might not have ON DELETE CASCADE configured.
     await supabase.from('poam_items').delete().eq('assessment_id', id);
-    await supabase.from('evidence_evaluations').delete().eq('assessment_id', id);
-    await supabase.from('intelligence_snapshots').delete().eq('assessment_id', id);
 
     const { error } = await supabase
       .from('assessments')

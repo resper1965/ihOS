@@ -30,7 +30,6 @@ import {
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 import { Progress } from "@/components/ui/progress";
 
@@ -483,11 +482,12 @@ export default function ScrmsPage() {
               {/* Search */}
               <div className="relative w-56">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-text-muted" />
-                <Input
+                <input
+                  type="text"
                   placeholder="Search controls…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 h-9 bg-white/[0.04] border-white/8 text-sm placeholder:text-text-muted"
+                  className="pl-9 h-9 w-full rounded-xl border border-white/8 bg-white/[0.04] px-4 py-2.5 text-sm text-text-primary outline-none transition-all duration-300 placeholder:text-text-muted focus:border-primary/50 focus:bg-transparent dark:focus:bg-transparent focus:ring-2 focus:ring-primary/20 hover:border-border-glass-hover"
                 />
               </div>
             </div>

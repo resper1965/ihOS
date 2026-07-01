@@ -25,7 +25,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Dialog } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
+
 
 export default function GoalsPage() {
   const { user } = useUser();
@@ -479,13 +479,19 @@ export default function GoalsPage() {
         maxWidth="max-w-lg"
       >
         <form onSubmit={handleCreateGoal} className="space-y-4">
-          <Input 
-            label="Goal Title" 
-            placeholder="e.g. Enable backup encryption"
-            value={newGoalTitle}
-            onChange={(e) => setNewGoalTitle(e.target.value)}
-            required
-          />
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-text-secondary">
+              Goal Title
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Enable backup encryption"
+              value={newGoalTitle}
+              onChange={(e) => setNewGoalTitle(e.target.value)}
+              required
+              className="w-full rounded-xl border border-border-glass bg-black/[0.03] dark:bg-white/5 px-4 py-2.5 text-sm text-text-primary outline-none transition-all duration-300 placeholder:text-text-muted focus:border-primary/50 focus:bg-transparent dark:focus:bg-transparent focus:ring-2 focus:ring-primary/20 hover:border-border-glass-hover"
+            />
+          </div>
 
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-text-secondary">
@@ -536,13 +542,19 @@ export default function GoalsPage() {
         maxWidth="max-w-lg"
       >
         <form onSubmit={handleCreateTask} className="space-y-4">
-          <Input 
-            label="Task Title" 
-            placeholder="e.g. Provision KMS keys"
-            value={newTaskTitle}
-            onChange={(e) => setNewTaskTitle(e.target.value)}
-            required
-          />
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-text-secondary">
+              Task Title
+            </label>
+            <input
+              type="text"
+              placeholder="e.g. Provision KMS keys"
+              value={newTaskTitle}
+              onChange={(e) => setNewTaskTitle(e.target.value)}
+              required
+              className="w-full rounded-xl border border-border-glass bg-black/[0.03] dark:bg-white/5 px-4 py-2.5 text-sm text-text-primary outline-none transition-all duration-300 placeholder:text-text-muted focus:border-primary/50 focus:bg-transparent dark:focus:bg-transparent focus:ring-2 focus:ring-primary/20 hover:border-border-glass-hover"
+            />
+          </div>
 
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-text-secondary">
@@ -560,12 +572,17 @@ export default function GoalsPage() {
             </select>
           </div>
 
-          <Input 
-            label="Completion Deadline" 
-            type="date"
-            value={newTaskDeadline}
-            onChange={(e) => setNewTaskDeadline(e.target.value)}
-          />
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-text-secondary">
+              Completion Deadline
+            </label>
+            <input
+              type="date"
+              value={newTaskDeadline}
+              onChange={(e) => setNewTaskDeadline(e.target.value)}
+              className="w-full rounded-xl border border-border-glass bg-black/[0.03] dark:bg-white/5 px-4 py-2.5 text-sm text-text-primary outline-none transition-all duration-300 placeholder:text-text-muted focus:border-primary/50 focus:bg-transparent dark:focus:bg-transparent focus:ring-2 focus:ring-primary/20 hover:border-border-glass-hover"
+            />
+          </div>
 
           <div className="space-y-1.5">
             <label className="block text-sm font-medium text-text-secondary">

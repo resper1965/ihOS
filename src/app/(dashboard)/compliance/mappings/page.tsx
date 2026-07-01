@@ -18,7 +18,6 @@ import { useGrcMappings, useSyncMappings, grcMappingKeys } from "@/hooks/queries
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
-import { Input } from "@/components/ui/input";
 import { Dialog } from "@/components/ui/dialog";
 
 export default function MappingsPage() {
@@ -221,13 +220,13 @@ export default function MappingsPage() {
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
             <Search className="h-4 w-4 text-text-muted" />
           </div>
-          <Input
+          <input
             id="mappings-search-input"
             type="text"
             placeholder="Search control or mapping..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-9 w-full rounded-xl border border-border-glass bg-black/[0.03] dark:bg-white/5 px-4 py-2.5 text-sm text-text-primary outline-none transition-all duration-300 placeholder:text-text-muted focus:border-primary/50 focus:bg-transparent dark:focus:bg-transparent focus:ring-2 focus:ring-primary/20 hover:border-border-glass-hover"
           />
         </div>
       </div>

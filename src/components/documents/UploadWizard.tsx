@@ -9,7 +9,6 @@ export interface UploadStatus {
   state: UploadState;
   message?: string;
   fileName?: string;
-  /** Upload progress 0-100 (only during 'uploading' state) */
   progress?: number;
 }
 
@@ -23,39 +22,23 @@ interface UploadWizardProps {
 
 export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersion }: UploadWizardProps) {
   const [wizardStep, setWizardStep] = useState(1);
-  const [docCategory, setDocCategory] = useState<"ISMS_CORE" | "B2B_GEHC" | "B2B_DIRECT" | "OPERATIONAL">("ISMS_CORE");
   const [docScope, setDocScope] = useState<"global" | "version">("global");
-  const [targetVersionId, setTargetVersionId] = useState<string>("");
-  const [docVersion, setDocVersion] = useState("1.0");
-  const [docStatus, setDocStatus] = useState<"draft" | "published" | "superseded" | "expired">("published");
-  const [expiresAt, setExpiresAt] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [clarityReport, setClarityReport] = useState<ClarityReportData | null>(null);
   const [uploadStatus, setUploadStatus] = useState<UploadStatus>({ state: "idle" });
   
+  const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Set default target version
-  useEffect(() => {
-    if (versions.length > 0 && !targetVersionId) {
-      setTargetVersionId(activeVersion?.id || versions[0].id);
-    }
-  }, [versions, activeVersion, targetVersionId]);
-
-  // Reset function
   const resetWizard = () => {
     setWizardStep(1);
-    setDocCategory("ISMS_CORE");
     setDocScope("global");
-    setDocVersion("1.0");
-    setDocStatus("published");
-    setExpiresAt("");
     setSelectedFile(null);
     setUploadStatus({ state: "idle" });
     setClarityReport(null);
+    if (formRef.current) formRef.current.reset();
   };
 
-  // Close with reset
   const handleClose = () => {
     resetWizard();
     onClose();
@@ -76,14 +59,17 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString("pt-BR", {
-      day: "2-digit", month: "2-digit", year: "numeric",
-    });
-  };
-
-  const handleUpload = async (force = false) => {
+  const handleUploadAction = async (formData: FormData) => {
     if (!selectedFile) return;
+
+    if (docScope === "global") {
+      formData.delete("productVersionId");
+    }
+
+    const force = formData.get("forceIndex") === "true";
+
+    // Re-append file in case it was not caught properly by form (since we proxy click)
+    formData.set("file", selectedFile);
 
     setClarityReport(null);
     setUploadStatus({ 
@@ -94,24 +80,6 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
     setWizardStep(3);
 
     try {
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("category", docCategory);
-      formData.append("version", docVersion);
-      formData.append("status", docStatus);
-      
-      if (docScope === "version" && targetVersionId) {
-        formData.append("productVersionId", targetVersionId);
-      }
-      
-      if (expiresAt) {
-        formData.append("expiresAt", new Date(expiresAt).toISOString());
-      }
-
-      if (force) {
-        formData.append("forceIndex", "true");
-      }
-
       // Step 1: Clarity Validation
       if (!force) {
         const validateRes = await fetch("/api/documents/validate-clarity", {
@@ -201,14 +169,6 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".pdf,.docx,.txt,.md,.csv"
-        onChange={handleFileChange}
-        className="hidden"
-        aria-label="Select evidence file"
-      />
       <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-[#1e293b] shadow-2xl flex flex-col max-h-[90vh]">
         {/* Modal Header */}
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
@@ -222,6 +182,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
             </div>
           </div>
           <button 
+            type="button"
             onClick={handleClose}
             className="rounded-lg p-1 text-slate-400 hover:bg-white/5 hover:text-white transition-colors"
           >
@@ -243,16 +204,26 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
           </div>
         </div>
 
-        {/* Modal Content */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
-          {/* STEP 1: Scope */}
-          {wizardStep === 1 && (
-            <div className="space-y-4 animate-in fade-in duration-300">
+        <form action={handleUploadAction} ref={formRef} className="flex-1 flex flex-col overflow-hidden">
+          <input
+            ref={fileInputRef}
+            name="file"
+            type="file"
+            accept=".pdf,.docx,.txt,.md,.csv"
+            onChange={handleFileChange}
+            className="hidden"
+            aria-label="Select evidence file"
+          />
+
+          {/* Modal Content */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            {/* STEP 1: Scope */}
+            <div className={wizardStep === 1 ? "space-y-4 animate-in fade-in duration-300" : "hidden"}>
               <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Document Classification</label>
                 <select
-                  value={docCategory}
-                  onChange={(e) => setDocCategory(e.target.value as any)}
+                  name="category"
+                  defaultValue="ISMS_CORE"
                   className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                 >
                   <option value="ISMS_CORE" className="bg-[#1e293b]">ISMS Core (Organization Policies)</option>
@@ -299,8 +270,8 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                 <div className="space-y-1.5 pt-1 animate-in slide-in-from-top-2 duration-200">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Target Version (nCommand Lite)</label>
                   <select
-                    value={targetVersionId}
-                    onChange={(e) => setTargetVersionId(e.target.value)}
+                    name="productVersionId"
+                    defaultValue={activeVersion?.id || versions[0]?.id}
                     className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                   >
                     {versions.map((v) => (
@@ -318,20 +289,18 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                 </div>
               )}
             </div>
-          )}
 
-          {/* STEP 2: Expiration and Lifecycle */}
-          {wizardStep === 2 && (
-            <div className="space-y-4 animate-in fade-in duration-300">
+            {/* STEP 2: Expiration and Lifecycle */}
+            <div className={wizardStep === 2 ? "space-y-4 animate-in fade-in duration-300" : "hidden"}>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label htmlFor="doc-version" className="text-xs font-bold uppercase tracking-wider text-slate-400">Document Version</label>
                   <input
                     id="doc-version"
+                    name="version"
                     type="text"
+                    defaultValue="1.0"
                     placeholder="Ex: 1.0 or 2.1"
-                    value={docVersion}
-                    onChange={(e) => setDocVersion(e.target.value)}
                     className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 font-mono"
                   />
                 </div>
@@ -340,8 +309,8 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   <label htmlFor="doc-status" className="text-xs font-bold uppercase tracking-wider text-slate-400">Publication Status</label>
                   <select
                     id="doc-status"
-                    value={docStatus}
-                    onChange={(e) => setDocStatus(e.target.value as any)}
+                    name="status"
+                    defaultValue="published"
                     className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                   >
                     <option value="published" className="bg-[#1e293b]">Active (Published to RAG)</option>
@@ -359,9 +328,8 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   </div>
                   <input
                     id="doc-expires"
+                    name="expiresAt"
                     type="date"
-                    value={expiresAt}
-                    onChange={(e) => setExpiresAt(e.target.value)}
                     className="w-full rounded-xl border border-white/10 bg-white/5 py-2 pl-10 pr-4 text-sm text-white outline-none focus:border-primary/50"
                   />
                 </div>
@@ -375,44 +343,15 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                 </p>
               </div>
             </div>
-          )}
 
-          {/* STEP 3: File Upload & Progress */}
-          {wizardStep === 3 && (
-            <div className="space-y-5 animate-in fade-in duration-300">
+            {/* STEP 3: File Upload & Progress */}
+            <div className={wizardStep === 3 ? "space-y-5 animate-in fade-in duration-300" : "hidden"}>
               {uploadStatus.state === "idle" ? (
                 <div className="space-y-4">
                   {clarityReport ? (
                     <ClarityReport report={clarityReport} />
                   ) : (
                     <>
-                      {/* Configuration Review Table */}
-                      <div className="rounded-xl bg-white/5 border border-white/5 p-4 text-xs space-y-2">
-                        <h4 className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Metadata Review</h4>
-                        <div className="grid grid-cols-2 gap-2 text-slate-300">
-                          <div><span className="text-text-muted">Category:</span> {docCategory}</div>
-                          <div><span className="text-text-muted">Version:</span> v{docVersion}</div>
-                          <div>
-                            <span className="text-text-muted">Scope:</span>{" "}
-                            {docScope === "global" ? "Global Organizational" : "Version Specific"}
-                          </div>
-                          {docScope === "version" && (
-                            <div>
-                              <span className="text-text-muted">nCommand Lite:</span>{" "}
-                              {versions.find((v) => v.id === targetVersionId)?.version_code}
-                            </div>
-                          )}
-                          <div>
-                            <span className="text-text-muted">Expiration:</span>{" "}
-                            {expiresAt ? formatDate(expiresAt) : "No expiration"}
-                          </div>
-                          <div>
-                            <span className="text-text-muted">RAG Status:</span>{" "}
-                            {docStatus === "published" ? "Published / Active" : "Do not index"}
-                          </div>
-                        </div>
-                      </div>
-
                       {/* Dropzone */}
                       <div
                         onClick={handleFileSelectClick}
@@ -446,7 +385,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   {uploadStatus.state === "uploading" && (
                     <>
                       <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                      <div className="space-y-2 flex-1">
+                      <div className="space-y-2 flex-1 w-full">
                         <p className="text-sm font-semibold text-white">{uploadStatus.message || "Uploading file..."}</p>
                         <div className="w-full bg-white/10 rounded-full h-2 overflow-hidden">
                           <div
@@ -492,71 +431,77 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                 </div>
               )}
             </div>
-          )}
-        </div>
+          </div>
 
-        <div className="border-t border-white/10 px-6 py-4 flex items-center justify-between bg-white/[0.01]">
-          <div>
-            {wizardStep > 1 && uploadStatus.state === "idle" && (
+          <div className="border-t border-white/10 px-6 py-4 flex items-center justify-between bg-white/[0.01]">
+            <div>
+              {wizardStep > 1 && uploadStatus.state === "idle" && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  icon={<ArrowLeft className="h-4 w-4" />}
+                  onClick={() => setWizardStep((prev) => prev - 1)}
+                >
+                  Back
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
               <Button
+                type="button"
                 variant="ghost"
                 size="sm"
-                icon={<ArrowLeft className="h-4 w-4" />}
-                onClick={() => setWizardStep((prev) => prev - 1)}
+                onClick={handleClose}
+                disabled={uploadStatus.state === "uploading" || uploadStatus.state === "processing"}
               >
-                Back
+                Cancel
               </Button>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleClose}
-              disabled={uploadStatus.state === "uploading" || uploadStatus.state === "processing"}
-            >
-              Cancel
-            </Button>
-            
-            {wizardStep < 3 && (
-              <Button
-                variant="primary"
-                onClick={() => setWizardStep((prev) => prev + 1)}
-              >
-                Next
-              </Button>
-            )}
-
-            {wizardStep === 3 && uploadStatus.state === "idle" && (
-              clarityReport ? (
+              
+              {wizardStep < 3 && (
                 <Button
-                  variant="secondary"
-                  className="border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50"
-                  onClick={() => handleUpload(true)}
-                >
-                  Force Indexing
-                </Button>
-              ) : (
-                <Button
+                  type="button"
                   variant="primary"
-                  onClick={() => handleUpload(false)}
-                  disabled={!selectedFile}
+                  onClick={() => setWizardStep((prev) => prev + 1)}
                 >
-                  Start Indexing
+                  Next
                 </Button>
-              )
-            )}
+              )}
 
-            {uploadStatus.state === "error" && (
-              <Button
-                variant="primary"
-                onClick={() => setUploadStatus({ state: "idle" })}
-              >
-                Try Again
-              </Button>
-            )}
+              {wizardStep === 3 && uploadStatus.state === "idle" && (
+                clarityReport ? (
+                  <Button
+                    type="submit"
+                    name="forceIndex"
+                    value="true"
+                    variant="secondary"
+                    className="border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 hover:border-amber-500/50"
+                  >
+                    Force Indexing
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={!selectedFile}
+                  >
+                    Start Indexing
+                  </Button>
+                )
+              )}
+
+              {uploadStatus.state === "error" && (
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={() => setUploadStatus({ state: "idle" })}
+                >
+                  Try Again
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
+        </form>
       </div>
     </div>
   );

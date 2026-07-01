@@ -102,7 +102,7 @@ describe('Dashboard Stats API Route', () => {
       error: new Error('Session not found'),
     });
 
-    const res = await GET();
+    const res = await GET(new Request("http://localhost") as any);
     const body = await res.json();
     console.log("401 TEST BODY:", body);
 
@@ -113,7 +113,7 @@ describe('Dashboard Stats API Route', () => {
   it('returns dashboard data successfully', async () => {
     const { GET } = await import('@/app/api/dashboard/stats/route');
 
-    const res = await GET();
+    const res = await GET(new Request("http://localhost") as any);
     const body = await res.json();
     console.log("200 TEST BODY:", body);
 

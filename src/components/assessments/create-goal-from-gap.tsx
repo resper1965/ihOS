@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Target, CheckCircle2 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useCreateGoal } from "@/hooks/queries/use-goals";
 import { useUser } from "@/hooks/use-user";
@@ -108,12 +107,20 @@ export function CreateGoalFromGap({
           </div>
 
           {/* Title */}
-          <Input
-            label="Goal Title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            hint="Auto-generated from the control code. Feel free to edit."
-          />
+          <div className="w-full space-y-1.5">
+            <label className="block text-sm font-medium text-text-secondary">
+              Goal Title
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full rounded-xl border border-border-glass bg-black/[0.03] dark:bg-white/5 px-4 py-2.5 text-sm text-text-primary outline-none transition-all duration-300 placeholder:text-text-muted focus:border-primary/50 focus:bg-transparent dark:focus:bg-transparent focus:ring-2 focus:ring-primary/20 hover:border-border-glass-hover"
+            />
+            <p className="text-xs text-text-muted">
+              Auto-generated from the control code. Feel free to edit.
+            </p>
+          </div>
 
           {/* Description */}
           <div className="w-full space-y-1.5">
