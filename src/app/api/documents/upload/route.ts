@@ -142,7 +142,8 @@ export async function POST(req: Request) {
         version: version,
         status: status as 'draft' | 'published' | 'superseded' | 'expired',
         expires_at: expiresAt || null,
-      })
+        clarity_report: formData.get("clarityReport") ? JSON.parse(formData.get("clarityReport") as string) : null,
+      } as any)
       .select('id')
       .single();
 

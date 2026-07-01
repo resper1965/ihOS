@@ -113,6 +113,10 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
         progress: 0,
       });
 
+      if (force && clarityReport) {
+        formData.append("clarityReport", JSON.stringify(clarityReport));
+      }
+
       const result = await new Promise<{ success: boolean; error?: string; data?: { id: string; chunkCount?: number } }>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhr.upload.onprogress = (e) => {
