@@ -3,9 +3,10 @@ import { createClient } from '@/lib/supabase/server';
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -13,7 +14,6 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const id = params.id;
     if (!id) {
       return NextResponse.json({ success: false, error: 'Missing ID' }, { status: 400 });
     }
@@ -48,9 +48,10 @@ export async function PATCH(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const supabase = await createClient();
     
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -58,7 +59,6 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
 
-    const id = params.id;
     if (!id) {
       return NextResponse.json({ success: false, error: 'Missing ID' }, { status: 400 });
     }

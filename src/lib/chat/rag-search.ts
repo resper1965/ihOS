@@ -13,6 +13,7 @@ export interface SearchDocumentResult {
     documentTitle: string;
     framework?: string;
     section?: string;
+    clarityReport?: any;
   };
 }
 
@@ -60,6 +61,7 @@ async function searchDocumentsWithEngine(
       documentTitle: result.filename ?? 'Unknown Document',
       framework: result.iso_controls?.join(', ') ?? undefined,
       section: result.section_title ?? undefined,
+      clarityReport: (result as any).clarity_report ?? undefined,
     },
   }));
 }
@@ -128,6 +130,7 @@ async function searchDocumentsWithSupabase(
       documentTitle: (row.document_title as string) ?? 'Unknown Document',
       framework: (row.framework as string) ?? undefined,
       section: (row.section_title as string) ?? undefined,
+      clarityReport: row.clarity_report ?? undefined,
     },
   }));
 }

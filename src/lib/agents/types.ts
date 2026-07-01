@@ -62,6 +62,7 @@ export interface RAGChunk {
     framework?: string;
     section?: string;
     pageNumber?: number;
+    clarityReport?: any;
   };
 }
 

@@ -59,6 +59,7 @@ async function fetchRAGChunks(
         documentTitle: r.metadata.documentTitle,
         framework: r.metadata.framework,
         section: r.metadata.section,
+        clarityReport: (r.metadata as any).clarityReport,
       },
     }));
   } catch (err) {
@@ -92,6 +93,7 @@ function buildSystemPrompt(
         `### ${chunk.metadata.documentTitle}` +
         (chunk.metadata.section ? ` — ${chunk.metadata.section}` : '') +
         (chunk.metadata.framework ? ` [${chunk.metadata.framework}]` : '') +
+        (chunk.metadata.clarityReport?.clarityStatus === 'UNCLEAR' ? `\n[WARNING: Este documento (ou trecho) possui falhas de clareza epistêmica. Pode conter hipóteses não validadas, tempos futuros tratados como presentes ou ambiguidades. Trate esta informação com ceticismo e alerte o usuário sobre a sua baixa confiabilidade ao utilizá-la na sua resposta.]` : '') +
         `\n${chunk.content}\n`
       );
     }
