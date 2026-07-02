@@ -54,6 +54,10 @@ export class StandardApiClientError extends Error {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+// Warn-once guards so config validation doesn't spam logs on every request.
+let warnedMissingTenant = false;
+let warnedMissingVersionPrefix = false;
+
 async function getConfig(): Promise<StandardApiConfig> {
   const baseUrl = process.env.STANDARD_GRC_API_URL;
   let apiKey: string | null = null;
@@ -71,8 +75,31 @@ async function getConfig(): Promise<StandardApiConfig> {
     throw new Error("Missing STANDARD_GRC_API_KEY environment variable.");
   }
 
+  // The Standard API requires the x-standard-tenant-id header (org_xxxxx) for
+  // data-scoped endpoints. Missing it makes real calls fail auth — surface it
+  // loudly instead of silently sending no header.
+  if (!tenantId && !warnedMissingTenant) {
+    warnedMissingTenant = true;
+    logger.warn("STANDARD_GRC_TENANT_ID is not set — the Standard API requires x-standard-tenant-id (org_xxxxx) for data-scoped endpoints; real calls will fail auth without it", {
+      context: "standard-api",
+    });
+  }
+
+  const normalizedBase = baseUrl.replace(/\/+$/, ""); // strip trailing slashes
+
+  // Real API paths are under /api/v1 (e.g. /api/v1/intelligence/compliance-score).
+  // The client sends paths WITHOUT that prefix, so STANDARD_GRC_API_URL must
+  // include it. Warn if it looks like the version segment is missing.
+  if (!/\/v\d+$/.test(normalizedBase) && !warnedMissingVersionPrefix) {
+    warnedMissingVersionPrefix = true;
+    logger.warn("STANDARD_GRC_API_URL does not end with a version segment (expected .../api/v1) — every Standard API call may 404. Set it to https://standard-api.bekaa.eu/api/v1", {
+      context: "standard-api",
+      meta: { baseUrl: normalizedBase },
+    });
+  }
+
   return {
-    baseUrl: baseUrl.replace(/\/+$/, ""), // strip trailing slashes
+    baseUrl: normalizedBase,
     apiKey,
     tenantId,
     timeoutMs: DEFAULT_TIMEOUT_MS,
@@ -307,15 +334,36 @@ export async function getLatestScfVersion(): Promise<{ scf_version_id: string; v
 
 /**
  * Fetch controls for a specific SCF version.
+ *
+ * `get()` already unwraps the `{ data, trace_id }` envelope, so the real API's
+ * paginated list arrives here as a bare array. Normalize to `{ data, total }`
+ * regardless of shape — matching getScfFrameworks — so the engine's
+ * `batch.data` never silently sees `undefined` (which returned 0 controls and
+ * made only the local fallback catalog work).
  */
 export async function getScfControls(
   versionId: string,
   page: number = 1,
   perPage: number = 100
 ): Promise<{ data: any[]; total?: number }> {
-  return get<{ data: any[]; total?: number }>(
+  const result = await get<any>(
     `/scf/versions/${versionId}/controls?page=${page}&per_page=${perPage}`
   );
+  return normalizeControlsResponse(result);
+}
+
+/**
+ * Normalize the SCF controls list into `{ data, total }` regardless of the
+ * response shape after the `{ data, trace_id }` envelope has been unwrapped
+ * (bare array, `{ data }`, `{ items }`, or `{ controls }`). Exported for tests.
+ */
+export function normalizeControlsResponse(result: any): { data: any[]; total?: number } {
+  if (Array.isArray(result)) return { data: result, total: result.length };
+  const data = result?.data ?? result?.items ?? result?.controls ?? [];
+  return {
+    data: Array.isArray(data) ? data : [],
+    total: result?.total ?? result?.pagination?.total,
+  };
 }
 
 /**
