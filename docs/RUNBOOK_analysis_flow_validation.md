@@ -9,6 +9,15 @@ session did not have). Run this in **staging**, not production.
 > Estimated time: ~30 min. Requires: staging Supabase (service role), a working
 > Standard GRC Engine + ihos-api, and an admin/ionic_user login.
 
+> **Schema-drift note (verified 2026-07-02 against `types.generated.ts`).** The
+> live DB has drifted from the tracked migrations (e.g. it already has the
+> `assessments` table and `product_versions.is_default`, neither of which is in
+> any migration file). It does NOT yet have this feature's new
+> columns/tables. The application code degrades gracefully if you run it before
+> applying the migrations (it falls back to base columns), but you should still
+> apply Section 1 first to get the full behavior (caching, lineage, delta
+> confidence). Nothing here drops or rewrites existing data.
+
 ---
 
 ## 0. Pre-flight: confirm the fallback is fail-closed in production
@@ -29,10 +38,14 @@ deliberately whether estimation is acceptable; otherwise unset it.
 
 ## 1. Apply migrations
 
-```bash
-supabase db push        # applies 20260702_control_evaluation_cache.sql
-                        #  and    20260702_version_baseline_lineage.sql
-```
+Two options:
+
+- **CLI**: `supabase db push` (applies `20260702_control_evaluation_cache.sql`
+  and `20260702_version_baseline_lineage.sql`).
+- **No CLI / quickest**: paste `docs/sql/analysis_flow_validation.sql` into the
+  Supabase SQL Editor and Run. It runs the pre-flight diagnostic (Section 1),
+  applies the same migrations idempotently (Section 2), and verifies
+  (Section 3) in one shot.
 
 Verify the objects exist:
 

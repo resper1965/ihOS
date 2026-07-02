@@ -20,6 +20,55 @@ export type DeltaExtractorResult = z.infer<typeof DeltaExtractorResultSchema>;
 /** Deltas extracted with confidence below this threshold are flagged needs_review. */
 export const DELTA_REVIEW_THRESHOLD = 0.6;
 
+/**
+ * Upsert extracted deltas for a product version. Writes the richer columns
+ * (extraction_confidence/needs_review/source_document_id) when the schema has
+ * them, and transparently falls back to the base columns on databases where
+ * the lineage migration hasn't been applied yet — so the delta ledger (which
+ * drives threat-model cache invalidation) is never silently lost.
+ *
+ * `admin` is a Supabase admin client; typed loosely to avoid coupling to the
+ * generated types for the newer columns.
+ */
+export async function persistDeltas(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  productVersionId: string,
+  deltas: ExtractedDelta[],
+  sourceDocumentId?: number | null,
+): Promise<{ error: string | null; degraded: boolean }> {
+  if (!deltas || deltas.length === 0) return { error: null, degraded: false };
+
+  const richRows = deltas.map((d) => ({
+    product_version_id: productVersionId,
+    feature_slug: d.feature_slug,
+    description: d.description,
+    affected_components: d.affected_components,
+    risk_level: d.risk_level,
+    extraction_confidence: d.confidence,
+    needs_review: d.confidence < DELTA_REVIEW_THRESHOLD,
+    source_document_id: sourceDocumentId ?? null,
+  }));
+
+  const rich = await admin
+    .from('product_version_deltas')
+    .upsert(richRows, { onConflict: 'product_version_id,feature_slug' });
+  if (!rich.error) return { error: null, degraded: false };
+
+  // Older schema without the confidence/review/source columns: retry base cols.
+  const baseRows = deltas.map((d) => ({
+    product_version_id: productVersionId,
+    feature_slug: d.feature_slug,
+    description: d.description,
+    affected_components: d.affected_components,
+    risk_level: d.risk_level,
+  }));
+  const base = await admin
+    .from('product_version_deltas')
+    .upsert(baseRows, { onConflict: 'product_version_id,feature_slug' });
+  return { error: base.error?.message ?? null, degraded: true };
+}
+
 const SYSTEM_PROMPT = `You are a GRC and Software Security Architect.
 Your task is to analyze the provided corporate/product documentation (such as architecture designs, SRS, release notes, or security manuals) and identify new technical features, components, integrations, or operational protocols introduced in this product version.
 

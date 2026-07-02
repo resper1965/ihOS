@@ -65,6 +65,28 @@ tests/unit/{assessment/*,test_threat_modeling_post}.test.ts  # coverage + fix pr
 | H10 | *(Deferred)* UI: surface inherited/new + estimated badges; seed form; regenerate Supabase types to drop casts | Not started — see tasks.md |
 | H11 | *(Operator)* Live-DB validation per RUNBOOK (migrations + E2E) | Pending — requires live Supabase/GRC |
 
+## Live-schema findings (from `types.generated.ts`, the real DB)
+
+Inspected the real schema via the generated types (the live host is blocked by
+this environment's egress policy, so REST access was not possible; the
+generated types are extracted from the real DB and are authoritative for column
+existence).
+
+- ✅ `assessments` (17 cols) exists and matches what `assessments/run` + `grc-trigger` write. The `assessments` vs `compliance_assessments` worry is **not** a bug — both tables exist; the app writes `assessments`.
+- ✅ `evidence_evaluations` (17 cols) already has every column `buildEvidenceBatch` writes (`chunk_id, scf_control_code, control_requirement, evidence_text, trace_id, needs_review, evidence_sources, …`). The provenance change lands inside the `evidence_sources` JSONB — safe.
+- ⚠️ The real DB has drifted from the tracked migrations (e.g. `product_versions.is_default`, the `assessments` table itself are not in any migration). Migration discipline cannot be assumed.
+- 🔴 The real DB does NOT yet have the columns this feature adds: `threat_models.{baseline_model_id,source}`, `product_versions.previous_version_id`, `product_version_deltas.{extraction_confidence,needs_review,source_document_id}`, nor the `control_evaluation_cache` table (specs/001).
+
+**Consequence & mitigation:** because of the drift, the new code must NOT hard-depend on its own migrations being applied first. Added graceful degradation so every new-column write falls back to base columns when the migration is absent:
+- `resolveVersionContext` retries `select('id')` if `previous_version_id` is missing (H12).
+- Threat-model insert retries without `baseline_model_id/source` (H12).
+- `persistDeltas()` retries base columns if confidence columns are missing (H12).
+- `getDeltaFingerprint` already tolerated the missing columns; `control_evaluation_cache` reads/writes already degrade to no-cache on error.
+
+| ID | Task | Status |
+|----|------|--------|
+| H12 | Graceful degradation when lineage migration not yet applied (retry base columns) + regression tests | Done |
+
 ## Complexity Tracking
 
 `(admin as any)` casts remain for columns not yet in the generated Supabase types (previous_version_id, baseline_model_id, source, extraction_confidence). Consistent with the existing codebase convention; resolved by regenerating types (H10). No other justified complexity.

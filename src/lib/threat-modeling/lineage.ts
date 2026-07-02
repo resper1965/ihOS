@@ -31,18 +31,28 @@ export async function resolveVersionContext(
   admin: AdminClient,
   productVersionCode: string,
 ): Promise<VersionContext> {
-  // previous_version_id is a newer column not yet in the generated types.
-  const { data } = await (admin as any)
+  // previous_version_id is a newer column not yet in the generated types and
+  // may be absent on databases where the lineage migration hasn't been applied
+  // yet. Try to read it, but degrade gracefully to just the id so version
+  // resolution (and therefore delta caching) keeps working either way.
+  const withLineage = await (admin as any)
     .from('product_versions')
     .select('id, previous_version_id')
     .eq('version_code', productVersionCode)
     .maybeSingle();
 
-  const row = data as { id?: string; previous_version_id?: string | null } | null;
-  return {
-    productVersionId: row?.id ?? null,
-    previousVersionId: row?.previous_version_id ?? null,
-  };
+  if (!withLineage.error) {
+    const row = withLineage.data as { id?: string; previous_version_id?: string | null } | null;
+    return { productVersionId: row?.id ?? null, previousVersionId: row?.previous_version_id ?? null };
+  }
+
+  const base = await admin
+    .from('product_versions')
+    .select('id')
+    .eq('version_code', productVersionCode)
+    .maybeSingle();
+  const row = base.data as { id?: string } | null;
+  return { productVersionId: row?.id ?? null, previousVersionId: null };
 }
 
 /**

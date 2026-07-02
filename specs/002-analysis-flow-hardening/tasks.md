@@ -41,6 +41,14 @@ description: "Task list for analysis-flow hardening"
 - [X] T034 Fix pre-existing failing test `test_threat_modeling_post` (mock now echoes inserted row)
 - [X] T035 This spec/plan/tasks set
 
+## Phase 5: Live-schema hardening (from real-schema inspection)
+
+- [X] H12a Graceful degradation: `resolveVersionContext` retries `id`-only when `previous_version_id` is absent
+- [X] H12b Graceful degradation: threat-model insert retries without `baseline_model_id/source`
+- [X] H12c `persistDeltas()` helper (dedups upload/reindex) with base-column fallback
+- [X] H12d Regression tests for both fallbacks (`persist-deltas.test.ts`, `lineage.test.ts`)
+- [X] H12e One-shot SQL diagnostic+migration for the Supabase SQL Editor (`docs/sql/analysis_flow_validation.sql`)
+
 ## Deferred
 
 - [ ] T040 UI: badges for inherited vs. new threats and estimated evaluations; seed-baseline form; "previous version" selector in Settings → Versions.

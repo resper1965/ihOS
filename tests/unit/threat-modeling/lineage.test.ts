@@ -1,6 +1,41 @@
 // tests/unit/threat-modeling/lineage.test.ts
 import { describe, it, expect } from "vitest";
-import { annotateInheritance } from "@/lib/threat-modeling/lineage";
+import { annotateInheritance, resolveVersionContext } from "@/lib/threat-modeling/lineage";
+
+// Minimal chainable builder whose maybeSingle() resolves to a preset result.
+function versionQuery(result: { data: unknown; error: unknown }) {
+  const q: any = {
+    select: () => q,
+    eq: () => q,
+    maybeSingle: () => Promise.resolve(result),
+  };
+  return q;
+}
+
+describe("resolveVersionContext", () => {
+  it("reads previous_version_id when the column exists", async () => {
+    const admin: any = {
+      from: () => versionQuery({ data: { id: "v3", previous_version_id: "v2" }, error: null }),
+    };
+    const ctx = await resolveVersionContext(admin, "v2.3.x");
+    expect(ctx).toEqual({ productVersionId: "v3", previousVersionId: "v2" });
+  });
+
+  it("degrades to id-only when previous_version_id column is missing (migration not applied)", async () => {
+    let call = 0;
+    const admin: any = {
+      from: () => {
+        call++;
+        // First (rich) select errors; second (base 'id') select succeeds.
+        return call === 1
+          ? versionQuery({ data: null, error: { message: "column previous_version_id does not exist" } })
+          : versionQuery({ data: { id: "v3" }, error: null });
+      },
+    };
+    const ctx = await resolveVersionContext(admin, "v2.3.x");
+    expect(ctx).toEqual({ productVersionId: "v3", previousVersionId: null });
+  });
+});
 
 describe("annotateInheritance", () => {
   const generated = {

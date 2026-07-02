@@ -246,22 +246,38 @@ export async function POST(request: NextRequest) {
 
   const modelSource = baselineModelId ? 'inherited' : 'generated';
 
-  // Save the generated model. baseline_model_id/source are newer columns not
-  // yet in the generated Supabase types — cast (consistent with the codebase).
+  // Save the generated model. baseline_model_id/source are newer columns; on
+  // databases where the lineage migration hasn't been applied yet, retry with
+  // the base columns so generation still succeeds (the inheritance metadata is
+  // also embedded in model_data.metadata, so nothing is lost).
+  const baseRow = {
+    id: crypto.randomUUID(),
+    model_data: generatedData,
+    product_version: product_version,
+    target_frameworks: target_frameworks,
+    status: 'draft',
+  };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: inserted, error: insertError } = await (admin as any)
+  const admins = admin as any;
+  let inserted: any;
+  let insertError: { message?: string } | null;
+  ({ data: inserted, error: insertError } = await admins
     .from('threat_models')
-    .insert({
-      id: crypto.randomUUID(),
-      model_data: generatedData,
-      product_version: product_version,
-      target_frameworks: target_frameworks,
-      status: 'draft',
-      baseline_model_id: baselineModelId,
-      source: modelSource,
-    })
+    .insert({ ...baseRow, baseline_model_id: baselineModelId, source: modelSource })
     .select('*')
-    .single();
+    .single());
+
+  if (insertError) {
+    logger.warn('Threat model insert with lineage columns failed; retrying with base columns (apply 20260702_version_baseline_lineage.sql)', {
+      context: 'threat-modeling',
+      meta: { error: insertError.message },
+    });
+    ({ data: inserted, error: insertError } = await admins
+      .from('threat_models')
+      .insert(baseRow)
+      .select('*')
+      .single());
+  }
 
   if (insertError || !inserted) {
     logger.error('Failed to save generated threat model to database', {
