@@ -45,6 +45,26 @@ export async function POST(req: Request) {
     // Run the assessment engine
     const result = await runAssessment(config);
 
+    // Telemetry: how much external API usage the persisted cache actually saved.
+    const estimatedCount = result.controlEvaluations.filter((e) => e.isEstimated).length;
+    logger.info('Assessment completed', {
+      context: 'assessments/run',
+      meta: {
+        mode,
+        frameworks,
+        productVersionId,
+        forceReevaluate,
+        totalEvaluated: result.totalControlsEvaluated,
+        fromCache: result.totalFromCache ?? 0,
+        freshlyEvaluated: result.totalFreshlyEvaluated ?? result.totalControlsEvaluated,
+        estimatedResults: estimatedCount,
+        cacheHitRate:
+          result.totalControlsEvaluated > 0
+            ? Math.round(((result.totalFromCache ?? 0) / result.totalControlsEvaluated) * 100)
+            : 0,
+      },
+    });
+
     // Persist to Supabase
     const { data: assessmentRecord, error: insertError } = await supabase
       .from('assessments')

@@ -4,6 +4,8 @@ import { generateEmbedding } from './embeddings';
 import { ihosEngine } from '@/lib/ihos-engine';
 import type { SearchResult } from '@/lib/ihos-engine';
 
+export type RagSearchSource = 'ihos-engine' | 'supabase-fallback';
+
 export interface SearchDocumentResult {
   id: number;
   content: string;
@@ -14,6 +16,8 @@ export interface SearchDocumentResult {
     framework?: string;
     section?: string;
     clarityReport?: any;
+    /** Which RAG path produced this result — for auditing divergence. */
+    searchSource?: RagSearchSource;
   };
 }
 
@@ -62,6 +66,7 @@ async function searchDocumentsWithEngine(
       framework: result.iso_controls?.join(', ') ?? undefined,
       section: result.section_title ?? undefined,
       clarityReport: (result as any).clarity_report ?? undefined,
+      searchSource: 'ihos-engine' as const,
     },
   }));
 }
@@ -131,6 +136,7 @@ async function searchDocumentsWithSupabase(
       framework: (row.framework as string) ?? undefined,
       section: (row.section_title as string) ?? undefined,
       clarityReport: row.clarity_report ?? undefined,
+      searchSource: 'supabase-fallback' as const,
     },
   }));
 }

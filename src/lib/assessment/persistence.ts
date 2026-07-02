@@ -29,7 +29,11 @@ export function buildEvidenceBatch(
     scf_control_code: evaluation.controlId,
     control_requirement: evaluation.controlName,
     evidence_text: evaluation.evidenceSnippet ?? 'No evidence found',
-    needs_review: evaluation.confidenceScore > 0 && evaluation.confidenceScore < 70,
+    // Flag for human review when confidence is borderline OR the result is a
+    // non-authoritative estimate from the Standard API local fallback.
+    needs_review:
+      evaluation.isEstimated === true ||
+      (evaluation.confidenceScore > 0 && evaluation.confidenceScore < 70),
     // Optional columns
     control_code: evaluation.controlId,
     domain_code: evaluation.domain,
@@ -39,14 +43,17 @@ export function buildEvidenceBatch(
     missing_elements: null,
     auditor_notes: evaluation.auditorNotes || null,
     trace_id: assessmentId,
-    // Dual-phase data
-    evidence_sources: evaluation.ismsPhase || evaluation.evidencePhase
-      ? {
-          ismsPhase: evaluation.ismsPhase ?? null,
-          evidencePhase: evaluation.evidencePhase ?? null,
-          combinedStatus: evaluation.combinedStatus ?? null,
-        }
-      : null,
+    // Dual-phase data + provenance (search path, estimation flag)
+    evidence_sources:
+      evaluation.ismsPhase || evaluation.evidencePhase || evaluation.searchSource || evaluation.isEstimated
+        ? {
+            ismsPhase: evaluation.ismsPhase ?? null,
+            evidencePhase: evaluation.evidencePhase ?? null,
+            combinedStatus: evaluation.combinedStatus ?? null,
+            searchSource: evaluation.searchSource ?? null,
+            isEstimated: evaluation.isEstimated ?? false,
+          }
+        : null,
   }));
 }
 

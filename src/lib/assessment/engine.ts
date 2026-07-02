@@ -55,6 +55,13 @@ export interface ControlEvaluation {
   // Persisted-evaluation cache (see corpus-fingerprint.ts)
   fromCache?: boolean;
   cachedAt?: string;
+
+  // True when the evaluation came from the Standard API local fallback
+  // (non-authoritative estimate) instead of the real API. Never cached.
+  isEstimated?: boolean;
+
+  // Which RAG path produced the evidence: 'ihos-engine' | 'supabase-fallback'.
+  searchSource?: string;
 }
 
 export interface FrameworkScore {
@@ -378,6 +385,8 @@ export async function runAssessment(
 
         const confidence = (evalResult as any).confidence_score ?? 0;
         const isCompliant = (evalResult as any).is_compliant === true && confidence >= confidenceThreshold;
+        const isEstimated = (evalResult as any).is_estimated === true;
+        const baseNotes = (evalResult as any).auditor_notes ?? '';
 
         return {
           controlId,
@@ -387,10 +396,13 @@ export async function runAssessment(
           confidenceScore: confidence,
           evidenceChunkId: bestEvidenceId,
           evidenceSnippet: ragResults[0].content.slice(0, 200),
-          auditorNotes: (evalResult as any).auditor_notes ?? '',
+          // Prefix estimated results so they are visibly non-authoritative in the UI/exports.
+          auditorNotes: isEstimated ? `[ESTIMATED] ${baseNotes}`.trim() : baseNotes,
           ismsPhase,
           evidencePhase,
           combinedStatus,
+          isEstimated,
+          searchSource: ragResults[0]?.metadata?.searchSource,
         };
       } catch (err) {
         // Mark as evaluation_error instead of non-compliant (audit item #6)
@@ -420,10 +432,13 @@ export async function runAssessment(
       }
     }
 
-    // Persist freshly-evaluated (non-cached, non-error) controls so the next
-    // run can reuse them until the document corpus changes.
+    // Persist freshly-evaluated controls so the next run can reuse them until
+    // the document corpus changes. Never cache:
+    //  - already-cached results (nothing new to write),
+    //  - transient API failures ([EVALUATION_ERROR]),
+    //  - non-authoritative estimates from the Standard API local fallback.
     const toCache = batchResults.filter(
-      (r) => !r.fromCache && !r.auditorNotes?.startsWith('[EVALUATION_ERROR]'),
+      (r) => !r.fromCache && !r.isEstimated && !r.auditorNotes?.startsWith('[EVALUATION_ERROR]'),
     );
     if (toCache.length > 0) {
       const admin = createAdminClient();

@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ihosEngine } from '@/lib/ihos-engine';
 import { getDeltaFingerprint } from '@/lib/assessment/corpus-fingerprint';
+import { resolveVersionContext, findBaselineModel, annotateInheritance } from '@/lib/threat-modeling/lineage';
 import type {
   ThreatModelRecord,
   ThreatModelSummary,
@@ -126,18 +127,13 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // Resolve the product version UUID — accumulated feature deltas are keyed
-  // by id, not by the human-readable version_code sent from the client.
-  const { data: versionRow } = await admin
-    .from('product_versions')
-    .select('id')
-    .eq('version_code', product_version)
-    .maybeSingle();
-  const productVersionId = (versionRow as { id?: string } | null)?.id ?? null;
+  // Resolve the product version UUID + its declared baseline (previous version).
+  // Accumulated feature deltas are keyed by id, not the free-text version_code.
+  const { productVersionId, previousVersionId } = await resolveVersionContext(admin, product_version);
 
-  const { fingerprint: deltaFingerprint, deltas } = productVersionId
+  const { fingerprint: deltaFingerprint, deltas, needsReviewCount } = productVersionId
     ? await getDeltaFingerprint(productVersionId)
-    : { fingerprint: 'no-product-version-match', deltas: [] as Awaited<ReturnType<typeof getDeltaFingerprint>>['deltas'] };
+    : { fingerprint: 'no-product-version-match', deltas: [] as Awaited<ReturnType<typeof getDeltaFingerprint>>['deltas'], needsReviewCount: 0 };
 
   const sortedFrameworks = [...target_frameworks].sort();
 
@@ -221,18 +217,39 @@ export async function POST(request: NextRequest) {
     } as any,
   };
 
+  // ── Version inheritance ─────────────────────────────────────────────────
+  // If this version declares a previous version, diff against its approved
+  // analysis so inherited vs. new threats are labelled. The external engine is
+  // NOT incremental — this is a post-hoc annotation, not a partial generation.
+  const baseline = await findBaselineModel(admin, previousVersionId);
+  const { data: annotatedData, inheritedCount, newCount, baselineModelId } = annotateInheritance(
+    generatedData,
+    baseline,
+  );
+  generatedData = annotatedData;
+
+  // ── Coverage-gap warnings (never silently omit) ─────────────────────────
+  const warnings: string[] = [];
   if (deltas.length === 0) {
-    generatedData = {
-      ...generatedData,
-      limitations: [
-        ...(generatedData.limitations ?? []),
-        'No product-version deltas were found for this version. Feature-level threat coverage may be incomplete — upload version documentation (SAD/SRS) so new features are extracted, or resolve directly via the external GRC engine.',
-      ],
-    };
+    warnings.push(
+      'No product-version deltas were found for this version. Feature-level threat coverage may be incomplete — upload version documentation (SAD/SRS) so new features are extracted, or resolve directly via the external GRC engine.',
+    );
+  }
+  if (needsReviewCount > 0) {
+    warnings.push(
+      `${needsReviewCount} extracted feature delta(s) were flagged low-confidence and need review. Threat coverage derived from them may be unreliable until confirmed.`,
+    );
+  }
+  if (warnings.length > 0) {
+    generatedData = { ...generatedData, limitations: [...(generatedData.limitations ?? []), ...warnings] };
   }
 
-  // Save the generated model
-  const { data: inserted, error: insertError } = await admin
+  const modelSource = baselineModelId ? 'inherited' : 'generated';
+
+  // Save the generated model. baseline_model_id/source are newer columns not
+  // yet in the generated Supabase types — cast (consistent with the codebase).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data: inserted, error: insertError } = await (admin as any)
     .from('threat_models')
     .insert({
       id: crypto.randomUUID(),
@@ -240,6 +257,8 @@ export async function POST(request: NextRequest) {
       product_version: product_version,
       target_frameworks: target_frameworks,
       status: 'draft',
+      baseline_model_id: baselineModelId,
+      source: modelSource,
     })
     .select('*')
     .single();
@@ -252,6 +271,27 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Failed to save threat model to database' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, cached: false, data: { ...(inserted.model_data as any), id: inserted.id } });
+  // Telemetry: prove regeneration was necessary and record inheritance ratio.
+  logger.info('Threat model generated', {
+    context: 'threat-modeling',
+    meta: {
+      product_version,
+      cached: false,
+      source: modelSource,
+      delta_count: deltas.length,
+      deltas_needing_review: needsReviewCount,
+      inherited_threats: inheritedCount,
+      new_threats: newCount,
+    },
+  });
+
+  return NextResponse.json({
+    success: true,
+    cached: false,
+    source: modelSource,
+    inherited_threats: inheritedCount,
+    new_threats: newCount,
+    data: { ...(inserted.model_data as any), id: inserted.id },
+  });
 }
 

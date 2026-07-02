@@ -95,6 +95,13 @@ STANDARD_GRC_API_URL=https://api.standardgrc.com/v1
 STANDARD_GRC_API_KEY=your-grc-api-key
 STANDARD_GRC_TENANT_ID=your-tenant-id
 
+# Standard GRC Engine — local resiliency fallback (OPT-IN, default OFF).
+# When the authoritative GRC API is unreachable/denies scope, ihOS by default
+# surfaces a GAP/ERROR rather than estimating (Constitution Principle VIII).
+# Set to "true" ONLY to accept degraded, non-authoritative estimated results
+# (each flagged is_estimated=true and marked needs_review). Keep unset in prod.
+GRC_LOCAL_FALLBACK_ENABLED=false
+
 # Vercel AI
 VERCEL_AI_GATEWAY_URL=https://gateway.ai.vercel.com/v1
 ```

@@ -38,6 +38,8 @@ export interface ProductVersionDelta {
   affected_components: string[];
   risk_level: 'low' | 'medium' | 'high';
   updated_at: string;
+  needs_review?: boolean;
+  extraction_confidence?: number | null;
 }
 
 /**
@@ -45,17 +47,36 @@ export interface ProductVersionDelta {
  * plus a fingerprint that changes only when a delta is added or updated.
  * Threat modeling uses this to re-evaluate only what changed since the last
  * accumulated analysis instead of regenerating from scratch every time.
+ *
+ * `needsReviewCount` counts deltas the extractor flagged as low-confidence,
+ * so callers can warn that the delta ledger itself may be incomplete/noisy.
  */
 export async function getDeltaFingerprint(
   productVersionId: string,
-): Promise<{ fingerprint: string; deltas: ProductVersionDelta[] }> {
+): Promise<{ fingerprint: string; deltas: ProductVersionDelta[]; needsReviewCount: number }> {
   const admin = createAdminClient();
-  const { data } = await admin
+  // Tolerate older schemas where needs_review/extraction_confidence don't
+  // exist yet: request them, but fall back to the base columns on error.
+  let rows: ProductVersionDelta[] = [];
+  // needs_review/extraction_confidence are newer columns not yet in the
+  // generated types; cast and gracefully fall back on older schemas.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const withReview = await (admin as any)
     .from('product_version_deltas')
-    .select('feature_slug, description, affected_components, risk_level, updated_at')
+    .select('feature_slug, description, affected_components, risk_level, updated_at, needs_review, extraction_confidence')
     .eq('product_version_id', productVersionId);
+  if (withReview.error) {
+    const base = await admin
+      .from('product_version_deltas')
+      .select('feature_slug, description, affected_components, risk_level, updated_at')
+      .eq('product_version_id', productVersionId);
+    rows = (base.data ?? []) as unknown as ProductVersionDelta[];
+  } else {
+    rows = (withReview.data ?? []) as ProductVersionDelta[];
+  }
 
-  const deltas = ((data ?? []) as ProductVersionDelta[]).slice().sort((a, b) => a.feature_slug.localeCompare(b.feature_slug));
+  const deltas = rows.slice().sort((a, b) => a.feature_slug.localeCompare(b.feature_slug));
   const fingerprint = hash(deltas.map((d) => `${d.feature_slug}@${d.updated_at}`).join('|') || 'no-deltas');
-  return { fingerprint, deltas };
+  const needsReviewCount = deltas.filter((d) => d.needs_review === true).length;
+  return { fingerprint, deltas, needsReviewCount };
 }

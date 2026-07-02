@@ -26,6 +26,7 @@ import { getOpenAI } from "@/lib/chat/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 
 
@@ -125,8 +126,7 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
 
     if (!response.ok) {
       if (response.status === 403 || response.status === 401) {
-        console.warn(`[GRC Client] API scope error (${response.status}) on POST ${endpoint}. Routing to local fallback...`);
-        const fallback = await tryLocalFallback(endpoint, payload);
+        const fallback = await tryLocalFallback(endpoint, payload, `HTTP_${response.status}`);
         if (fallback !== null) return fallback;
       }
 
@@ -154,7 +154,7 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
     }
 
     // Try fallback for general network issues
-    const fallback = await tryLocalFallback(endpoint, payload);
+    const fallback = await tryLocalFallback(endpoint, payload, err instanceof Error ? err.message : "network_error");
     if (fallback !== null) return fallback;
 
     const message = err instanceof Error ? err.message : "Unknown network error";
@@ -196,8 +196,7 @@ async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Pro
 
     if (!response.ok) {
       if (response.status === 403 || response.status === 401) {
-        console.warn(`[GRC Client] API scope error (${response.status}) on GET ${endpoint}. Routing to local fallback...`);
-        const fallback = await tryLocalFallback(endpoint, null);
+        const fallback = await tryLocalFallback(endpoint, null, `HTTP_${response.status}`);
         if (fallback !== null) return fallback;
       }
 
@@ -224,7 +223,7 @@ async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Pro
       );
     }
 
-    const fallback = await tryLocalFallback(endpoint, null);
+    const fallback = await tryLocalFallback(endpoint, null, err instanceof Error ? err.message : "network_error");
     if (fallback !== null) return fallback;
 
     const message = err instanceof Error ? err.message : "Unknown network error";
@@ -331,22 +330,91 @@ export async function getScfFrameworks(): Promise<any[]> {
 // GRC API Resiliency Local Fallback Engines
 // ---------------------------------------------------------------------------
 
-async function tryLocalFallback(endpoint: string, payload: any): Promise<any | null> {
-  if (process.env.GRC_FALLBACK_DISABLED === "true") {
+/**
+ * Whether the local resiliency fallback is allowed to substitute a result when
+ * the authoritative Standard GRC Engine API is unreachable or denies scope.
+ *
+ * OPT-IN (fail-closed by default). Per Constitution Principle VIII, we do NOT
+ * silently estimate/fabricate compliance evaluations. Set
+ * `GRC_LOCAL_FALLBACK_ENABLED=true` to explicitly accept degraded/estimated
+ * results (each is flagged `is_estimated: true`). The legacy
+ * `GRC_FALLBACK_DISABLED=true` kill switch is still honored as a hard-off.
+ */
+export function isLocalFallbackEnabled(): boolean {
+  if (process.env.GRC_FALLBACK_DISABLED === "true") return false;
+  return process.env.GRC_LOCAL_FALLBACK_ENABLED === "true";
+}
+
+// Endpoints whose fallback is a deterministic computation over REAL persisted
+// data (evidence_evaluations, scf_framework_mappings) — degraded but grounded.
+// Everything else (LLM judgment, hardcoded scores) is a stronger concern.
+const GROUNDED_FALLBACK_ENDPOINTS = new Set([
+  "/intelligence/compliance-score",
+  "/intelligence/cross-coverage",
+  "/intelligence/blast-radius",
+]);
+
+async function tryLocalFallback(endpoint: string, payload: any, reason: string): Promise<any | null> {
+  const cleanEndpoint = endpoint.split("?")[0];
+
+  // Static catalog fallbacks (SCF frameworks/versions/controls) are reference
+  // data, not evaluations — safe to serve regardless of the fallback flag so a
+  // transient outage doesn't block loading the control catalog.
+  const staticFallback = tryStaticCatalogFallback(cleanEndpoint);
+  if (staticFallback !== null) {
+    logger.warn("Serving static SCF catalog from local fallback", {
+      context: "standard-api",
+      meta: { endpoint: cleanEndpoint, reason },
+    });
+    return staticFallback;
+  }
+
+  // Evaluation/intelligence fallbacks are gated (fail-closed by default).
+  if (!isLocalFallbackEnabled()) {
+    logger.warn("Standard GRC API unavailable and local fallback is DISABLED — surfacing gap instead of estimating", {
+      context: "standard-api",
+      meta: { endpoint: cleanEndpoint, reason },
+    });
     return null;
   }
-  const cleanEndpoint = endpoint.split("?")[0];
+
+  // Fallback is explicitly enabled: log that we are serving an ESTIMATED result.
+  const grounded = GROUNDED_FALLBACK_ENDPOINTS.has(cleanEndpoint);
+  const note = `Estimated locally (${reason}) — Standard GRC Engine API was unavailable. ${
+    grounded ? "Computed from persisted evidence/mappings." : "Non-authoritative approximation."
+  }`;
+  if (grounded) {
+    logger.warn("Serving ESTIMATED (grounded) GRC result from local fallback", {
+      context: "standard-api",
+      meta: { endpoint: cleanEndpoint, reason },
+    });
+  } else {
+    // LLM-judged / heuristic results are the true fabrication risk — Sentry error.
+    logger.error("Serving ESTIMATED (non-authoritative) GRC result from local fallback", {
+      context: "standard-api",
+      meta: { endpoint: cleanEndpoint, reason },
+    });
+  }
+
   switch (cleanEndpoint) {
     case "/gap/evaluate-evidence":
-      return localEvaluateEvidence(payload);
+      return withEstimatedMarker(await localEvaluateEvidence(payload), note);
     case "/intelligence/compliance-score":
-      return localComplianceScore(payload);
+      return withEstimatedMarker(await localComplianceScore(payload), note);
     case "/intelligence/cross-coverage":
-      return localCrossCoverage(payload);
+      return withEstimatedMarker(await localCrossCoverage(payload), note);
     case "/intelligence/roi-path":
-      return localRoiPath(payload);
+      return withEstimatedMarker(await localRoiPath(payload), note);
     case "/intelligence/blast-radius":
-      return localBlastRadius(payload);
+      return withEstimatedMarker(await localBlastRadius(payload), note);
+    default:
+      return null;
+  }
+}
+
+/** Reference data (not evaluations) — always safe to serve on outage. */
+function tryStaticCatalogFallback(cleanEndpoint: string): any | null {
+  switch (cleanEndpoint) {
     case "/scf/frameworks":
       return [
         { framework_code: "iso27001", framework_name: "ISO/IEC 27001:2022" },
@@ -380,6 +448,11 @@ async function tryLocalFallback(endpoint: string, payload: any): Promise<any | n
       }
       return null;
   }
+}
+
+/** Stamp an estimation marker onto a fallback result object. */
+function withEstimatedMarker<T extends object>(data: T, note: string): T & { is_estimated: true; estimation_note: string } {
+  return { ...data, is_estimated: true as const, estimation_note: note };
 }
 
 async function localEvaluateEvidence(

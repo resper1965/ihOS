@@ -52,7 +52,7 @@
 - The RAG document corpus is the single source of truth for the current control/feature situation. Every analysis flow (GRC assessment, threat modeling, and any future control-status flow) MUST persist its evaluation and reuse it until the source documentation changes or the user explicitly forces re-evaluation — never re-derive a status from scratch just because a page was reloaded.
 - "Source documentation changed" is detected via a cheap DB-only fingerprint (see `src/lib/assessment/corpus-fingerprint.ts`: `getCorpusFingerprint()` for document corpus, `getDeltaFingerprint()` for accumulated product-version feature deltas) — never by re-calling the external API to check.
 - Every on-demand re-evaluation path MUST expose an explicit override (`forceReevaluate` / `force_reevaluate`) rather than silently ignoring the cache.
-- Evaluations MUST come from the Standard GRC Engine API (or its documented resiliency fallback gated by `GRC_FALLBACK_DISABLED`). Inventing a fixed/hardcoded result when an external call fails is forbidden — the correct response is a structured gap/error (e.g. `GRC_ENGINE_UNAVAILABLE`) that says the gap must be resolved via the external API, never a fabricated 200 response.
+- Evaluations MUST come from the Standard GRC Engine API. The local resiliency fallback is **fail-closed / opt-in**: it only runs when `GRC_LOCAL_FALLBACK_ENABLED=true` is explicitly set, and every result it produces MUST be flagged `is_estimated: true` and `needs_review`, and MUST NOT be cached/persisted as the current truth. By default (flag unset), an external failure surfaces a structured gap/error (e.g. `GRC_ENGINE_UNAVAILABLE` / `GRC_API_UNAVAILABLE`) that says the gap must be resolved via the external API. Inventing a fixed/hardcoded result is always forbidden. (Legacy hard kill switch `GRC_FALLBACK_DISABLED=true` still forces fail-closed.)
 - Transient evaluation failures (`[EVALUATION_ERROR]`) MUST NOT be persisted to a cache as if they were the current state.
 - Coverage gaps (e.g. zero extracted product-version deltas) MUST be surfaced explicitly to the user (`limitations`/warning fields), not silently omitted.
 - Pattern reference: `src/lib/assessment/engine.ts` (`control_evaluation_cache`), `src/app/api/threat-modeling/route.ts` (`delta_fingerprint` reuse + `GRC_ENGINE_UNAVAILABLE`).
@@ -106,8 +106,9 @@
 - Complexity must be justified — prefer composition over configuration.
 - Use `.specify/memory/` for persistent project context.
 
-**Version**: 1.1.0 | **Ratified**: 2026-06-29 | **Last Amended**: 2026-07-02
+**Version**: 1.2.0 | **Ratified**: 2026-06-29 | **Last Amended**: 2026-07-02
 
 ### Amendment Log
 
+- **1.2.0** (2026-07-02): Hardened Principle VIII — the Standard API local fallback is now fail-closed/opt-in (`GRC_LOCAL_FALLBACK_ENABLED`, default OFF) with mandatory `is_estimated`/`needs_review` flagging; estimated results are never cached. Added version-baseline lineage (accumulated threat analysis) and manual baseline seeding. See `specs/002-analysis-flow-hardening/`.
 - **1.1.0** (2026-07-02): Added Principle VIII (Minimize External API Usage & Never Fabricate Evaluations), extracted from the analysis-flow caching feature (`specs/001-analysis-flow-caching/`). Removed the threat-modeling mock-fallback (`createMockThreatModel`) that violated this principle.

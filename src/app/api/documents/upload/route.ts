@@ -7,7 +7,7 @@ import { chunkDocument } from '@/lib/chat/chunker';
 import { generateEmbeddings } from '@/lib/chat/embeddings';
 import { resolveFileType, extractText } from '@/lib/chat/document-extractor';
 import { verifyClarity } from '@/lib/chat/clarity-gate';
-import { extractDeltasFromDocument } from '@/lib/assessment/delta-extractor';
+import { extractDeltasFromDocument, DELTA_REVIEW_THRESHOLD } from '@/lib/assessment/delta-extractor';
 import { logger } from '@/lib/logger';
 import { triggerGrcRecalibration } from '@/lib/assessment/grc-trigger';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -234,8 +234,11 @@ export async function POST(req: Request) {
               description: d.description,
               affected_components: d.affected_components,
               risk_level: d.risk_level,
+              extraction_confidence: d.confidence,
+              needs_review: d.confidence < DELTA_REVIEW_THRESHOLD,
+              source_document_id: documentId,
             }));
-            
+
             const { error: deltaError } = await (adminSupabase as any)
               .from('product_version_deltas')
               .upsert(deltaRows, { onConflict: 'product_version_id,feature_slug' });

@@ -69,10 +69,20 @@ describe('getCorpusFingerprint', () => {
 describe('getDeltaFingerprint', () => {
   it('returns "no-deltas" fingerprint and an empty list when nothing was extracted', async () => {
     mockAdminFrom([]);
-    const { fingerprint, deltas } = await getDeltaFingerprint('v1');
+    const { fingerprint, deltas, needsReviewCount } = await getDeltaFingerprint('v1');
 
     expect(deltas).toEqual([]);
     expect(fingerprint).toBeTruthy();
+    expect(needsReviewCount).toBe(0);
+  });
+
+  it('counts low-confidence deltas flagged needs_review', async () => {
+    mockAdminFrom([
+      { feature_slug: 'oauth2', description: '', affected_components: [], risk_level: 'medium', updated_at: '2026-06-01T00:00:00Z', needs_review: false },
+      { feature_slug: 'webrtc', description: '', affected_components: [], risk_level: 'high', updated_at: '2026-06-01T00:00:00Z', needs_review: true },
+    ]);
+    const { needsReviewCount } = await getDeltaFingerprint('v1');
+    expect(needsReviewCount).toBe(1);
   });
 
   it('is order-independent (sorted by feature_slug before hashing)', async () => {

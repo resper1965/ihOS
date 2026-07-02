@@ -7,6 +7,7 @@ export const ExtractedDeltaSchema = z.object({
   description: z.string().describe('Clear, concise summary of what this technical feature/integration does'),
   affected_components: z.array(z.enum(['database', 'network', 'frontend', 'endpoint', 'system'])).describe('Technical components affected by this change'),
   risk_level: z.enum(['low', 'medium', 'high']).describe('Inherent security risk level of this technical change'),
+  confidence: z.number().min(0).max(1).describe('Your confidence (0.0-1.0) that this is a REAL, concrete technical feature delta introduced in this version — not boilerplate, marketing, or an unchanged policy. Use <0.6 when uncertain.'),
 });
 
 export const DeltaExtractorResultSchema = z.object({
@@ -15,6 +16,9 @@ export const DeltaExtractorResultSchema = z.object({
 
 export type ExtractedDelta = z.infer<typeof ExtractedDeltaSchema>;
 export type DeltaExtractorResult = z.infer<typeof DeltaExtractorResultSchema>;
+
+/** Deltas extracted with confidence below this threshold are flagged needs_review. */
+export const DELTA_REVIEW_THRESHOLD = 0.6;
 
 const SYSTEM_PROMPT = `You are a GRC and Software Security Architect.
 Your task is to analyze the provided corporate/product documentation (such as architecture designs, SRS, release notes, or security manuals) and identify new technical features, components, integrations, or operational protocols introduced in this product version.
@@ -25,7 +29,8 @@ For each technical change identified, output:
 1. feature_slug: A lowercase snake_case identifier (e.g., "oauth2_integration", "webrtc_p2p_channel").
 2. description: A clear 1-2 sentence description.
 3. affected_components: An array of impacted areas chosen from: 'database', 'network', 'frontend', 'endpoint', 'system'.
-4. risk_level: The security risk profile of this feature (low, medium, high). For instance, new communications tunnels or remote access features are 'high' risk, database changes are 'medium' risk, and simple UI updates are 'low' risk.`;
+4. risk_level: The security risk profile of this feature (low, medium, high). For instance, new communications tunnels or remote access features are 'high' risk, database changes are 'medium' risk, and simple UI updates are 'low' risk.
+5. confidence: Your confidence from 0.0 to 1.0 that this is a genuine, concrete technical delta (not boilerplate/marketing/unchanged policy). Be honest — use a value below 0.6 when the text is ambiguous.`;
 
 /**
  * Parses the document text and extracts technical release deltas.
