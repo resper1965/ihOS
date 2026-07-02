@@ -357,25 +357,29 @@ const GROUNDED_FALLBACK_ENDPOINTS = new Set([
 async function tryLocalFallback(endpoint: string, payload: any, reason: string): Promise<any | null> {
   const cleanEndpoint = endpoint.split("?")[0];
 
-  // Static catalog fallbacks (SCF frameworks/versions/controls) are reference
-  // data, not evaluations — safe to serve regardless of the fallback flag so a
-  // transient outage doesn't block loading the control catalog.
-  const staticFallback = tryStaticCatalogFallback(cleanEndpoint);
-  if (staticFallback !== null) {
-    logger.warn("Serving static SCF catalog from local fallback", {
-      context: "standard-api",
-      meta: { endpoint: cleanEndpoint, reason },
-    });
-    return staticFallback;
-  }
-
-  // Evaluation/intelligence fallbacks are gated (fail-closed by default).
+  // Everything is fail-closed by default — including the SCF catalog. The
+  // Standard API is the SOURCE OF TRUTH for controls/frameworks; serving a
+  // hardcoded stale subset during an outage would silently corrupt every
+  // downstream assessment (worse than a service estimate). So an outage
+  // surfaces as an error unless the operator explicitly opts into degraded
+  // mode via GRC_LOCAL_FALLBACK_ENABLED.
   if (!isLocalFallbackEnabled()) {
-    logger.warn("Standard GRC API unavailable and local fallback is DISABLED — surfacing gap instead of estimating", {
+    logger.warn("Standard GRC API unavailable and local fallback is DISABLED — surfacing error instead of estimating/serving stale truth", {
       context: "standard-api",
       meta: { endpoint: cleanEndpoint, reason },
     });
     return null;
+  }
+
+  // Opt-in degraded mode: SCF catalog reference data (still a best-effort
+  // stand-in for the authoritative catalog — logged as such).
+  const staticFallback = tryStaticCatalogFallback(cleanEndpoint);
+  if (staticFallback !== null) {
+    logger.error("Serving STALE hardcoded SCF catalog from local fallback (source of truth unavailable)", {
+      context: "standard-api",
+      meta: { endpoint: cleanEndpoint, reason },
+    });
+    return staticFallback;
   }
 
   // Fallback is explicitly enabled: log that we are serving an ESTIMATED result.
