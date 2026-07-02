@@ -89,4 +89,46 @@ describe("POST /api/threat-modeling", () => {
     expect(res.status).toBe(200);
     expect(spy).toHaveBeenCalled();
   });
+
+  it("warns about the traceability gap when no product-version deltas exist, instead of guessing", async () => {
+    vi.spyOn(ihosEngine, "generateThreatModel").mockResolvedValue({
+      metadata: { product_version: "v2.2.x", target_frameworks: ["ISO 27001"], generated_at: "now", llm_model: "gpt" },
+      rag_context: {},
+      threat_model: { threats: [], fmea_correlations: [] },
+      gaps: [],
+      recommendations: [],
+      limitations: [],
+    });
+
+    const req = new MockRequest({
+      product_version: "v2.2.x",
+      target_frameworks: ["ISO 27001"],
+    }) as any;
+
+    const res = await POST(req);
+    const data = await res.json();
+    if (res.status === 200) {
+      expect(data.data.limitations.join(" ")).toMatch(/no product-version deltas/i);
+    }
+  });
+
+  it("does NOT fabricate a threat model when the GRC engine is unavailable", async () => {
+    vi.spyOn(ihosEngine, "generateThreatModel").mockRejectedValue(new Error("upstream 500"));
+
+    const req = new MockRequest({
+      product_version: "v2.2.x",
+      target_frameworks: ["ISO 27001"],
+    }) as any;
+
+    const res = await POST(req);
+    const data = await res.json();
+    console.log("Response for engine failure:", res.status, data);
+
+    // Must surface a coverage-gap error, never a fabricated 200 with invented threats.
+    expect(res.status).toBe(502);
+    expect(data.success).toBe(false);
+    expect(data.error).toBe("GRC_ENGINE_UNAVAILABLE");
+    expect(JSON.stringify(data)).not.toMatch(/mock-engine-fallback/);
+    expect(JSON.stringify(data)).not.toMatch(/T-001/);
+  });
 });

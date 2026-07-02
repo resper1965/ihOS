@@ -38,6 +38,7 @@ export function RunAssessmentModal({
 }: RunAssessmentModalProps) {
   const [mode, setMode] = useState<"quick" | "deep">("quick");
   const [salesChannel, setSalesChannel] = useState<string>("all");
+  const [forceReevaluate, setForceReevaluate] = useState(false);
   const [frameworkSearch, setFrameworkSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>([
@@ -99,6 +100,7 @@ export function RunAssessmentModal({
         mode,
         salesChannel: salesChannel === "all" ? null : salesChannel,
         productVersionId,
+        forceReevaluate,
       },
       {
         onSuccess: (data) => {
@@ -210,6 +212,28 @@ export function RunAssessmentModal({
                 </select>
                 <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted pointer-events-none" />
               </div>
+            </div>
+
+            {/* Force Re-evaluation */}
+            <div className="mb-6">
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border-glass bg-white/5 p-3">
+                <input
+                  type="checkbox"
+                  checked={forceReevaluate}
+                  onChange={(e) => setForceReevaluate(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/5 accent-primary"
+                />
+                <span className="text-xs">
+                  <span className="block font-medium text-text-primary">
+                    Force re-evaluation
+                  </span>
+                  <span className="block text-text-muted mt-0.5">
+                    By default, controls with no documentation changes since their last evaluation are reused
+                    from the persisted cache. Check this to re-query RAG and the Standard GRC Engine API for
+                    every control.
+                  </span>
+                </span>
+              </label>
             </div>
 
             {/* Framework Selection */}
@@ -338,6 +362,15 @@ export function RunAssessmentModal({
                 <div className="text-xs text-text-muted">Missing</div>
               </div>
             </div>
+
+            {typeof result.totalFromCache === "number" && result.totalFromCache > 0 && (
+              <div className="mb-4 rounded-xl border border-primary/10 bg-primary/5 px-3 py-2 text-xs text-text-secondary">
+                <span className="font-semibold text-primary">{result.totalFromCache}</span> controls reused from the
+                persisted cache (no documentation changes) ·{" "}
+                <span className="font-semibold text-text-primary">{result.totalFreshlyEvaluated}</span> freshly
+                evaluated.
+              </div>
+            )}
 
             {/* Framework Scores */}
             <div className="space-y-2">

@@ -167,6 +167,17 @@ ionic-txramp/
 | D3 | Rate limiting configuration review | Security hardening |
 | D4 | RLS policy audit for all 30+ tables | Security compliance |
 
+### Stream E: Analysis Flow Caching & No-Fabrication (Priority: HIGH — DONE)
+
+See `specs/001-analysis-flow-caching/` for the full spec/plan/tasks. Summary: the GRC assessment engine and threat modeling now persist and reuse evaluations keyed to a document/delta fingerprint instead of re-calling RAG/Standard-API/ihos-api on every run (Constitution Principle VIII), and the threat-modeling route no longer fabricates a mock threat model when the external GRC engine is unavailable — it returns an explicit `GRC_ENGINE_UNAVAILABLE` gap instead.
+
+| ID | Task | Impact |
+|----|------|--------|
+| E1 | `control_evaluation_cache` table + corpus-fingerprint invalidation | Minimizes RAG + Standard GRC Engine API usage on repeat assessments |
+| E2 | Delta-fingerprint reuse for threat modeling (`product_version_deltas`) | Minimizes ihos-api engine calls when the product hasn't changed |
+| E3 | Removed `createMockThreatModel` fabricated fallback | Eliminates silently-invented compliance data |
+| E4 | Regenerate Supabase types to drop `(admin as any)` casts for the new table | *Deferred — see tasks.md T050* |
+
 ## Complexity Tracking
 
 No constitution violations requiring justification. All work follows established patterns.

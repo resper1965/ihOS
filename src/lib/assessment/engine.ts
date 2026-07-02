@@ -4,6 +4,8 @@
 import { searchDocuments } from '@/lib/chat/rag-search';
 import * as standardApi from '@/lib/standard-api/client';
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getCorpusFingerprint } from './corpus-fingerprint';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -16,6 +18,7 @@ export interface AssessmentConfig {
   productVersionId?: string | null;
   confidenceThreshold?: number;  // default 70
   similarityThreshold?: number;  // default 0.65
+  forceReevaluate?: boolean; // skip the persisted-evaluation cache and re-query RAG/Standard API for every control
 }
 
 export interface ControlEvaluation {
@@ -48,6 +51,10 @@ export interface ControlEvaluation {
   combinedStatus?: 'conforming' | 'partial' | 'informal' | 'gap';
   scfControlCode?: string;
   domainCode?: string;
+
+  // Persisted-evaluation cache (see corpus-fingerprint.ts)
+  fromCache?: boolean;
+  cachedAt?: string;
 }
 
 export interface FrameworkScore {
@@ -86,6 +93,10 @@ export interface AssessmentResult {
   totalPartial?: number;
   totalInformal?: number;
   totalGap?: number;
+
+  // Cache reuse stats — evidence of API-usage minimization
+  totalFromCache?: number;
+  totalFreshlyEvaluated?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -185,6 +196,34 @@ export async function runAssessment(
     categoryFilters.push('B2B_GEHC', 'B2B_DIRECT');
   }
 
+  // ── Persisted-evaluation cache ────────────────────────────────────────
+  // The document corpus is the source of truth for control status. Reuse the
+  // last evaluation for a control unless the corpus changed since then (or
+  // the caller explicitly forces a re-evaluation), so RAG search and the
+  // Standard GRC Engine API are only called for what actually needs it.
+  const scopeKey = `${config.productVersionId ?? 'global'}:${config.salesChannel ?? 'all'}`;
+  const corpusFingerprint = await getCorpusFingerprint(config.productVersionId ?? null);
+  const cacheMap = new Map<string, { corpusFingerprint: string; evaluation: ControlEvaluation; evaluatedAt: string }>();
+  if (!config.forceReevaluate) {
+    const admin = createAdminClient();
+    // control_evaluation_cache is not yet in the generated Supabase types
+    // (see plan.md Stream A1 — types need regeneration); cast until then.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: cacheRows } = await (admin as any)
+      .from('control_evaluation_cache')
+      .select('control_code, corpus_fingerprint, evaluation, evaluated_at')
+      .eq('mode', config.mode)
+      .eq('scope_key', scopeKey);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    for (const row of (cacheRows ?? []) as any[]) {
+      cacheMap.set(row.control_code, {
+        corpusFingerprint: row.corpus_fingerprint,
+        evaluation: row.evaluation,
+        evaluatedAt: row.evaluated_at,
+      });
+    }
+  }
+
   // Retry helper for API calls
   async function retryApiCall<T>(fn: () => Promise<T>, retries = 3): Promise<T> {
     let lastErr;
@@ -204,12 +243,25 @@ export async function runAssessment(
   for (let i = 0; i < allControls.length; i += BATCH_SIZE) {
     const batch = allControls.slice(i, i + BATCH_SIZE);
     
-    const batchPromises = batch.map(async (control, batchIndex) => {
+    const batchPromises = batch.map(async (control, batchIndex): Promise<ControlEvaluation> => {
       const globalIndex = i + batchIndex;
       const controlId = control.control_id || control.id || `CTRL-${globalIndex}`;
       const controlName = control.control_name || control.name || controlId;
       const controlDomain = control.domain || controlId.split('-')[0] || 'UNKNOWN';
       const controlDescription = control.control_description || control.description || controlName;
+
+      // Cache hit: the document corpus hasn't changed since this control was
+      // last evaluated for this scope — reuse it instead of calling RAG/API.
+      const cached = cacheMap.get(controlId);
+      if (cached && cached.corpusFingerprint === corpusFingerprint) {
+        onProgress?.({
+          phase: 'evaluating',
+          current: globalIndex + 1,
+          total: allControls.length,
+          message: `${controlId}: reused persisted evaluation (no documentation changes)`,
+        });
+        return { ...cached.evaluation, controlId, controlName, domain: controlDomain, fromCache: true, cachedAt: cached.evaluatedAt };
+      }
 
       onProgress?.({
         phase: 'evaluating',
@@ -359,12 +411,39 @@ export async function runAssessment(
     });
 
     const batchResults = await Promise.all(batchPromises);
-    
+
     // Store evaluations and track implemented controls
     for (const result of batchResults) {
       evaluations.push(result);
       if (result.isCompliant) {
         implementedControlIds.push(result.controlId);
+      }
+    }
+
+    // Persist freshly-evaluated (non-cached, non-error) controls so the next
+    // run can reuse them until the document corpus changes.
+    const toCache = batchResults.filter(
+      (r) => !r.fromCache && !r.auditorNotes?.startsWith('[EVALUATION_ERROR]'),
+    );
+    if (toCache.length > 0) {
+      const admin = createAdminClient();
+      const evaluatedAt = new Date().toISOString();
+      const cacheRows = toCache.map((r) => ({
+        control_code: r.controlId,
+        mode: config.mode,
+        product_version_id: config.productVersionId ?? null,
+        sales_channel: config.salesChannel ?? null,
+        scope_key: scopeKey,
+        corpus_fingerprint: corpusFingerprint,
+        evaluation: r,
+        evaluated_at: evaluatedAt,
+      }));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { error: cacheError } = await (admin as any)
+        .from('control_evaluation_cache')
+        .upsert(cacheRows, { onConflict: 'control_code,mode,scope_key' });
+      if (cacheError) {
+        console.warn('[Assessment] Failed to persist control evaluation cache:', cacheError.message);
       }
     }
   }
@@ -426,6 +505,8 @@ export async function runAssessment(
   const totalPartial = evaluations.filter(e => e.combinedStatus === 'partial').length;
   const totalInformal = evaluations.filter(e => e.combinedStatus === 'informal').length;
   const totalGap = evaluations.filter(e => e.combinedStatus === 'gap').length;
+  const totalFromCache = evaluations.filter(e => e.fromCache).length;
+  const totalFreshlyEvaluated = evaluations.length - totalFromCache;
 
   const result: AssessmentResult = {
     id: crypto.randomUUID(),
@@ -445,13 +526,15 @@ export async function runAssessment(
     totalPartial,
     totalInformal,
     totalGap,
+    totalFromCache,
+    totalFreshlyEvaluated,
   };
 
   onProgress?.({
     phase: 'complete',
     current: 1,
     total: 1,
-    message: `Assessment complete: ${totalCompliant}/${evaluations.length} controls compliant (${totalConforming} conforming, ${totalPartial} partial, ${totalInformal} informal, ${totalGap} gaps).`,
+    message: `Assessment complete: ${totalCompliant}/${evaluations.length} controls compliant (${totalConforming} conforming, ${totalPartial} partial, ${totalInformal} informal, ${totalGap} gaps). ${totalFromCache} reused from cache, ${totalFreshlyEvaluated} freshly evaluated.`,
   });
 
   return result;

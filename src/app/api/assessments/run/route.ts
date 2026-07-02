@@ -30,13 +30,14 @@ export async function POST(req: Request) {
       );
     }
 
-    const { frameworks, mode, salesChannel, productVersionId } = parsed.data;
+    const { frameworks, mode, salesChannel, productVersionId, forceReevaluate } = parsed.data;
 
     const config: AssessmentConfig = {
       frameworks,
       mode,
       salesChannel,
       productVersionId,
+      forceReevaluate,
     };
 
     console.log('[Assessment] Starting:', JSON.stringify(config));

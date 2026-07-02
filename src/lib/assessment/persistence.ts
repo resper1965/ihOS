@@ -12,6 +12,8 @@ export const RunAssessmentRequestSchema = z.object({
   mode: z.enum(['quick', 'deep']).default('quick'),
   salesChannel: z.enum(['B2B_GEHC', 'B2B_DIRECT']).nullable().default(null),
   productVersionId: z.string().nullable().default(null),
+  // Skip the persisted-evaluation cache and re-query RAG/Standard API for every control
+  forceReevaluate: z.boolean().default(false),
 });
 
 export type RunAssessmentRequest = z.infer<typeof RunAssessmentRequestSchema>;

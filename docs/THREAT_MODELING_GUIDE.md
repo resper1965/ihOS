@@ -43,3 +43,21 @@ Ao realizar a consulta semântica para construir a análise de risco, o banco de
 2. Documentos cujo campo `product_version_id` corresponda ao **UUID da versão selecionada**.
 
 Arquivos associados a outras versões do produto são totalmente isolados e desconsiderados para evitar conflitos de arquitetura.
+
+---
+
+## ♻️ Reuso da Análise Acumulada (Minimização de API)
+
+O motor GRC externo (ihos-api) é caro para chamar a cada geração. Para evitar reprocessamento desnecessário:
+
+1. A cada upload/reindexação de documento de versão, o pipeline extrai **deltas técnicos** (novas features/integrações) para `product_version_deltas` (ver `src/lib/assessment/delta-extractor.ts`).
+2. `POST /api/threat-modeling` calcula um *fingerprint* desses deltas acumulados (`getDeltaFingerprint`) e o compara com o fingerprint gravado na última análise salva para a mesma versão + conjunto de frameworks.
+3. **Se nada mudou**, a última análise persistida é devolvida (`cached: true`) — o motor GRC **não** é chamado novamente.
+4. **Se houve mudança** (nova feature extraída), o motor é chamado normalmente e o novo fingerprint é gravado.
+5. Para forçar uma nova geração mesmo sem deltas novos, envie `force_reevaluate: true` no corpo da requisição.
+
+### 🚫 Sem Invenção de Ameaças
+
+Se o motor GRC externo falhar (indisponível, erro 5xx, timeout), a API **não** gera dados fictícios. Ela responde com `502` e `{ "error": "GRC_ENGINE_UNAVAILABLE" }`, indicando que a lacuna deve ser resolvida na API externa. Nenhum registro é salvo em `threat_models` nesse caso.
+
+Se a versão do produto não possuir nenhum delta extraído (`product_version_deltas` vazio), a análise ainda é gerada, mas o campo `limitations` da resposta traz um aviso explícito de que a cobertura por feature pode estar incompleta — nunca é omitido silenciosamente.
