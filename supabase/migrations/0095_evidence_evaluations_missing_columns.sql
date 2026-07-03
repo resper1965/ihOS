@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration 009a: evidence_evaluations — add columns referenced by later
+-- Migration 0095: evidence_evaluations — add columns referenced by later
 -- migrations and the application.
 --
 -- WHY: migration 010_security_hardening.sql creates an RLS policy on

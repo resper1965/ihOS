@@ -21,7 +21,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
+      # test:unit excludes tests/unit/test_threat_modeling_live.test.ts, which
+      # calls the real ihos-api over the network and times out/flakes in CI.
+      # Run it on demand via `npm run test:integration` instead.
+      - run: npm run test:unit
 
   build:
     name: Build
