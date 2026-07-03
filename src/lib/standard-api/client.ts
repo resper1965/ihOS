@@ -80,7 +80,7 @@ async function getConfig(): Promise<StandardApiConfig> {
   // loudly instead of silently sending no header.
   if (!tenantId && !warnedMissingTenant) {
     warnedMissingTenant = true;
-    logger.warn("STANDARD_GRC_TENANT_ID is not set — the Standard API requires x-standard-tenant-id (org_xxxxx) for data-scoped endpoints; real calls will fail auth without it", {
+    logger.warn("STANDARD_GRC_TENANT_ID is not set — the stateless intelligence scorers work without it, but /gap/evaluate-evidence and /intelligence/council require x-standard-tenant-id (org_xxxxx) and will fail with 400 TENANT_CONTEXT_REQUIRED", {
       context: "standard-api",
     });
   }
@@ -115,12 +115,11 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
   const config = await getConfig();
   const url = `${config.baseUrl}${endpoint}`;
 
-
-  // Inject tenant_id if available and not already provided
-  const payload =
-    config.tenantId && typeof body === "object" && body !== null && !("tenant_id" in body)
-      ? { ...body, tenant_id: config.tenantId }
-      : body;
+  // Tenant is passed via the x-standard-tenant-id header only — the API never
+  // reads it from the body, and where a body needs an org it uses
+  // `organization_id`, not `tenant_id`. So we do NOT inject tenant_id into the
+  // payload (B6).
+  const payload = body;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
@@ -152,7 +151,11 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
     const json = (await response.json()) as { data?: TRes; error?: StandardApiError };
 
     if (!response.ok) {
-      if (response.status === 403 || response.status === 401) {
+      // 401/403 are HARD authorization errors (missing/invalid credential,
+      // RBAC denial, insufficient scope, cross-tenant block) — NEVER degrade to
+      // local estimation, which would mask a security/config problem (B3).
+      // Only 5xx is a candidate for the (opt-in) resiliency fallback.
+      if (response.status >= 500) {
         const fallback = await tryLocalFallback(endpoint, payload, `HTTP_${response.status}`);
         if (fallback !== null) return fallback;
       }
@@ -173,6 +176,9 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
     }
 
     if (err instanceof DOMException && err.name === "AbortError") {
+      // Timeout — candidate for fallback (availability problem, not auth).
+      const fallback = await tryLocalFallback(endpoint, payload, "timeout");
+      if (fallback !== null) return fallback;
       throw new StandardApiClientError(
         `Request to ${endpoint} timed out after ${config.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms`,
         "TIMEOUT",
@@ -180,7 +186,7 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
       );
     }
 
-    // Try fallback for general network issues
+    // Network error — candidate for fallback.
     const fallback = await tryLocalFallback(endpoint, payload, err instanceof Error ? err.message : "network_error");
     if (fallback !== null) return fallback;
 
@@ -222,7 +228,8 @@ async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Pro
     const json = (await response.json()) as { data?: TRes; error?: StandardApiError };
 
     if (!response.ok) {
-      if (response.status === 403 || response.status === 401) {
+      // 401/403 are hard auth errors — never degrade to local (B3). Only 5xx.
+      if (response.status >= 500) {
         const fallback = await tryLocalFallback(endpoint, null, `HTTP_${response.status}`);
         if (fallback !== null) return fallback;
       }
@@ -243,6 +250,8 @@ async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Pro
     }
 
     if (err instanceof DOMException && err.name === "AbortError") {
+      const fallback = await tryLocalFallback(endpoint, null, "timeout");
+      if (fallback !== null) return fallback;
       throw new StandardApiClientError(
         `Request to ${endpoint} timed out after ${config.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms`,
         "TIMEOUT",
@@ -346,8 +355,12 @@ export async function getScfControls(
   page: number = 1,
   perPage: number = 100
 ): Promise<{ data: any[]; total?: number }> {
+  // The API caps per_page at 100 (silently). Cap here too so callers that rely
+  // on `items.length < perPage` to detect the last page don't loop forever /
+  // stop early because they asked for more than the server ever returns (B1).
+  const cappedPerPage = Math.min(perPage, 100);
   const result = await get<any>(
-    `/scf/versions/${versionId}/controls?page=${page}&per_page=${perPage}`
+    `/scf/versions/${versionId}/controls?page=${page}&per_page=${cappedPerPage}`
   );
   return normalizeControlsResponse(result);
 }

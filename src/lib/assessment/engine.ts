@@ -145,9 +145,12 @@ export async function runAssessment(
   const scfVersion = await standardApi.getLatestScfVersion();
   let allControls: any[] = [];
   let page = 1;
-  const perPage = 200;
+  // The API caps per_page at 100. Requesting more than the server returns would
+  // make the `items.length < perPage` termination fire on page 1 and silently
+  // load only the first 100 controls. Use 100 so pagination actually advances.
+  const perPage = 100;
 
-  const MAX_PAGES = 20;
+  const MAX_PAGES = 20; // 20 × 100 = 2,000 ≥ the full 1,468-control catalog
   while (page <= MAX_PAGES) {
     const batch = await standardApi.getScfControls(scfVersion.scf_version_id, page, perPage);
     const items = batch.data || [];

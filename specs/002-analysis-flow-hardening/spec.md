@@ -109,5 +109,5 @@ A maintainer needs to prove the cache reduced API usage and audit which RAG path
 ## Assumptions
 
 - `stride_category + affected_component` is a good-enough identity for threat inheritance matching in v1 (coarser than full semantic equivalence; acceptable because it only affects labelling, not whether a threat is present).
-- The external GRC engine remains non-incremental; if it later exposes partial generation, `applied_deltas`/`baseline_model_id` already provide the bookkeeping to adopt it.
+- The external GRC engine is non-incremental — CONFIRMED by the Standard team (no ETag/If-None-Match/delta endpoint anywhere; see `docs/standard-api/CONTRACT_AUDIT.md` B5). The ihOS cache is therefore a "call vs. don't call" decision, not partial re-evaluation. If the API later exposes partial generation, `applied_deltas`/`baseline_model_id` already provide the bookkeeping to adopt it.
 - Live-DB validation (migrations + E2E) is performed by an operator per the RUNBOOK; this session validated via typecheck + unit tests only (no live Supabase/GRC access).

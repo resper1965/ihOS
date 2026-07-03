@@ -59,43 +59,68 @@ decision: keep the client-side loop (more control, more API calls) vs. adopt the
 server lifecycle (less code, server-managed). See "Open questions" B4.
 
 ### A5 — `council` endpoint path
-Client calls `/intelligence/council`; docs list it under "Additional
-Intelligence Endpoints" as `POST /api/v1/intelligence/council`. ✅ matches (with
-the A3 prefix).
+Client calls `/intelligence/council`; docs list it as
+`POST /api/v1/intelligence/council`. ✅ matches (with the A3 prefix). Note:
+unlike the other `/intelligence/*` scorers, council is `tenantRequired:true`
+(B2), so `STANDARD_GRC_TENANT_ID` must be set to use it.
+
+### A6 — SCF controls pagination page size (FIXED) 🔴 real bug
+The engine paged at `per_page=200`, but the API caps at 100 (B1). The loop's
+`items.length < 200` termination fired on page 1 → only the first **100** of
+1,468 controls ever loaded. Now `per_page=100` in both the client (cap) and the
+engine, so pagination advances correctly.
+→ `src/lib/standard-api/client.ts`, `src/lib/assessment/engine.ts`
+
+### A7 — 401/403 no longer trigger fallback (FIXED)
+Per B3, `post`/`get` only fall back on 5xx/timeout/network now — 401/403 throw
+immediately so scope/cross-tenant/auth problems surface instead of being masked
+by a local estimate.
+→ `src/lib/standard-api/client.ts`
+
+### A8 — stopped injecting `tenant_id` into request bodies (FIXED)
+Per B6, tenant is header-only; removed the body injection.
+→ `src/lib/standard-api/client.ts`
 
 ---
 
-## B. Questions to send to the Standard team (contract not fully pinned by docs)
+## B. Answers from the Standard team (RESOLVED 2026-07-03, source: API `main`)
 
-> These are the items to "devolver para o Standard" — the docs don't fully
-> specify them and a wrong assumption on our side is silent.
-
-- **B1 — Exact response shape of `GET /scf/versions/{id}/controls`.** Is it
-  `{ data: [ ...controls ], trace_id }` (bare array under `data`) or
-  `{ data: { items: [...], total, page }, trace_id }`? Our fix (A1) tolerates
-  both, but confirming lets us read `total` for correct pagination termination.
-  Also: what is the **max `per_page`**? (We currently page at 200, cap 20 pages.)
-- **B2 — Is `x-standard-tenant-id` required for the stateless intelligence
-  endpoints** (`compliance-score`, `cross-coverage`, `roi-path`,
-  `blast-radius`), or only for assessment/data-scoped ones? Affects whether a
-  missing tenant should hard-fail those.
-- **B3 — Auth failure status:** docs list `UNAUTHORIZED (401)` but not 403. Our
-  client treats **401 AND 403** as "scope denied → (opt-in) fallback". Does the
-  API ever return 403 (e.g. wrong tenant / insufficient scope), and should that
-  be treated as a hard auth error rather than a degradable one?
-- **B4 — Recommended integration pattern:** for per-product-version compliance
-  scoring, do you recommend the stateful assessment lifecycle
-  (`/assessments/... /evidence-analysis/run`) over the stateless
-  `evaluate-evidence` loop? Any **batch** evidence endpoint (we saw
-  `scan-vendor-contract/batch` returns a `jobId`; is there an evidence batch)?
-- **B5 — Incremental evaluation:** is there any endpoint that accepts "only
-  re-evaluate these controls/deltas", or a content hash / `If-None-Match` style
-  cache validator? This would turn ihOS's threat/assessment caching from
-  "call vs. don't call" into true partial re-evaluation.
-- **B6 — `x-standard-tenant-id` vs. body `tenant_id`/`organization_id`.** Our
-  client injects `tenant_id` into request bodies. The docs show bodies using
-  `organization_id` (e.g. create assessment). Is a stray `tenant_id` in the body
-  ignored, or can it trigger `VALIDATION_ERROR`?
+- **B1 — controls list shape + max per_page.** Default JSON is a **bare array
+  under `data`**: `{ data: [...], scf_version_id, page, per_page, trace_id }` —
+  there is **no `total`**. `per_page` **max = 100** (default 50); asking 200 is
+  silently capped to 100. Terminate pagination by offset (page shorter than
+  `per_page`) or cursor (`?after=`, response `pagination.has_more/next_cursor`).
+  NDJSON stream available via `Accept: application/x-ndjson`.
+  → **Applied:** A1 confirmed correct; client now caps `per_page` at 100 and the
+  engine pages at 100 (was 200 → the `items.length < 200` check broke on page 1,
+  loading only the first 100 controls — real bug, fixed).
+- **B2 — tenant on stateless scorers?** **No.** The 8 scorers
+  (`compliance-score`, `cross-coverage`, `roi-path`, `blast-radius`,
+  `gap-analysis`, `dpia-score`, `retention-check`, `breach-sla`) are
+  `tenantRequired:false`. Required (`true`) for `/gap/evaluate-evidence`,
+  `/gap/evaluate-evidence/batch`, `/intelligence/council`, and data-scoped
+  endpoints; missing there (authenticated) → **400 `TENANT_CONTEXT_REQUIRED`**.
+  → **Applied:** client no longer implies tenant is universally required; the
+  warn message is refined; the header is still sent whenever configured.
+- **B3 — 401/403 are hard errors.** 401 = missing/invalid credential; 403 =
+  RBAC denial / `INSUFFICIENT_SCOPE` / cross-tenant block (logged critical).
+  All are auth/config/security, **not** degradable. Fallback only on 5xx/timeout.
+  → **Applied:** removed the 401/403 → fallback path in `post`/`get`; fallback
+  now triggers only on `>= 500` and network/timeout.
+- **B4 — batch is async, no inline verdicts.** `POST /gap/evaluate-evidence/batch`
+  returns `202 { job_id }`; results are written via audit
+  (`gap.evidence.batch.item_evaluated`), not returned inline. So the **single**
+  `/gap/evaluate-evidence` remains correct for the synchronous per-control loop.
+  Stateful lifecycle exists but is an architecture choice, not a bug.
+  → **No change** (current approach validated).
+- **B5 — no incremental / ETag.** No `ETag`/`If-None-Match`/`Last-Modified`/delta
+  support anywhere. App-level subset submission is the only "delta". ihOS cache
+  stays "call vs. don't call" — this is now CONFIRMED, not an assumption.
+- **B6 — tenant only from header.** Read solely from `x-standard-tenant-id`
+  (or `x-tenant-id`/path), never the body. Bodies aren't `.strict()`, so a
+  stray `tenant_id` is stripped, but cleanest is to not send it; org-scoped
+  bodies use `organization_id`.
+  → **Applied:** removed the `tenant_id` body injection in `post()`.
 
 ---
 
