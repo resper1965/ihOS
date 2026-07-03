@@ -236,7 +236,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const versionId = req.nextUrl.searchParams.get("versionId");
+    // Use the standard URL API instead of NextRequest-only `req.nextUrl` so the
+    // handler works with any Request (and is unit-testable without a full
+    // NextRequest).
+    const versionId = new URL(req.url).searchParams.get("versionId");
 
     const [stats, activities, msrData] = await Promise.all([
       getDashboardStats(supabase, versionId),
