@@ -1,11 +1,17 @@
 
+# Edge Function: supabase-custom-claims
+#
+# DISABLED locally: the function's source (supabase/functions/supabase-custom-claims/)
+# was never committed to the repo — it exists only as a deployment (schema-drift,
+# same class as the untracked tables). With enabled = true, `supabase start`
+# (local dev and the RLS CI job) fails with:
+#   failed to load import map: open supabase/functions/supabase-custom-claims/deno.json
+#
+# To re-enable locally: commit the real function source under
+# supabase/functions/supabase-custom-claims/ (index.ts + deno.json) and set
+# enabled = true. The deployed function in production is unaffected by this flag.
 [functions.supabase-custom-claims]
-enabled = true
+enabled = false
 verify_jwt = false
 import_map = "./functions/supabase-custom-claims/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
 entrypoint = "./functions/supabase-custom-claims/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/supabase-custom-claims/*.html" ]
