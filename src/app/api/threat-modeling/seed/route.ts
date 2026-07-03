@@ -106,7 +106,7 @@ export async function POST(request: NextRequest) {
   // Retry with base columns if the lineage migration (source/baseline_model_id)
   // hasn't been applied yet — consistent with the main POST route.
   if (insertError) {
-    logger.warn('Seed insert with lineage columns failed; retrying with base columns (apply 20260702_version_baseline_lineage.sql)', {
+    logger.warn('Seed insert with lineage columns failed; retrying with base columns (apply 20260702000002_version_baseline_lineage.sql)', {
       context: 'threat-modeling/seed',
       meta: { error: insertError.message },
     });

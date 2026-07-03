@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration: 20260702_version_baseline_lineage
+-- Migration: 20260702000002_version_baseline_lineage
 -- ihOS — Threat-model version lineage + delta extraction confidence.
 --
 -- Enables "accumulated" threat analysis across product versions:
