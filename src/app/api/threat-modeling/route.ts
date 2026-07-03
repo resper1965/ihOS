@@ -1,6 +1,11 @@
 // src/app/api/threat-modeling/route.ts
 // GET  — list threat models (optional ?version= filter)
 // POST — generate a new threat model via the GRC engine
+//
+// The GRC engine returns a loosely-typed JSON payload and several new
+// threat_models columns aren't in the generated Supabase types yet, so `any`
+// is intentional in this route (same rationale as lineage.ts).
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
@@ -143,11 +148,15 @@ export async function POST(request: NextRequest) {
   // set until the accumulated product-version deltas actually change, instead
   // of regenerating from scratch on every request.
   if (!force_reevaluate) {
+    // Bound the scan: only the most recent rows for this version can be a match
+    // (a newer regeneration supersedes older ones). This avoids loading the full
+    // history of (large) model_data blobs as a version accumulates regenerations.
     const { data: existingRows } = await admin
       .from('threat_models')
       .select('*')
       .eq('product_version', product_version)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(25);
 
     const existing = ((existingRows ?? []) as any[]).find((row: any) => {
       const rowFrameworks = [...(row.target_frameworks ?? [])].sort();
@@ -221,7 +230,7 @@ export async function POST(request: NextRequest) {
   // If this version declares a previous version, diff against its approved
   // analysis so inherited vs. new threats are labelled. The external engine is
   // NOT incremental — this is a post-hoc annotation, not a partial generation.
-  const baseline = await findBaselineModel(admin, previousVersionId);
+  const baseline = await findBaselineModel(admin, previousVersionId, target_frameworks);
   const { data: annotatedData, inheritedCount, newCount, baselineModelId } = annotateInheritance(
     generatedData,
     baseline,

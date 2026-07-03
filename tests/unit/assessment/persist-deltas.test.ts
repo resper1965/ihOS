@@ -3,6 +3,7 @@
 // live schema: persistDeltas must still record deltas on databases where the
 // extraction_confidence/needs_review/source_document_id columns don't exist.
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi } from "vitest";
 import { persistDeltas } from "@/lib/assessment/delta-extractor";
 

@@ -22,6 +22,7 @@ vi.mock('@/lib/chat/embeddings', () => ({
 
 vi.mock('@/lib/assessment/delta-extractor', () => ({
   extractDeltasFromDocument: vi.fn(),
+  persistDeltas: vi.fn().mockResolvedValue({ error: null, degraded: false }),
 }));
 
 vi.mock('@/lib/assessment/grc-trigger', () => ({

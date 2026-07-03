@@ -56,6 +56,9 @@ export async function persistDeltas(
   if (!rich.error) return { error: null, degraded: false };
 
   // Older schema without the confidence/review/source columns: retry base cols.
+  // Surface the original error so a real failure (RLS, malformed row) isn't
+  // silently masked as schema drift.
+  console.warn('[persistDeltas] rich upsert failed, retrying with base columns:', rich.error?.message);
   const baseRows = deltas.map((d) => ({
     product_version_id: productVersionId,
     feature_slug: d.feature_slug,

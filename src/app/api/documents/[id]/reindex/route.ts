@@ -190,7 +190,7 @@ export async function POST(
               documentId,
             );
             if (deltaError) {
-              logger.error("Failed to upsert deltas in background pipeline", { context: "documents/reindex", meta: { error: deltaError } });
+              logger.warn("Failed to upsert deltas in background pipeline", { context: "documents/reindex", meta: { error: deltaError } });
             } else if (degraded) {
               logger.warn('Persisted deltas without confidence columns (apply 20260702_version_baseline_lineage.sql)', { context: 'documents/reindex' });
             }

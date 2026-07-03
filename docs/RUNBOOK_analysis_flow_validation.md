@@ -87,12 +87,21 @@ select control_code, mode, scope_key, corpus_fingerprint, evaluated_at
 
 ## 3. Validate fail-closed fallback (specs/002)
 
-1. Temporarily point `STANDARD_GRC_API_URL` at an unreachable host (staging only) OR revoke the key to force `401/403`.
+The fallback path is exercised ONLY by availability failures (5xx/timeout/network).
+`401/403` always hard-fail regardless of `GRC_LOCAL_FALLBACK_ENABLED` (they are
+auth/scope/cross-tenant errors, per `docs/standard-api/CONTRACT_AUDIT.md` B3/A7),
+so use the unreachable-host method here — not key revocation.
+
+1. Temporarily point `STANDARD_GRC_API_URL` at an unreachable host (staging only) to force a network/timeout error.
 2. With `GRC_LOCAL_FALLBACK_ENABLED` **unset**, run a deep assessment.
 3. **Assert**: affected controls are `[EVALUATION_ERROR]` (not silently compliant), and NO estimated rows landed in `control_evaluation_cache`.
 4. Set `GRC_LOCAL_FALLBACK_ENABLED=true`, re-run.
 5. **Assert**: results appear but are flagged — `evidence_evaluations.evidence_sources.isEstimated = true`, `needs_review = true`, and a Sentry event was emitted. These rows are STILL absent from `control_evaluation_cache`.
 6. Restore the real API config.
+
+**Separate auth-failure check (401/403):** revoke/invalidate the key and run an
+assessment — even with `GRC_LOCAL_FALLBACK_ENABLED=true`, controls must surface a
+hard error (never estimated), and nothing is written to `control_evaluation_cache`.
 
 ```sql
 select control_code, needs_review, evidence_sources->>'isEstimated' as estimated,

@@ -85,20 +85,37 @@ export async function POST(request: NextRequest) {
     },
   };
 
+  const baseRow = {
+    id: crypto.randomUUID(),
+    model_data: seededModelData,
+    product_version,
+    target_frameworks,
+    status,
+  };
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: inserted, error: insertError } = await (admin as any)
+  const admins = admin as any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let inserted: any;
+  let insertError: { message?: string } | null;
+  ({ data: inserted, error: insertError } = await admins
     .from('threat_models')
-    .insert({
-      id: crypto.randomUUID(),
-      model_data: seededModelData,
-      product_version,
-      target_frameworks,
-      status,
-      source: 'manual_seed',
-      baseline_model_id: null,
-    })
+    .insert({ ...baseRow, source: 'manual_seed', baseline_model_id: null })
     .select('*')
-    .single();
+    .single());
+
+  // Retry with base columns if the lineage migration (source/baseline_model_id)
+  // hasn't been applied yet — consistent with the main POST route.
+  if (insertError) {
+    logger.warn('Seed insert with lineage columns failed; retrying with base columns (apply 20260702_version_baseline_lineage.sql)', {
+      context: 'threat-modeling/seed',
+      meta: { error: insertError.message },
+    });
+    ({ data: inserted, error: insertError } = await admins
+      .from('threat_models')
+      .insert(baseRow)
+      .select('*')
+      .single());
+  }
 
   if (insertError || !inserted) {
     logger.error('Failed to seed baseline threat model', {

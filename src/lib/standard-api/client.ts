@@ -135,9 +135,9 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
       headers["x-standard-tenant-id"] = config.tenantId;
     }
 
-    console.log('[GRC API Client] URL:', url);
-    console.log('[GRC API Client] Headers:', { ...headers, Authorization: 'Bearer [REDACTED]' });
-    console.log('[GRC API Client] Payload:', JSON.stringify(payload));
+    // NOTE: do not log the payload — request bodies carry free-text evidence,
+    // contract, and incident content that must not leak into production logs.
+    console.log('[GRC API Client] POST', url);
 
     const response = await fetch(url, {
       method: "POST",

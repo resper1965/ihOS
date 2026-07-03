@@ -1,6 +1,6 @@
 // tests/unit/threat-modeling/lineage.test.ts
 import { describe, it, expect } from "vitest";
-import { annotateInheritance, resolveVersionContext } from "@/lib/threat-modeling/lineage";
+import { annotateInheritance, resolveVersionContext, findBaselineModel } from "@/lib/threat-modeling/lineage";
 
 // Minimal chainable builder whose maybeSingle() resolves to a preset result.
 function versionQuery(result: { data: unknown; error: unknown }) {
@@ -97,5 +97,59 @@ describe("annotateInheritance", () => {
     };
     const { inheritedCount } = annotateInheritance(generated, baseline);
     expect(inheritedCount).toBe(1);
+  });
+
+  it("never matches threats that lack both stride and component (no false inheritance)", () => {
+    const gen = {
+      metadata: {},
+      threat_model: { threats: [{ id: "E1" }, { id: "E2", stride_category: "", affected_component: "" }] },
+    };
+    const baseline = {
+      id: "tm-prev",
+      model_data: { threat_model: { threats: [{ id: "B", stride_category: "", affected_component: "" }] } },
+    };
+    const { inheritedCount, newCount, data } = annotateInheritance(gen, baseline);
+    expect(inheritedCount).toBe(0); // empty-keyed threats must NOT collide
+    expect(newCount).toBe(2);
+    expect((data.threat_model as any).threats.every((t: any) => t.is_new === true)).toBe(true);
+  });
+});
+
+describe("findBaselineModel", () => {
+  // Routes .from() by table: product_versions → version_code; threat_models → rows.
+  function makeAdmin(prevCode: string | null, threatRows: any[]) {
+    return {
+      from: (table: string) => {
+        const q: any = {
+          select: () => q,
+          eq: () => q,
+          order: () => Promise.resolve({ data: threatRows, error: null }),
+          maybeSingle: () => Promise.resolve({ data: prevCode ? { version_code: prevCode } : null, error: null }),
+        };
+        return q;
+      },
+    } as any;
+  }
+
+  it("returns null when there is no previous version", async () => {
+    expect(await findBaselineModel(makeAdmin("v2.2.x", []), null)).toBeNull();
+  });
+
+  it("prefers approved > reviewed > most recent", async () => {
+    const admin = makeAdmin("v2.2.x", [
+      { id: "draft-1", status: "draft", model_data: {}, target_frameworks: ["iso27001"] },
+      { id: "approved-1", status: "approved", model_data: {}, target_frameworks: ["iso27001"] },
+    ]);
+    const res = await findBaselineModel(admin, "prev-id", ["iso27001"]);
+    expect(res?.id).toBe("approved-1");
+  });
+
+  it("returns null when no baseline shares the requested frameworks", async () => {
+    const admin = makeAdmin("v2.2.x", [
+      { id: "iso-model", status: "approved", model_data: {}, target_frameworks: ["iso27001"] },
+    ]);
+    // Requesting SOC 2 — the ISO baseline is not framework-compatible.
+    const res = await findBaselineModel(admin, "prev-id", ["soc2"]);
+    expect(res).toBeNull();
   });
 });

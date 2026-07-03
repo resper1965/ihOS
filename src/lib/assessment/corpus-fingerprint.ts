@@ -28,8 +28,12 @@ export async function getCorpusFingerprint(productVersionId?: string | null): Pr
   );
 
   if (rows.length === 0) return hash('empty');
-  const latest = rows.reduce((max, r) => (r.updated_at > max ? r.updated_at : max), rows[0].updated_at);
-  return hash(`${rows.length}:${latest}`);
+  // Hash a stable per-row signature (id@updated_at), not just count + max
+  // timestamp: a replacement (one doc removed, another added with an older
+  // updated_at) can leave count and max unchanged, which would wrongly keep the
+  // fingerprint identical and serve stale cached evaluations.
+  const signature = rows.map((r) => `${r.id}@${r.updated_at}`).sort().join('|');
+  return hash(signature);
 }
 
 export interface ProductVersionDelta {

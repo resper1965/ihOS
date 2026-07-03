@@ -64,7 +64,7 @@ When the external Standard/ihos GRC engine cannot produce a result, the system m
 
 1. **Given** the external GRC engine call fails (network error, 5xx, timeout), **When** `POST /api/threat-modeling` handles it, **Then** it returns HTTP 502 with `{ error: "GRC_ENGINE_UNAVAILABLE" }` and no `threat_models` row is inserted.
 2. **Given** a product version has zero rows in `product_version_deltas`, **When** a threat model is generated, **Then** the response's `limitations` array includes an explicit gap notice recommending version documentation upload or external resolution — never silently omitted.
-3. **Given** the GRC Standard API resiliency fallback (`tryLocalFallback` in `standard-api/client.ts`) is invoked for compliance scoring/evidence evaluation, **Then** it remains gated by `GRC_FALLBACK_DISABLED` (pre-existing kill switch) — unchanged by this feature, documented here as the sibling mechanism to the threat-modeling gap-warning behavior.
+3. **Given** the GRC Standard API resiliency fallback (`tryLocalFallback` in `standard-api/client.ts`) is invoked for compliance scoring/evidence evaluation, **Then** it is gated by the opt-in `GRC_LOCAL_FALLBACK_ENABLED` (default OFF; legacy `GRC_FALLBACK_DISABLED=true` still forces off) — the sibling mechanism to the threat-modeling gap-warning behavior. (Hardened in `specs/002-analysis-flow-hardening`.)
 
 ---
 

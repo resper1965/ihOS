@@ -31,11 +31,13 @@ vi.mock("@/lib/supabase/admin", () => ({
         _inserted: null as any,
         select: () => builder,
         eq: () => builder,
+        order: () => builder,
         insert: (row: any) => {
           builder._inserted = Array.isArray(row) ? row[0] : row;
           return builder;
         },
-        order: () => Promise.resolve({ data: [], error: null }),
+        // Terminal for the cache-lookup chain (.select().eq().order().limit()).
+        limit: () => Promise.resolve({ data: [], error: null }),
         maybeSingle: () => Promise.resolve({ data: null, error: null }),
         // Echo the inserted row back (as real Supabase .insert().select().single() does).
         single: () => Promise.resolve({ data: builder._inserted ?? { id: "tm-generated-1", model_data: {} }, error: null }),

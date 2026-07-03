@@ -62,6 +62,7 @@ export async function resolveVersionContext(
 export async function findBaselineModel(
   admin: AdminClient,
   previousVersionId: string | null,
+  targetFrameworks: string[] = [],
 ): Promise<{ id: string; model_data: Record<string, any> } | null> {
   if (!previousVersionId) return null;
 
@@ -77,21 +78,38 @@ export async function findBaselineModel(
 
   const { data: rows } = await admin
     .from('threat_models')
-    .select('id, model_data, status, created_at')
+    .select('id, model_data, status, created_at, target_frameworks')
     .eq('product_version', prevCode)
     .order('created_at', { ascending: false });
 
-  const list = (rows ?? []) as unknown as Array<{ id: string; model_data: Record<string, any>; status: string }>;
+  let list = (rows ?? []) as unknown as Array<{
+    id: string; model_data: Record<string, any>; status: string; target_frameworks?: string[];
+  }>;
   if (list.length === 0) return null;
+
+  // Only inherit from a framework-compatible baseline: diffing an ISO 27001
+  // baseline against a SOC 2 run would produce misleading inherited/new counts.
+  // Prefer rows whose framework set overlaps the request; if none overlap,
+  // there is no comparable baseline (treat everything as new).
+  if (targetFrameworks.length > 0) {
+    const wanted = new Set(targetFrameworks);
+    const overlapping = list.filter((r) => (r.target_frameworks ?? []).some((f) => wanted.has(f)));
+    if (overlapping.length === 0) return null;
+    list = overlapping;
+  }
 
   const byStatus = (s: string) => list.find((r) => String(r.status).toLowerCase().includes(s));
   const chosen = byStatus('approved') ?? byStatus('reviewed') ?? list[0];
   return { id: chosen.id, model_data: chosen.model_data };
 }
 
-function threatKey(t: Record<string, unknown>): string {
+// Returns null when a threat lacks BOTH identifying fields — such threats are
+// never matched as inherited (an empty "::" key would make unrelated blank
+// threats collide and look inherited).
+function threatKey(t: Record<string, unknown>): string | null {
   const stride = String(t.stride_category ?? t.category ?? '').toLowerCase().trim();
   const component = String(t.affected_component ?? t.component ?? '').toLowerCase().trim();
+  if (!stride && !component) return null;
   return `${stride}::${component}`;
 }
 
@@ -113,12 +131,14 @@ export function annotateInheritance(
 
   const baselineThreats: Record<string, unknown>[] =
     baseline.model_data?.threat_model?.threats ?? [];
-  const baselineKeys = new Set(baselineThreats.map(threatKey));
+  // Only non-null keys participate in matching (empty-keyed threats never match).
+  const baselineKeys = new Set(baselineThreats.map(threatKey).filter((k): k is string => k !== null));
 
   let inheritedCount = 0;
   let newCount = 0;
   const annotated = threats.map((t) => {
-    const inherited = baselineKeys.has(threatKey(t));
+    const key = threatKey(t);
+    const inherited = key !== null && baselineKeys.has(key);
     if (inherited) inheritedCount++;
     else newCount++;
     return {

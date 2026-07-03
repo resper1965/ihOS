@@ -85,6 +85,28 @@ describe('getDeltaFingerprint', () => {
     expect(needsReviewCount).toBe(1);
   });
 
+  it('falls back to base columns when needs_review/extraction_confidence do not exist yet', async () => {
+    // First (rich) select errors → second (base) select succeeds. Fingerprint
+    // still computes; needsReviewCount is 0 since the column is absent.
+    let call = 0;
+    vi.mocked(createAdminClient).mockReturnValue({
+      from: vi.fn(() => {
+        call++;
+        return call === 1
+          ? makeQuery({ data: null, error: { message: 'column needs_review does not exist' } })
+          : makeQuery({
+              data: [{ feature_slug: 'oauth2', description: '', affected_components: [], risk_level: 'medium', updated_at: '2026-06-01T00:00:00Z' }],
+              error: null,
+            });
+      }),
+    } as unknown as ReturnType<typeof createAdminClient>);
+
+    const { fingerprint, deltas, needsReviewCount } = await getDeltaFingerprint('v1');
+    expect(deltas).toHaveLength(1);
+    expect(fingerprint).toBeTruthy();
+    expect(needsReviewCount).toBe(0);
+  });
+
   it('is order-independent (sorted by feature_slug before hashing)', async () => {
     mockAdminFrom([
       { feature_slug: 'webrtc', description: '', affected_components: [], risk_level: 'high', updated_at: '2026-06-01T00:00:00Z' },
