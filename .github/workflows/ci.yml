@@ -10,6 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least-privilege GITHUB_TOKEN: these jobs only read the repo.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Unit Tests
