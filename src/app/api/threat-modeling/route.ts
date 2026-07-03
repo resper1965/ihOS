@@ -1,88 +1,23 @@
 // src/app/api/threat-modeling/route.ts
 // GET  — list threat models (optional ?version= filter)
 // POST — generate a new threat model via the GRC engine
+//
+// The GRC engine returns a loosely-typed JSON payload and several new
+// threat_models columns aren't in the generated Supabase types yet, so `any`
+// is intentional in this route (same rationale as lineage.ts).
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ihosEngine } from '@/lib/ihos-engine';
+import { getDeltaFingerprint } from '@/lib/assessment/corpus-fingerprint';
+import { resolveVersionContext, findBaselineModel, annotateInheritance } from '@/lib/threat-modeling/lineage';
 import type {
   ThreatModelRecord,
-  ThreatModelData,
   ThreatModelSummary,
 } from '@/lib/supabase/types';
-
-function createMockThreatModel(version: string, frameworks: string[]): ThreatModelData {
-  return {
-    metadata: {
-      product_version: version,
-      target_frameworks: frameworks,
-      generated_at: new Date().toISOString(),
-      llm_model: 'mock-engine-fallback'
-    },
-    rag_context: { info: "Fallback context used due to engine failure." },
-    threat_model: {
-      threats: [
-        {
-          id: 'T-001',
-          stride_category: 'spoofing',
-          title: 'Unauthorized Access to API',
-          description: 'An attacker might bypass authentication if the token validation fails.',
-          affected_component: 'API Gateway',
-          risk_category: 'security',
-          severity: 8,
-          occurrence: 3,
-          detection: 4,
-          rpn: 96,
-          mitigations: ['Implement strict JWT validation', 'Add rate limiting'],
-          evidence_references: [],
-          confidence: 'High',
-          requires_review: false
-        },
-        {
-          id: 'T-002',
-          stride_category: 'information_disclosure',
-          title: 'Data Leakage via Logs',
-          description: 'Sensitive PII might be logged into plain text files.',
-          affected_component: 'Logging Service',
-          risk_category: 'privacy',
-          severity: 7,
-          occurrence: 4,
-          detection: 2,
-          rpn: 56,
-          mitigations: ['Mask PII in logs', 'Use structured logging'],
-          evidence_references: [],
-          confidence: 'Medium',
-          requires_review: true
-        }
-      ],
-      fmea_correlations: []
-    },
-    gaps: [
-      {
-        id: 'G-001',
-        gap_type: 'technical_gap',
-        title: 'Missing Log Masking',
-        description: 'No technical control in place to mask PII before logging.',
-        priority: 'high',
-        affected_controls: ['ISO 27001:A.12.4.1'],
-        remediation_suggestion: 'Implement a log masking library.'
-      }
-    ],
-    recommendations: [
-      {
-        id: 'R-001',
-        title: 'Deploy API Rate Limiting',
-        description: 'Configure the API gateway to limit requests per IP.',
-        priority: 'high',
-        related_gaps: [],
-        roi_score: 85
-      }
-    ],
-    limitations: ['Generated using fallback mock data.']
-  } as unknown as ThreatModelData;
-}
 
 export const maxDuration = 300; // generation can take up to 5 min
 
@@ -167,14 +102,19 @@ export async function POST(request: NextRequest) {
   }
   const token = session.access_token;
 
-  let body: { product_version?: string; target_frameworks?: string[]; skip_enrichment?: boolean };
+  let body: {
+    product_version?: string;
+    target_frameworks?: string[];
+    skip_enrichment?: boolean;
+    force_reevaluate?: boolean;
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
   }
 
-  const { product_version, target_frameworks, skip_enrichment } = body;
+  const { product_version, target_frameworks, skip_enrichment, force_reevaluate } = body;
 
   if (!product_version || typeof product_version !== 'string') {
     return NextResponse.json(
@@ -190,54 +130,193 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let generatedData: any;
+  const admin = createAdminClient();
 
+  // Resolve the product version UUID + its declared baseline (previous version).
+  // Accumulated feature deltas are keyed by id, not the free-text version_code.
+  const { productVersionId, previousVersionId } = await resolveVersionContext(admin, product_version);
+
+  const { fingerprint: deltaFingerprint, deltas, needsReviewCount } = productVersionId
+    ? await getDeltaFingerprint(productVersionId)
+    : { fingerprint: 'no-product-version-match', deltas: [] as Awaited<ReturnType<typeof getDeltaFingerprint>>['deltas'], needsReviewCount: 0 };
+
+  const sortedFrameworks = [...target_frameworks].sort();
+
+  // ── Accumulated-analysis cache ──────────────────────────────────────────
+  // Threat modeling is expensive (LLM + Standard API calls in the external
+  // GRC engine). Reuse the last analysis for this product version + framework
+  // set until the accumulated product-version deltas actually change, instead
+  // of regenerating from scratch on every request.
+  if (!force_reevaluate) {
+    // Bound the scan: only the most recent rows for this version can be a match
+    // (a newer regeneration supersedes older ones). This avoids loading the full
+    // history of (large) model_data blobs as a version accumulates regenerations.
+    const { data: existingRows } = await admin
+      .from('threat_models')
+      .select('*')
+      .eq('product_version', product_version)
+      .order('created_at', { ascending: false })
+      .limit(25);
+
+    const existing = ((existingRows ?? []) as any[]).find((row: any) => {
+      const rowFrameworks = [...(row.target_frameworks ?? [])].sort();
+      const sameFrameworks = JSON.stringify(rowFrameworks) === JSON.stringify(sortedFrameworks);
+      const sameDeltas = row.model_data?.metadata?.delta_fingerprint === deltaFingerprint;
+      return sameFrameworks && sameDeltas;
+    }) as any;
+
+    if (existing) {
+      logger.info('Reusing accumulated threat model — no new product-version deltas since last analysis', {
+        context: 'threat-modeling',
+        meta: { product_version, delta_fingerprint: deltaFingerprint },
+      });
+      return NextResponse.json({
+        success: true,
+        cached: true,
+        data: { ...(existing.model_data as any), id: existing.id },
+      });
+    }
+  }
+
+  // ── Generate via the Standard/ihos GRC engine — never fabricate results.
+  // If the engine is unavailable, that's a coverage gap to resolve externally,
+  // not something ihOS should paper over with invented threat data.
+  let generatedData: any;
   try {
     console.log('[ThreatModeling] Generating threat model:', {
       product_version,
       target_frameworks,
       skip_enrichment,
+      new_deltas: deltas.map((d) => d.feature_slug),
     });
-
 
     const result = await ihosEngine.generateThreatModel({
       product_version,
       target_frameworks,
       skip_grc_enrichment: skip_enrichment,
     }, token);
-    
+
     generatedData = result as any;
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Threat model generation failed';
-    logger.warn("Engine error, falling back to mock", { context: "threat-modeling", meta: { message } });
-    
-    // Fallback to mock data if the engine fails (e.g. 500 error)
-    generatedData = createMockThreatModel(product_version, target_frameworks);
+    logger.error('GRC engine unavailable — refusing to fabricate a threat model', {
+      context: 'threat-modeling',
+      meta: { message, product_version, target_frameworks },
+    });
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'GRC_ENGINE_UNAVAILABLE',
+        message:
+          'The Standard GRC Engine did not return a threat analysis. This is a coverage gap that must be resolved via the external API — ihOS does not invent threat evaluations locally.',
+        detail: message,
+      },
+      { status: 502 },
+    );
   }
 
-  // Save the generated (or mock) model to the database
-  const admin = createAdminClient();
+  // Stamp the delta fingerprint so the next request can tell whether the
+  // product actually changed before calling the engine again.
+  generatedData = {
+    ...generatedData,
+    metadata: {
+      ...generatedData.metadata,
+      delta_fingerprint: deltaFingerprint,
+      applied_deltas: deltas.map((d) => d.feature_slug),
+    } as any,
+  };
 
-  const { data: inserted, error: insertError } = await admin
+  // ── Version inheritance ─────────────────────────────────────────────────
+  // If this version declares a previous version, diff against its approved
+  // analysis so inherited vs. new threats are labelled. The external engine is
+  // NOT incremental — this is a post-hoc annotation, not a partial generation.
+  const baseline = await findBaselineModel(admin, previousVersionId, target_frameworks);
+  const { data: annotatedData, inheritedCount, newCount, baselineModelId } = annotateInheritance(
+    generatedData,
+    baseline,
+  );
+  generatedData = annotatedData;
+
+  // ── Coverage-gap warnings (never silently omit) ─────────────────────────
+  const warnings: string[] = [];
+  if (deltas.length === 0) {
+    warnings.push(
+      'No product-version deltas were found for this version. Feature-level threat coverage may be incomplete — upload version documentation (SAD/SRS) so new features are extracted, or resolve directly via the external GRC engine.',
+    );
+  }
+  if (needsReviewCount > 0) {
+    warnings.push(
+      `${needsReviewCount} extracted feature delta(s) were flagged low-confidence and need review. Threat coverage derived from them may be unreliable until confirmed.`,
+    );
+  }
+  if (warnings.length > 0) {
+    generatedData = { ...generatedData, limitations: [...(generatedData.limitations ?? []), ...warnings] };
+  }
+
+  const modelSource = baselineModelId ? 'inherited' : 'generated';
+
+  // Save the generated model. baseline_model_id/source are newer columns; on
+  // databases where the lineage migration hasn't been applied yet, retry with
+  // the base columns so generation still succeeds (the inheritance metadata is
+  // also embedded in model_data.metadata, so nothing is lost).
+  const baseRow = {
+    id: crypto.randomUUID(),
+    model_data: generatedData,
+    product_version: product_version,
+    target_frameworks: target_frameworks,
+    status: 'draft',
+  };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const admins = admin as any;
+  let inserted: any;
+  let insertError: { message?: string } | null;
+  ({ data: inserted, error: insertError } = await admins
     .from('threat_models')
-    .insert({
-      id: crypto.randomUUID(),
-      model_data: generatedData,
-      product_version: product_version,
-      target_frameworks: target_frameworks,
-      status: 'draft',
-    })
+    .insert({ ...baseRow, baseline_model_id: baselineModelId, source: modelSource })
     .select('*')
-    .single();
+    .single());
+
+  if (insertError) {
+    logger.warn('Threat model insert with lineage columns failed; retrying with base columns (apply 20260702_version_baseline_lineage.sql)', {
+      context: 'threat-modeling',
+      meta: { error: insertError.message },
+    });
+    ({ data: inserted, error: insertError } = await admins
+      .from('threat_models')
+      .insert(baseRow)
+      .select('*')
+      .single());
+  }
 
   if (insertError || !inserted) {
-    logger.error('Failed to save generated threat model to database', { 
-      context: 'threat-modeling', 
-      meta: { error: insertError?.message } 
+    logger.error('Failed to save generated threat model to database', {
+      context: 'threat-modeling',
+      meta: { error: insertError?.message }
     });
     return NextResponse.json({ error: 'Failed to save threat model to database' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, data: { ...(inserted.model_data as any), id: inserted.id } });
+  // Telemetry: prove regeneration was necessary and record inheritance ratio.
+  logger.info('Threat model generated', {
+    context: 'threat-modeling',
+    meta: {
+      product_version,
+      cached: false,
+      source: modelSource,
+      delta_count: deltas.length,
+      deltas_needing_review: needsReviewCount,
+      inherited_threats: inheritedCount,
+      new_threats: newCount,
+    },
+  });
+
+  return NextResponse.json({
+    success: true,
+    cached: false,
+    source: modelSource,
+    inherited_threats: inheritedCount,
+    new_threats: newCount,
+    data: { ...(inserted.model_data as any), id: inserted.id },
+  });
 }
 

@@ -121,7 +121,27 @@ describe('API client with mocked fetch', () => {
     expect(options.headers['Content-Type']).toBe('application/json');
   });
 
-  it('injects tenant_id into the request body', async () => {
+  it('sends the tenant via the x-standard-tenant-id header (not the body)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true, data: {} }),
+      })
+    );
+
+    const client = await import('@/lib/standard-api/client');
+    await client.complianceScore({ framework_code: 'soc2' });
+
+    const [, options] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    // Tenant travels in the header — the API never reads it from the body (B6).
+    expect(options.headers['x-standard-tenant-id']).toBe('test-tenant');
+    const body = JSON.parse(options.body);
+    expect(body.tenant_id).toBeUndefined();
+  });
+
+  it('does not inject tenant_id into the request body', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -136,28 +156,8 @@ describe('API client with mocked fetch', () => {
 
     const [, options] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
     const body = JSON.parse(options.body);
-    expect(body.tenant_id).toBe('test-tenant');
-  });
-
-  it('does not override existing tenant_id in request', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue({
-        ok: true,
-        status: 200,
-        json: async () => ({ success: true, data: {} }),
-      })
-    );
-
-    const client = await import('@/lib/standard-api/client');
-    await client.complianceScore({
-      framework_code: 'soc2',
-      tenant_id: 'custom-tenant',
-    });
-
-    const [, options] = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
-    const body = JSON.parse(options.body);
-    expect(body.tenant_id).toBe('custom-tenant');
+    // Only the caller's fields — no stray tenant_id added by the client.
+    expect(Object.keys(body)).toEqual(['framework_code']);
   });
 
   it('throws StandardApiClientError on HTTP error response', async () => {

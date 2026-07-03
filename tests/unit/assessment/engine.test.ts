@@ -45,6 +45,16 @@ describe('engine exported types', () => {
     expect(config.mode).toBe('deep');
   });
 
+  it('AssessmentConfig accepts forceReevaluate to bypass the persisted-evaluation cache', () => {
+    const config: AssessmentConfig = {
+      frameworks: ['iso27001'],
+      mode: 'quick',
+      forceReevaluate: true,
+    };
+
+    expect(config.forceReevaluate).toBe(true);
+  });
+
   it('ControlEvaluation type has required and optional fields', () => {
     const evaluation: ControlEvaluation = {
       controlId: 'CTL-001',
@@ -90,6 +100,21 @@ describe('engine exported types', () => {
     expect(evaluation.combinedStatus).toBe('partial');
   });
 
+  it('ControlEvaluation supports the persisted-evaluation cache markers', () => {
+    const evaluation: ControlEvaluation = {
+      controlId: 'CTL-003',
+      controlName: 'Vendor Risk Management',
+      domain: 'VENDOR',
+      isCompliant: true,
+      confidenceScore: 88,
+      fromCache: true,
+      cachedAt: '2026-06-30T00:00:00Z',
+    };
+
+    expect(evaluation.fromCache).toBe(true);
+    expect(evaluation.cachedAt).toBe('2026-06-30T00:00:00Z');
+  });
+
   it('FrameworkScore type has required fields', () => {
     const score: FrameworkScore = {
       frameworkId: 'iso27001',
@@ -127,6 +152,29 @@ describe('engine exported types', () => {
     expect(result.totalIsmsCompliant).toBeUndefined();
     expect(result.totalConforming).toBeUndefined();
     expect(result.totalGap).toBeUndefined();
+    // Optional cache reuse stats
+    expect(result.totalFromCache).toBeUndefined();
+    expect(result.totalFreshlyEvaluated).toBeUndefined();
+  });
+
+  it('AssessmentResult can report cache reuse stats', () => {
+    const result: AssessmentResult = {
+      id: 'assessment-2',
+      startedAt: '2026-01-01T00:00:00Z',
+      completedAt: '2026-01-01T00:01:00Z',
+      config: { frameworks: ['iso27001'], mode: 'quick' },
+      controlEvaluations: [],
+      frameworkScores: [],
+      implementedControlIds: [],
+      totalControlsEvaluated: 10,
+      totalControlsCompliant: 7,
+      totalControlsMissing: 3,
+      totalFromCache: 8,
+      totalFreshlyEvaluated: 2,
+    };
+
+    expect(result.totalFromCache).toBe(8);
+    expect(result.totalFreshlyEvaluated).toBe(2);
   });
 
   it('ProgressCallback type is a function accepting a progress object', () => {

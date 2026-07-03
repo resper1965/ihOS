@@ -7,7 +7,7 @@ import { chunkDocument } from '@/lib/chat/chunker';
 import { generateEmbeddings } from '@/lib/chat/embeddings';
 import { resolveFileType, extractText } from '@/lib/chat/document-extractor';
 import { verifyClarity } from '@/lib/chat/clarity-gate';
-import { extractDeltasFromDocument } from '@/lib/assessment/delta-extractor';
+import { extractDeltasFromDocument, persistDeltas } from '@/lib/assessment/delta-extractor';
 import { logger } from '@/lib/logger';
 import { triggerGrcRecalibration } from '@/lib/assessment/grc-trigger';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -227,24 +227,19 @@ export async function POST(req: Request) {
           const extractedDeltas = await extractDeltasFromDocument(text);
           if (extractedDeltas && extractedDeltas.length > 0) {
             console.log(`[Background Pipeline] Found ${extractedDeltas.length} deltas. Upserting...`);
-            const adminSupabase = createAdminClient();
-            const deltaRows = extractedDeltas.map((d) => ({
-              product_version_id: productVersionId,
-              feature_slug: d.feature_slug,
-              description: d.description,
-              affected_components: d.affected_components,
-              risk_level: d.risk_level,
-            }));
-            
-            const { error: deltaError } = await (adminSupabase as any)
-              .from('product_version_deltas')
-              .upsert(deltaRows, { onConflict: 'product_version_id,feature_slug' });
-              
+            const { error: deltaError, degraded } = await persistDeltas(
+              createAdminClient(),
+              productVersionId,
+              extractedDeltas,
+              documentId,
+            );
             if (deltaError) {
-              logger.warn('Failed to upsert deltas', { context: 'documents/upload', meta: { error: deltaError.message } });
+              logger.warn('Failed to upsert deltas', { context: 'documents/upload', meta: { error: deltaError } });
+            } else if (degraded) {
+              logger.warn('Persisted deltas without confidence columns (apply 20260702_version_baseline_lineage.sql)', { context: 'documents/upload' });
             }
           }
-          
+
           await triggerGrcRecalibration(productVersionId, user.id);
         } catch (bgErr) {
           logger.error('Background pipeline failed', { context: 'documents/upload', error: bgErr });

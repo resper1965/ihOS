@@ -152,6 +152,7 @@ export function useRunAssessment() {
       mode: 'quick' | 'deep';
       salesChannel?: string | null;
       productVersionId?: string | null;
+      forceReevaluate?: boolean;
     }) => {
       const res = await fetch('/api/assessments/run', {
         method: 'POST',

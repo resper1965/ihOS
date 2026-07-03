@@ -26,6 +26,7 @@ import { getOpenAI } from "@/lib/chat/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { logger } from "@/lib/logger";
 
 
 
@@ -53,6 +54,10 @@ export class StandardApiClientError extends Error {
 
 const DEFAULT_TIMEOUT_MS = 30_000;
 
+// Warn-once guards so config validation doesn't spam logs on every request.
+let warnedMissingTenant = false;
+let warnedMissingVersionPrefix = false;
+
 async function getConfig(): Promise<StandardApiConfig> {
   const baseUrl = process.env.STANDARD_GRC_API_URL;
   let apiKey: string | null = null;
@@ -70,8 +75,31 @@ async function getConfig(): Promise<StandardApiConfig> {
     throw new Error("Missing STANDARD_GRC_API_KEY environment variable.");
   }
 
+  // The Standard API requires the x-standard-tenant-id header (org_xxxxx) for
+  // data-scoped endpoints. Missing it makes real calls fail auth — surface it
+  // loudly instead of silently sending no header.
+  if (!tenantId && !warnedMissingTenant) {
+    warnedMissingTenant = true;
+    logger.warn("STANDARD_GRC_TENANT_ID is not set — the stateless intelligence scorers work without it, but /gap/evaluate-evidence and /intelligence/council require x-standard-tenant-id (org_xxxxx) and will fail with 400 TENANT_CONTEXT_REQUIRED", {
+      context: "standard-api",
+    });
+  }
+
+  const normalizedBase = baseUrl.replace(/\/+$/, ""); // strip trailing slashes
+
+  // Real API paths are under /api/v1 (e.g. /api/v1/intelligence/compliance-score).
+  // The client sends paths WITHOUT that prefix, so STANDARD_GRC_API_URL must
+  // include it. Warn if it looks like the version segment is missing.
+  if (!/\/v\d+$/.test(normalizedBase) && !warnedMissingVersionPrefix) {
+    warnedMissingVersionPrefix = true;
+    logger.warn("STANDARD_GRC_API_URL does not end with a version segment (expected .../api/v1) — every Standard API call may 404. Set it to https://standard-api.bekaa.eu/api/v1", {
+      context: "standard-api",
+      meta: { baseUrl: normalizedBase },
+    });
+  }
+
   return {
-    baseUrl: baseUrl.replace(/\/+$/, ""), // strip trailing slashes
+    baseUrl: normalizedBase,
     apiKey,
     tenantId,
     timeoutMs: DEFAULT_TIMEOUT_MS,
@@ -87,12 +115,11 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
   const config = await getConfig();
   const url = `${config.baseUrl}${endpoint}`;
 
-
-  // Inject tenant_id if available and not already provided
-  const payload =
-    config.tenantId && typeof body === "object" && body !== null && !("tenant_id" in body)
-      ? { ...body, tenant_id: config.tenantId }
-      : body;
+  // Tenant is passed via the x-standard-tenant-id header only — the API never
+  // reads it from the body, and where a body needs an org it uses
+  // `organization_id`, not `tenant_id`. So we do NOT inject tenant_id into the
+  // payload (B6).
+  const payload = body;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), config.timeoutMs ?? DEFAULT_TIMEOUT_MS);
@@ -108,9 +135,9 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
       headers["x-standard-tenant-id"] = config.tenantId;
     }
 
-    console.log('[GRC API Client] URL:', url);
-    console.log('[GRC API Client] Headers:', { ...headers, Authorization: 'Bearer [REDACTED]' });
-    console.log('[GRC API Client] Payload:', JSON.stringify(payload));
+    // NOTE: do not log the payload — request bodies carry free-text evidence,
+    // contract, and incident content that must not leak into production logs.
+    console.log('[GRC API Client] POST', url);
 
     const response = await fetch(url, {
       method: "POST",
@@ -124,9 +151,12 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
     const json = (await response.json()) as { data?: TRes; error?: StandardApiError };
 
     if (!response.ok) {
-      if (response.status === 403 || response.status === 401) {
-        console.warn(`[GRC Client] API scope error (${response.status}) on POST ${endpoint}. Routing to local fallback...`);
-        const fallback = await tryLocalFallback(endpoint, payload);
+      // 401/403 are HARD authorization errors (missing/invalid credential,
+      // RBAC denial, insufficient scope, cross-tenant block) — NEVER degrade to
+      // local estimation, which would mask a security/config problem (B3).
+      // Only 5xx is a candidate for the (opt-in) resiliency fallback.
+      if (response.status >= 500) {
+        const fallback = await tryLocalFallback(endpoint, payload, `HTTP_${response.status}`);
         if (fallback !== null) return fallback;
       }
 
@@ -146,6 +176,9 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
     }
 
     if (err instanceof DOMException && err.name === "AbortError") {
+      // Timeout — candidate for fallback (availability problem, not auth).
+      const fallback = await tryLocalFallback(endpoint, payload, "timeout");
+      if (fallback !== null) return fallback;
       throw new StandardApiClientError(
         `Request to ${endpoint} timed out after ${config.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms`,
         "TIMEOUT",
@@ -153,8 +186,8 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
       );
     }
 
-    // Try fallback for general network issues
-    const fallback = await tryLocalFallback(endpoint, payload);
+    // Network error — candidate for fallback.
+    const fallback = await tryLocalFallback(endpoint, payload, err instanceof Error ? err.message : "network_error");
     if (fallback !== null) return fallback;
 
     const message = err instanceof Error ? err.message : "Unknown network error";
@@ -195,9 +228,9 @@ async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Pro
     const json = (await response.json()) as { data?: TRes; error?: StandardApiError };
 
     if (!response.ok) {
-      if (response.status === 403 || response.status === 401) {
-        console.warn(`[GRC Client] API scope error (${response.status}) on GET ${endpoint}. Routing to local fallback...`);
-        const fallback = await tryLocalFallback(endpoint, null);
+      // 401/403 are hard auth errors — never degrade to local (B3). Only 5xx.
+      if (response.status >= 500) {
+        const fallback = await tryLocalFallback(endpoint, null, `HTTP_${response.status}`);
         if (fallback !== null) return fallback;
       }
 
@@ -217,6 +250,8 @@ async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Pro
     }
 
     if (err instanceof DOMException && err.name === "AbortError") {
+      const fallback = await tryLocalFallback(endpoint, null, "timeout");
+      if (fallback !== null) return fallback;
       throw new StandardApiClientError(
         `Request to ${endpoint} timed out after ${config.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms`,
         "TIMEOUT",
@@ -224,7 +259,7 @@ async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Pro
       );
     }
 
-    const fallback = await tryLocalFallback(endpoint, null);
+    const fallback = await tryLocalFallback(endpoint, null, err instanceof Error ? err.message : "network_error");
     if (fallback !== null) return fallback;
 
     const message = err instanceof Error ? err.message : "Unknown network error";
@@ -308,15 +343,40 @@ export async function getLatestScfVersion(): Promise<{ scf_version_id: string; v
 
 /**
  * Fetch controls for a specific SCF version.
+ *
+ * `get()` already unwraps the `{ data, trace_id }` envelope, so the real API's
+ * paginated list arrives here as a bare array. Normalize to `{ data, total }`
+ * regardless of shape — matching getScfFrameworks — so the engine's
+ * `batch.data` never silently sees `undefined` (which returned 0 controls and
+ * made only the local fallback catalog work).
  */
 export async function getScfControls(
   versionId: string,
   page: number = 1,
   perPage: number = 100
 ): Promise<{ data: any[]; total?: number }> {
-  return get<{ data: any[]; total?: number }>(
-    `/scf/versions/${versionId}/controls?page=${page}&per_page=${perPage}`
+  // The API caps per_page at 100 (silently). Cap here too so callers that rely
+  // on `items.length < perPage` to detect the last page don't loop forever /
+  // stop early because they asked for more than the server ever returns (B1).
+  const cappedPerPage = Math.min(perPage, 100);
+  const result = await get<any>(
+    `/scf/versions/${versionId}/controls?page=${page}&per_page=${cappedPerPage}`
   );
+  return normalizeControlsResponse(result);
+}
+
+/**
+ * Normalize the SCF controls list into `{ data, total }` regardless of the
+ * response shape after the `{ data, trace_id }` envelope has been unwrapped
+ * (bare array, `{ data }`, `{ items }`, or `{ controls }`). Exported for tests.
+ */
+export function normalizeControlsResponse(result: any): { data: any[]; total?: number } {
+  if (Array.isArray(result)) return { data: result, total: result.length };
+  const data = result?.data ?? result?.items ?? result?.controls ?? [];
+  return {
+    data: Array.isArray(data) ? data : [],
+    total: result?.total ?? result?.pagination?.total,
+  };
 }
 
 /**
@@ -331,22 +391,95 @@ export async function getScfFrameworks(): Promise<any[]> {
 // GRC API Resiliency Local Fallback Engines
 // ---------------------------------------------------------------------------
 
-async function tryLocalFallback(endpoint: string, payload: any): Promise<any | null> {
-  if (process.env.GRC_FALLBACK_DISABLED === "true") {
+/**
+ * Whether the local resiliency fallback is allowed to substitute a result when
+ * the authoritative Standard GRC Engine API is unreachable or denies scope.
+ *
+ * OPT-IN (fail-closed by default). Per Constitution Principle VIII, we do NOT
+ * silently estimate/fabricate compliance evaluations. Set
+ * `GRC_LOCAL_FALLBACK_ENABLED=true` to explicitly accept degraded/estimated
+ * results (each is flagged `is_estimated: true`). The legacy
+ * `GRC_FALLBACK_DISABLED=true` kill switch is still honored as a hard-off.
+ */
+export function isLocalFallbackEnabled(): boolean {
+  if (process.env.GRC_FALLBACK_DISABLED === "true") return false;
+  return process.env.GRC_LOCAL_FALLBACK_ENABLED === "true";
+}
+
+// Endpoints whose fallback is a deterministic computation over REAL persisted
+// data (evidence_evaluations, scf_framework_mappings) — degraded but grounded.
+// Everything else (LLM judgment, hardcoded scores) is a stronger concern.
+const GROUNDED_FALLBACK_ENDPOINTS = new Set([
+  "/intelligence/compliance-score",
+  "/intelligence/cross-coverage",
+  "/intelligence/blast-radius",
+]);
+
+async function tryLocalFallback(endpoint: string, payload: any, reason: string): Promise<any | null> {
+  const cleanEndpoint = endpoint.split("?")[0];
+
+  // Everything is fail-closed by default — including the SCF catalog. The
+  // Standard API is the SOURCE OF TRUTH for controls/frameworks; serving a
+  // hardcoded stale subset during an outage would silently corrupt every
+  // downstream assessment (worse than a service estimate). So an outage
+  // surfaces as an error unless the operator explicitly opts into degraded
+  // mode via GRC_LOCAL_FALLBACK_ENABLED.
+  if (!isLocalFallbackEnabled()) {
+    logger.warn("Standard GRC API unavailable and local fallback is DISABLED — surfacing error instead of estimating/serving stale truth", {
+      context: "standard-api",
+      meta: { endpoint: cleanEndpoint, reason },
+    });
     return null;
   }
-  const cleanEndpoint = endpoint.split("?")[0];
+
+  // Opt-in degraded mode: SCF catalog reference data (still a best-effort
+  // stand-in for the authoritative catalog — logged as such).
+  const staticFallback = tryStaticCatalogFallback(cleanEndpoint);
+  if (staticFallback !== null) {
+    logger.error("Serving STALE hardcoded SCF catalog from local fallback (source of truth unavailable)", {
+      context: "standard-api",
+      meta: { endpoint: cleanEndpoint, reason },
+    });
+    return staticFallback;
+  }
+
+  // Fallback is explicitly enabled: log that we are serving an ESTIMATED result.
+  const grounded = GROUNDED_FALLBACK_ENDPOINTS.has(cleanEndpoint);
+  const note = `Estimated locally (${reason}) — Standard GRC Engine API was unavailable. ${
+    grounded ? "Computed from persisted evidence/mappings." : "Non-authoritative approximation."
+  }`;
+  if (grounded) {
+    logger.warn("Serving ESTIMATED (grounded) GRC result from local fallback", {
+      context: "standard-api",
+      meta: { endpoint: cleanEndpoint, reason },
+    });
+  } else {
+    // LLM-judged / heuristic results are the true fabrication risk — Sentry error.
+    logger.error("Serving ESTIMATED (non-authoritative) GRC result from local fallback", {
+      context: "standard-api",
+      meta: { endpoint: cleanEndpoint, reason },
+    });
+  }
+
   switch (cleanEndpoint) {
     case "/gap/evaluate-evidence":
-      return localEvaluateEvidence(payload);
+      return withEstimatedMarker(await localEvaluateEvidence(payload), note);
     case "/intelligence/compliance-score":
-      return localComplianceScore(payload);
+      return withEstimatedMarker(await localComplianceScore(payload), note);
     case "/intelligence/cross-coverage":
-      return localCrossCoverage(payload);
+      return withEstimatedMarker(await localCrossCoverage(payload), note);
     case "/intelligence/roi-path":
-      return localRoiPath(payload);
+      return withEstimatedMarker(await localRoiPath(payload), note);
     case "/intelligence/blast-radius":
-      return localBlastRadius(payload);
+      return withEstimatedMarker(await localBlastRadius(payload), note);
+    default:
+      return null;
+  }
+}
+
+/** Reference data (not evaluations) — always safe to serve on outage. */
+function tryStaticCatalogFallback(cleanEndpoint: string): any | null {
+  switch (cleanEndpoint) {
     case "/scf/frameworks":
       return [
         { framework_code: "iso27001", framework_name: "ISO/IEC 27001:2022" },
@@ -380,6 +513,11 @@ async function tryLocalFallback(endpoint: string, payload: any): Promise<any | n
       }
       return null;
   }
+}
+
+/** Stamp an estimation marker onto a fallback result object. */
+function withEstimatedMarker<T extends object>(data: T, note: string): T & { is_estimated: true; estimation_note: string } {
+  return { ...data, is_estimated: true as const, estimation_note: note };
 }
 
 async function localEvaluateEvidence(

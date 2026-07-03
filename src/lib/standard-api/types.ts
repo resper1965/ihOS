@@ -11,6 +11,15 @@ export interface StandardApiError {
   details?: Record<string, unknown>;
 }
 
+// Marker attached to any result produced by the local resiliency fallback
+// instead of the authoritative Standard GRC Engine API. Consumers MUST treat
+// `is_estimated: true` as non-authoritative (never cache/persist it as the
+// current truth, and surface it for review).
+export interface EstimatedResultMarker {
+  is_estimated?: boolean;
+  estimation_note?: string;
+}
+
 export interface StandardApiResponse<T> {
   success: boolean;
   data: T;
@@ -28,7 +37,7 @@ export interface ComplianceScoreRequest {
   tenant_id?: string;
 }
 
-export interface ComplianceScoreData {
+export interface ComplianceScoreData extends EstimatedResultMarker {
   framework_code?: string;
   regulation_id?: string;
   score?: number; // real API
@@ -57,7 +66,7 @@ export interface CrossCoverageRequest {
   tenant_id?: string;
 }
 
-export interface CrossCoverageData {
+export interface CrossCoverageData extends EstimatedResultMarker {
   source_framework: string;
   target_framework: string;
   overlap_percentage?: number; // real API
@@ -90,7 +99,7 @@ export interface RoiPathRequest {
   tenant_id?: string;
 }
 
-export interface RoiPathData {
+export interface RoiPathData extends EstimatedResultMarker {
   target_framework?: string;
   top_n_requested?: number;
   total_missing?: number;
@@ -123,7 +132,7 @@ export interface BlastRadiusRequest {
   tenant_id?: string;
 }
 
-export interface BlastRadiusData {
+export interface BlastRadiusData extends EstimatedResultMarker {
   control_id: string;
   affected_frameworks?: Array<{
     framework_code: string;
@@ -150,7 +159,7 @@ export interface EvaluateEvidenceRequest {
   tenant_id?: string;
 }
 
-export interface EvaluateEvidenceData {
+export interface EvaluateEvidenceData extends EstimatedResultMarker {
   is_compliant: boolean;
   confidence_score: number; // 0-100
   missing_elements: string[];

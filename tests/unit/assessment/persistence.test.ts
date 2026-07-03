@@ -94,6 +94,22 @@ describe('buildEvidenceBatch', () => {
       ismsPhase: evaluation.ismsPhase,
       evidencePhase: evaluation.evidencePhase,
       combinedStatus: 'partial',
+      searchSource: null,
+      isEstimated: false,
+    });
+  });
+
+  it('flags needs_review and records provenance for estimated evaluations', () => {
+    const batch = buildEvidenceBatch(
+      [makeEvaluation({ confidenceScore: 90, isEstimated: true, searchSource: 'supabase-fallback' })],
+      assessmentId,
+    );
+    // needs_review is true because the result is a non-authoritative estimate,
+    // even though confidence (90) is above the borderline threshold.
+    expect(batch[0].needs_review).toBe(true);
+    expect(batch[0].evidence_sources).toMatchObject({
+      isEstimated: true,
+      searchSource: 'supabase-fallback',
     });
   });
 
@@ -151,6 +167,14 @@ describe('RunAssessmentRequestSchema', () => {
     if (result.success) {
       expect(result.data.mode).toBe('quick');
     }
+  });
+
+  it('defaults forceReevaluate to false and accepts true', () => {
+    const off = RunAssessmentRequestSchema.safeParse({ frameworks: ['iso27001'] });
+    expect(off.success && off.data.forceReevaluate).toBe(false);
+
+    const on = RunAssessmentRequestSchema.safeParse({ frameworks: ['iso27001'], forceReevaluate: true });
+    expect(on.success && on.data.forceReevaluate).toBe(true);
   });
 
   it('defaults salesChannel and productVersionId to null when omitted', () => {

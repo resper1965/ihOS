@@ -91,9 +91,18 @@ SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
 OPENAI_API_KEY=sk-your-openai-key
 
 # Standard GRC Engine
-STANDARD_GRC_API_URL=https://api.standardgrc.com/v1
-STANDARD_GRC_API_KEY=your-grc-api-key
-STANDARD_GRC_TENANT_ID=your-tenant-id
+# NOTE: the base URL MUST include the /api/v1 path segment — the client sends
+# paths without it, so a missing segment 404s every call.
+STANDARD_GRC_API_URL=https://standard-api.bekaa.eu/api/v1
+STANDARD_GRC_API_KEY=standard_live_your-grc-api-key   # prefix: standard_live_ (or standard_test_)
+STANDARD_GRC_TENANT_ID=org_your-org-id                # REQUIRED (x-standard-tenant-id) for data-scoped endpoints
+
+# Standard GRC Engine — local resiliency fallback (OPT-IN, default OFF).
+# When the authoritative GRC API is unreachable/denies scope, ihOS by default
+# surfaces a GAP/ERROR rather than estimating (Constitution Principle VIII).
+# Set to "true" ONLY to accept degraded, non-authoritative estimated results
+# (each flagged is_estimated=true and marked needs_review). Keep unset in prod.
+GRC_LOCAL_FALLBACK_ENABLED=false
 
 # Vercel AI
 VERCEL_AI_GATEWAY_URL=https://gateway.ai.vercel.com/v1
