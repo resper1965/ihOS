@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { DOCUMENT_TYPES } from "@/lib/supabase/types-custom";
 
 export const dynamic = "force-dynamic";
 
@@ -50,9 +51,9 @@ export async function PATCH(
   if (body.category) update.category = body.category;
   if (body.status) update.status = body.status;
   if (body.doc_type) {
-    const VALID_DOC_TYPES = ['POLICY', 'PROCEDURE', 'CONTRACT', 'CLOUD_ARCH_ORG', 'SAD', 'SRS_SDS', 'TEST_REPORT', 'EVIDENCE_RECORD', 'UNCLASSIFIED'];
-    if (!VALID_DOC_TYPES.includes(body.doc_type)) {
-      return NextResponse.json({ error: `Invalid doc_type. Allowed: ${VALID_DOC_TYPES.join(', ')}` }, { status: 400 });
+    const validDocTypes = Object.keys(DOCUMENT_TYPES);
+    if (!validDocTypes.includes(body.doc_type)) {
+      return NextResponse.json({ error: `Invalid doc_type. Allowed: ${validDocTypes.join(', ')}` }, { status: 400 });
     }
     update.doc_type = body.doc_type;
   }

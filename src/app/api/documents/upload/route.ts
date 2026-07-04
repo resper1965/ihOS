@@ -11,6 +11,7 @@ import { extractDeltasFromDocument, persistDeltas } from '@/lib/assessment/delta
 import { logger } from '@/lib/logger';
 import { triggerGrcRecalibration } from '@/lib/assessment/grc-trigger';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { DOCUMENT_TYPES } from '@/lib/supabase/types-custom';
 
 export const maxDuration = 120;
 
@@ -42,9 +43,8 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get('file');
     const category = (formData.get('category') as string) || 'ISMS_CORE';
-    const VALID_DOC_TYPES = ['POLICY', 'PROCEDURE', 'CONTRACT', 'CLOUD_ARCH_ORG', 'SAD', 'SRS_SDS', 'TEST_REPORT', 'EVIDENCE_RECORD', 'UNCLASSIFIED'];
     const docTypeRaw = (formData.get('docType') as string) || 'UNCLASSIFIED';
-    const docType = VALID_DOC_TYPES.includes(docTypeRaw) ? docTypeRaw : 'UNCLASSIFIED';
+    const docType = docTypeRaw in DOCUMENT_TYPES ? docTypeRaw : 'UNCLASSIFIED';
     const productVersionId = formData.get('productVersionId') as string | null;
     const version = (formData.get('version') as string) || '1.0';
     const status = (formData.get('status') as string) || 'published';
