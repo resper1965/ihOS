@@ -25,10 +25,15 @@ SELECT policies_are('public', 'profiles', ARRAY[
 -- Test 3: auth_role execute is denied to anon/authenticated
 -- (Root cause of the historical permission-denied error. throws_ok() can't be
 -- used here: the test session is superuser, which bypasses ACL checks.)
+-- auth_role() itself is live-schema drift: no migration creates it, and
+-- 20260617115707 only revokes it conditionally. On a from-scratch database it
+-- doesn't exist, which satisfies the assertion vacuously.
 SELECT ok(
-    NOT has_function_privilege('authenticated', 'public.auth_role()', 'EXECUTE')
-    AND NOT has_function_privilege('anon', 'public.auth_role()', 'EXECUTE'),
-    'Execute permission on auth_role should be revoked from anon/authenticated'
+    CASE WHEN to_regprocedure('public.auth_role()') IS NULL THEN true
+         ELSE NOT has_function_privilege('authenticated', 'public.auth_role()', 'EXECUTE')
+          AND NOT has_function_privilege('anon', 'public.auth_role()', 'EXECUTE')
+    END,
+    'Execute permission on auth_role should be revoked from anon/authenticated (or the function is absent)'
 );
 
 -- Setup for tests 4-5: create a user inside this (rolled-back) transaction.
