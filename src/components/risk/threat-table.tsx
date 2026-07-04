@@ -340,6 +340,22 @@ export function ThreatTable({ threats }: ThreatTableProps) {
                         <span className="text-sm text-text-secondary">
                           {threat.title}
                         </span>
+                        {threat.is_new && (
+                          <span
+                            className="ml-2 inline-flex items-center rounded-md border border-emerald-500/25 bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-400 align-middle"
+                            title="Not present in the previous version's baseline — review this threat"
+                          >
+                            New in this version
+                          </span>
+                        )}
+                        {!threat.is_new && threat.inherited_from_version && (
+                          <span
+                            className="ml-2 inline-flex items-center rounded-md border border-slate-500/25 bg-slate-500/15 px-1.5 py-0.5 text-[10px] font-medium text-slate-400 align-middle"
+                            title={`Already present in the baseline analysis of ${threat.inherited_from_version}`}
+                          >
+                            Inherited · {threat.inherited_from_version}
+                          </span>
+                        )}
                       </span>
                       <span className="hidden w-[140px] shrink-0 px-4 py-3.5 text-left lg:block">
                         <span className="rounded-md bg-black/5 dark:bg-white/5 px-2 py-0.5 text-xs font-medium text-text-muted">

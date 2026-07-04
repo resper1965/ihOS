@@ -104,6 +104,10 @@ export interface AssessmentResult {
   // Cache reuse stats — evidence of API-usage minimization
   totalFromCache?: number;
   totalFreshlyEvaluated?: number;
+
+  // Result-quality totals — drive the post-run "what to do now" guidance
+  totalEvaluationErrors?: number;
+  totalEstimated?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -525,6 +529,8 @@ export async function runAssessment(
   const totalGap = evaluations.filter(e => e.combinedStatus === 'gap').length;
   const totalFromCache = evaluations.filter(e => e.fromCache).length;
   const totalFreshlyEvaluated = evaluations.length - totalFromCache;
+  const totalEvaluationErrors = evaluations.filter(e => e.auditorNotes?.startsWith('[EVALUATION_ERROR]')).length;
+  const totalEstimated = evaluations.filter(e => e.isEstimated).length;
 
   const result: AssessmentResult = {
     id: crypto.randomUUID(),
@@ -546,6 +552,8 @@ export async function runAssessment(
     totalGap,
     totalFromCache,
     totalFreshlyEvaluated,
+    totalEvaluationErrors,
+    totalEstimated,
   };
 
   onProgress?.({

@@ -459,6 +459,10 @@ export interface StrideThreat {
   rpn: number;
   mitigations: string[];
   related_controls: string[];
+  // Version-lineage annotations (stamped by annotateInheritance when the
+  // version declares a previous_version_id with an approved baseline model)
+  is_new?: boolean;
+  inherited_from_version?: string | null;
 }
 
 export interface FmeaItem {
