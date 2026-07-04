@@ -85,19 +85,34 @@ A coluna `doc_type` já existe (NOT NULL) mas não é exposta nem consumida.
 | `SRS_SDS` | OPERATIONAL | **Versão** | Threat modeling (deltas) |
 | `TEST_REPORT` | OPERATIONAL | **Versão** | Evidência da versão; futuro gate de release |
 
-Entregas: CHECK constraint idempotente; campo no UploadWizard (com descrição de
-cada tipo); checklist do threat modeling passa a checar `doc_type='SAD'` em vez
-de regex de filename; backfill assistido dos documentos existentes (tela de
-triagem "documentos sem tipo"). Regra de ouro na UI: **Global = "a organização
-é segura?" · Versão = "esta release é segura?"**.
+**Atenção — migração de legado obrigatória antes do CHECK:** o upload atual
+grava o *formato do arquivo* em `doc_type` (`upload/route.ts:134-135` duplica
+`pdf`/`docx` em `doc_type` e `file_format`). Os documentos existentes portanto
+não estão "sem tipo" — estão com tipo errado. Ordem da migration: (1) backfill
+`file_format` a partir de `doc_type` onde estiver nulo; (2) `doc_type` com
+valor de formato → `'UNCLASSIFIED'`; (3) CHECK admitindo a taxonomia +
+`'UNCLASSIFIED'` (transitório); (4) tela de triagem lista os `UNCLASSIFIED`
+até zerar, e novos uploads exigem tipo válido.
+
+Entregas: migração de legado acima; CHECK idempotente; campo no UploadWizard
+(com descrição de cada tipo); upload passa a gravar o tipo semântico (formato
+fica só em `file_format`); checklist do threat modeling passa a checar
+`doc_type='SAD'` em vez de regex de filename. Regra de ouro na UI: **Global =
+"a organização é segura?" · Versão = "esta release é segura?"**.
 
 ### F2 — Contexto obrigatório: versão × canal em toda consulta — *~1 PR*
 
 O eixo que falta. Entregas:
 
 - **Context Bar global** (ver §5): seletor persistente `Versão × Canal` no
-  header do dashboard; default = versão ativa + "Todos os canais"; escolhas
-  gravadas por usuário.
+  header do dashboard; escolhas gravadas por usuário.
+- **Canal explícito é obrigatório em toda superfície que gera resposta**
+  (chat, questionários, MCP `answer_question`): o engine trata canal nulo como
+  *ambos os overlays* (`engine.ts:205-210`), então um default "Todos os
+  canais" faria uma resposta a cliente misturar documentos GEHC + Direct.
+  O modo "Todos os canais" fica restrito a visões agregadas internas
+  (dashboards, scorecards) que nunca produzem resposta voltada a cliente —
+  e é rotulado "visão interna agregada" na UI.
 - Chat: toda conversa nasce com o contexto da Context Bar; trocar contexto
   no meio da conversa gera aviso visível ("as respostas abaixo desta linha
   usam outro contexto").
