@@ -216,8 +216,11 @@ verified_answers (
 ### F6 — Superfície MCP — *~1 PR*
 
 Servidor MCP (`/api/mcp`, transport HTTP) expondo a postura para qualquer
-agente. Ferramentas (todas com `product_version` e `sales_channel`
-obrigatórios — o contrato reforça a segmentação):
+agente. Ferramentas com `product_version` e `sales_channel` obrigatórios —
+o contrato reforça a segmentação. **Exceção documentada:** `get_threat_posture`
+é escopada só por versão, porque threat models são um artefato por versão do
+produto e o canal comercial não participa da modelagem de ameaças (afeta
+overlay documental de privacidade, não a superfície de ataque):
 
 | Tool | Retorno |
 |---|---|
