@@ -39,8 +39,8 @@ from unnest(array['assessments','compliance_assessments','evidence_evaluations',
 
 
 -- ── SECTION 2: APPLY MIGRATIONS (DDL, additive) ─────────────────────────────
--- Mirrors supabase/migrations/20260702_control_evaluation_cache.sql
---       and supabase/migrations/20260702_version_baseline_lineage.sql
+-- Mirrors supabase/migrations/20260702000001_control_evaluation_cache.sql
+--       and supabase/migrations/20260702000002_version_baseline_lineage.sql
 
 -- set_updated_at() must already exist (migration 004). Guard just in case.
 create or replace function public.set_updated_at()

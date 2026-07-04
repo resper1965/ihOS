@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration: 20260622_scrms_msr_baseline
+-- Migration: 20260622000004_scrms_msr_baseline
 -- ihOS — Intelligent Hardened Operating System
 --
 -- Creates tables to support the SCRMS (Security, Compliance & Resilience

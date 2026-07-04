@@ -236,7 +236,7 @@ export async function POST(req: Request) {
             if (deltaError) {
               logger.warn('Failed to upsert deltas', { context: 'documents/upload', meta: { error: deltaError } });
             } else if (degraded) {
-              logger.warn('Persisted deltas without confidence columns (apply 20260702_version_baseline_lineage.sql)', { context: 'documents/upload' });
+              logger.warn('Persisted deltas without confidence columns (apply 20260702000002_version_baseline_lineage.sql)', { context: 'documents/upload' });
             }
           }
 

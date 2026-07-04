@@ -24,7 +24,7 @@ Technique: **ponytail** — reuse `logger`/Sentry, the `(client as any)` untyped
 
 ### New
 ```
-supabase/migrations/20260702_version_baseline_lineage.sql
+supabase/migrations/20260702000002_version_baseline_lineage.sql
 src/lib/threat-modeling/lineage.ts
 src/app/api/threat-modeling/seed/route.ts
 tests/unit/standard-api/fallback.test.ts

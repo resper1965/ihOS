@@ -277,7 +277,7 @@ export async function POST(request: NextRequest) {
     .single());
 
   if (insertError) {
-    logger.warn('Threat model insert with lineage columns failed; retrying with base columns (apply 20260702_version_baseline_lineage.sql)', {
+    logger.warn('Threat model insert with lineage columns failed; retrying with base columns (apply 20260702000002_version_baseline_lineage.sql)', {
       context: 'threat-modeling',
       meta: { error: insertError.message },
     });

@@ -17,7 +17,7 @@ Applied technique: **ponytail** (lazy-senior-dev minimization) — reuse the exi
 
 **Primary Dependencies**: Supabase JS v2 (admin client, bypasses RLS for cache reads/writes), existing `standard-api` / `ihos-engine` clients (unchanged contracts — no new fields sent to the external API)
 
-**Storage**: New table `control_evaluation_cache` (migration `20260702_control_evaluation_cache.sql`); reuses existing `product_version_deltas` and `threat_models` tables (additive use only — no schema change needed there, deltas already accumulate via upsert since the pre-existing document-upload pipeline).
+**Storage**: New table `control_evaluation_cache` (migration `20260702000001_control_evaluation_cache.sql`); reuses existing `product_version_deltas` and `threat_models` tables (additive use only — no schema change needed there, deltas already accumulate via upsert since the pre-existing document-upload pipeline).
 
 **Testing**: Vitest unit tests — `tests/unit/assessment/corpus-fingerprint.test.ts` (new, full behavioral coverage of the fingerprint helpers) and additions to `tests/unit/assessment/engine.test.ts` / `tests/unit/test_threat_modeling_post.test.ts` (type-shape + no-fabrication regression tests), matching each file's existing testing style.
 
@@ -43,7 +43,7 @@ Applied technique: **ponytail** (lazy-senior-dev minimization) — reuse the exi
 ### New files
 
 ```text
-supabase/migrations/20260702_control_evaluation_cache.sql   # cache table + RLS
+supabase/migrations/20260702000001_control_evaluation_cache.sql   # cache table + RLS
 src/lib/assessment/corpus-fingerprint.ts                    # getCorpusFingerprint(), getDeltaFingerprint()
 tests/unit/assessment/corpus-fingerprint.test.ts
 specs/001-analysis-flow-caching/{spec,plan,tasks}.md

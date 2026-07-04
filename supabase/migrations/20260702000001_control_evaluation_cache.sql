@@ -1,5 +1,5 @@
 -- ============================================================================
--- Migration: 20260702_control_evaluation_cache
+-- Migration: 20260702000001_control_evaluation_cache
 -- ihOS — Persisted "current control situation" cache.
 --
 -- The RAG document corpus is the source of truth for whether a control is

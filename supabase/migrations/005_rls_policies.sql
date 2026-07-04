@@ -22,14 +22,21 @@
 -- Helper: cached role lookup for RLS policies
 -- ──────────────────────────────────────────────────────────────────────────────
 -- SECURITY DEFINER so it can read profiles table regardless of caller's RLS
+-- NOTE: RETURNS text (not public.user_role). Migration
+-- 20260617000003_auth_hooks_and_rls_fix.sql redefines this function via
+-- CREATE OR REPLACE ... RETURNS text, and Postgres cannot change an existing
+-- function's return type (42P13); dropping it there is not an option because
+-- every RLS policy depends on it. The live database's function already
+-- returns text (per the generated Supabase types) and all callers compare
+-- against string literals, so text is correct from the start.
 CREATE OR REPLACE FUNCTION public.get_user_role()
-RETURNS public.user_role
+RETURNS text
 LANGUAGE sql
 STABLE
 SECURITY DEFINER
 SET search_path = public
 AS $$
-    SELECT role FROM public.profiles WHERE id = auth.uid();
+    SELECT role::text FROM public.profiles WHERE id = auth.uid();
 $$;
 
 COMMENT ON FUNCTION public.get_user_role() IS

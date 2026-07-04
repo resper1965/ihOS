@@ -1,4 +1,4 @@
--- Migration: 20260622_add_integration_tables
+-- Migration: 20260622000001_add_integration_tables
 -- Adds tables for external integration connections, notification channels,
 -- DefectDojo findings cache, and sync logging.
 

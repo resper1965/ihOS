@@ -40,8 +40,8 @@ deliberately whether estimation is acceptable; otherwise unset it.
 
 Two options:
 
-- **CLI**: `supabase db push` (applies `20260702_control_evaluation_cache.sql`
-  and `20260702_version_baseline_lineage.sql`).
+- **CLI**: `supabase db push` (applies `20260702000001_control_evaluation_cache.sql`
+  and `20260702000002_version_baseline_lineage.sql`).
 - **No CLI / quickest**: paste `docs/sql/analysis_flow_validation.sql` into the
   Supabase SQL Editor and Run. It runs the pre-flight diagnostic (Section 1),
   applies the same migrations idempotently (Section 2), and verifies

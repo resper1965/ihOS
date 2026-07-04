@@ -8,7 +8,7 @@ description: "Task list for the analysis-flow caching feature"
 
 ## Phase 1: Foundational
 
-- [X] T001 Create `control_evaluation_cache` migration with RLS (`supabase/migrations/20260702_control_evaluation_cache.sql`)
+- [X] T001 Create `control_evaluation_cache` migration with RLS (`supabase/migrations/20260702000001_control_evaluation_cache.sql`)
 - [X] T002 [P] Implement `getCorpusFingerprint()` + `getDeltaFingerprint()` (`src/lib/assessment/corpus-fingerprint.ts`)
 - [X] T003 [P] Unit tests for both fingerprint helpers (`tests/unit/assessment/corpus-fingerprint.test.ts`)
 

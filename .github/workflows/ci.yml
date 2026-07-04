@@ -10,6 +10,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Least-privilege GITHUB_TOKEN: these jobs only read the repo.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Unit Tests
@@ -21,7 +25,10 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
+      # test:unit excludes tests/unit/test_threat_modeling_live.test.ts, which
+      # calls the real ihos-api over the network and times out/flakes in CI.
+      # Run it on demand via `npm run test:integration` instead.
+      - run: npm run test:unit
 
   build:
     name: Build
@@ -34,4 +41,14 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # src/lib/env.ts validates env at import time and hard-fails a production
+      # build when required vars are absent. This CI build only verifies the
+      # app compiles — real deployments (Vercel) inject real values — so
+      # obviously-fake placeholders that satisfy the schema are used here.
       - run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://ci-placeholder.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key-0000000000
+          SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key-00
+          STANDARD_GRC_API_URL: https://ci-placeholder.invalid/api/v1
+          CRON_SECRET: ci-placeholder-cron-secret-0000000000000000

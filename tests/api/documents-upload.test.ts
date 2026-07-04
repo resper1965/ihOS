@@ -38,6 +38,19 @@ function resetMocks() {
     data: { id: 100 }, // Mock document ID
     error: null,
   });
+
+  // The route performs storage upload + the document/chunks inserts through the
+  // admin client (createAdminClient), so it must be configured too — otherwise
+  // the document insert resolves to { data: null } and the route 500s.
+  mockSupabaseAdmin.from.mockReturnThis();
+  mockSupabaseAdmin.insert.mockReturnThis();
+  mockSupabaseAdmin.select.mockReturnThis();
+  mockSupabaseAdmin.update.mockReturnThis();
+  mockSupabaseAdmin.eq.mockReturnThis();
+  mockSupabaseAdmin.single.mockResolvedValue({
+    data: { id: 100 },
+    error: null,
+  });
 }
 
 describe('Document Upload and Ingestion API', () => {
