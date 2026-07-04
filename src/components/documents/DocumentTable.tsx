@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { Search, Loader2, FileText, Calendar, Trash2, RefreshCw } from "lucide-react";
+import { Search, Loader2, FileText, Calendar, Trash2, RefreshCw, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { ComplianceDocument } from "@/lib/supabase/types";
+import { DOCUMENT_TYPES } from "@/lib/supabase/types-custom";
 
 interface DocumentTableProps {
   documents: ComplianceDocument[];
@@ -17,6 +18,26 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
   const [search, setSearch] = useState("");
   const [reindexingId, setReindexingId] = useState<number | null>(null);
   const [updatingVersionId, setUpdatingVersionId] = useState<number | null>(null);
+  const [updatingTypeId, setUpdatingTypeId] = useState<number | null>(null);
+
+  const unclassifiedCount = documents.filter((d) => d.doc_type === "UNCLASSIFIED").length;
+
+  const handleDocTypeChange = async (docId: number, newType: string) => {
+    setUpdatingTypeId(docId);
+    try {
+      const res = await fetch(`/api/documents/${docId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ doc_type: newType }),
+      });
+      if (!res.ok) throw new Error("Failed to update document type");
+      if (onRefresh) onRefresh();
+    } catch (err: any) {
+      console.error("[doc-type-update]", err);
+    } finally {
+      setUpdatingTypeId(null);
+    }
+  };
 
   const handleVersionChange = async (docId: number, newVersionId: string | null) => {
     setUpdatingVersionId(docId);
@@ -102,6 +123,17 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
           />
         </div>
       </div>
+
+      {unclassifiedCount > 0 && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/5 px-3.5 py-2.5">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+          <p className="text-xs text-text-secondary leading-relaxed">
+            <span className="font-semibold text-amber-400">{unclassifiedCount} document(s) unclassified.</span>{" "}
+            Set each document&apos;s type below so the right analysis consumes it — the
+            threat-modeling checklist and assessment phases select documents by type.
+          </p>
+        </div>
+      )}
 
       {loading && documents.length === 0 && (
         <div className="flex items-center justify-center py-12 gap-3">
@@ -191,6 +223,24 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
                       {doc.category}
                     </span>
                   )}
+
+                  <select
+                    value={doc.doc_type in DOCUMENT_TYPES ? doc.doc_type : "UNCLASSIFIED"}
+                    onChange={(e) => handleDocTypeChange(doc.id, e.target.value)}
+                    disabled={updatingTypeId === doc.id}
+                    className={`text-[10px] rounded-lg border px-2 py-0.5 cursor-pointer transition-colors focus:outline-none appearance-none dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary ${
+                      doc.doc_type === "UNCLASSIFIED"
+                        ? "border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/15 focus:border-amber-500/60"
+                        : "border-white/10 bg-white/5 text-text-secondary hover:bg-white/10 focus:border-primary/40"
+                    }`}
+                    title="Document type — decides which analysis consumes this document"
+                  >
+                    {Object.entries(DOCUMENT_TYPES).map(([value, label]) => (
+                      <option key={value} value={value} className="bg-[#1e293b] text-white">
+                        {value === "UNCLASSIFIED" ? "⚠️ " : ""}{label}
+                      </option>
+                    ))}
+                  </select>
 
                   <button
                     onClick={() => handleReindex(doc.id)}
