@@ -102,7 +102,8 @@ avisa em `limitations`.
 **Como o reuso funciona:** o sistema calcula um *fingerprint* dos deltas
 acumulados da versão. Se nada mudou desde a última análise para o mesmo
 conjunto de frameworks, ele **devolve a análise persistida** (`cached: true`)
-sem chamar o motor. Para forçar: `force_reevaluate: true` (API; UI pendente).
+sem chamar o motor — o modal mostra "Analysis Reused". Para forçar: checkbox
+"Force re-analysis" no passo de confirmação (ou `force_reevaluate: true` na API).
 
 **Linhagem entre versões:**
 1. Em Settings → Versions (ou via SQL, enquanto não há seletor), defina

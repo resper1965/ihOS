@@ -375,6 +375,15 @@ export default function ThreatModelDetailPage({
           <Badge variant={statusVariant[status]} dot>
             {statusLabel[status]}
           </Badge>
+          {(data as any)?.metadata?.baseline_model_id && (
+            <Badge variant="info">
+              Inherited baseline · {(data as any).metadata.inherited_threat_count ?? 0} inherited /{" "}
+              {(data as any).metadata.new_threat_count ?? 0} new
+            </Badge>
+          )}
+          {(record as any)?.source === "manual_seed" && (
+            <Badge variant="warning">Manually seeded</Badge>
+          )}
           <span className="flex items-center gap-1.5 text-xs text-text-muted">
             <Calendar className="h-3.5 w-3.5" />
             {formattedDate}

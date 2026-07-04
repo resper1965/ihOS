@@ -44,6 +44,6 @@ description: "Task list for the analysis-flow caching feature"
 ## Deferred (not in this pass)
 
 - [ ] T050 Regenerate Supabase generated types (`npx supabase gen types typescript`) so `control_evaluation_cache` (and pre-existing untyped tables: `assessments`, `product_version_deltas`, `threat_models`) no longer need `(admin as any)` casts. Requires a live DB connection this session did not have.
-- [ ] T051 Surface `cached: true` from `POST /api/threat-modeling` in the UI (e.g. a "Reused from last analysis — no product changes detected" badge on the generate modal / detail page), mirroring the cache-reuse summary already added to the assessments modal (T014).
+- [X] T051 Surface `cached: true` from `POST /api/threat-modeling` in the UI (e.g. a "Reused from last analysis — no product changes detected" badge on the generate modal / detail page), mirroring the cache-reuse summary already added to the assessments modal (T014).
 - [ ] T052 If/when the external ihos-api GRC engine exposes an incremental "evaluate only these deltas" endpoint, wire `applied_deltas` from T022 into the request instead of doing a full regeneration — currently the ihOS side only decides *whether* to call the engine, not *what subset* to ask it to evaluate (see spec.md Assumptions).
 - [X] T053 Fixed in `specs/002-analysis-flow-hardening` (T034): the test now mocks the admin client so `insert().select().single()` echoes the inserted row, matching real Supabase behavior. Full suite green.

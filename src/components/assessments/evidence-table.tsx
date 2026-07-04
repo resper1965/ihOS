@@ -94,6 +94,14 @@ export function EvidenceTable({ evaluations, loading, assessmentId, frameworkCod
                     <td className="px-3 py-2.5 text-center">
                       <span className="inline-flex items-center gap-1" title={statusLabel}>
                         {statusIcon}
+                        {ev.auditor_notes?.startsWith("[ESTIMATED]") && (
+                          <span
+                            className="rounded border border-amber-500/25 bg-amber-500/15 px-1 py-px text-[9px] font-bold text-amber-400"
+                            title="Estimated result from degraded mode (GRC engine unreachable) — review manually, do not treat as an authoritative verdict"
+                          >
+                            EST
+                          </span>
+                        )}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-center">

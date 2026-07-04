@@ -9,6 +9,8 @@ import {
   XCircle,
   ChevronDown,
   Search,
+  AlertTriangle,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRunAssessment } from "@/hooks/queries/use-assessments";
@@ -371,6 +373,70 @@ export function RunAssessmentModal({
                 evaluated.
               </div>
             )}
+
+            {/* What to do now — agentic next steps derived from this run */}
+            {(() => {
+              const gaps: number = result.totalGap ?? 0;
+              // Missing counts every non-compliant control (hard gaps plus
+              // partial/informal below the compliance threshold) — quick scans
+              // can have missing > 0 with zero hard gaps.
+              const missing: number = result.totalControlsMissing ?? gaps;
+              const errors: number = result.totalEvaluationErrors ?? 0;
+              const estimated: number = result.totalEstimated ?? 0;
+              const allCached =
+                (result.totalFromCache ?? 0) > 0 &&
+                result.totalFromCache === result.totalControlsEvaluated;
+              const steps: Array<{ tone: "action" | "warn" | "info"; text: string }> = [];
+              if (errors > 0)
+                steps.push({
+                  tone: "warn",
+                  text: `${errors} control(s) failed at the external GRC API ([EVALUATION_ERROR]) — this is NOT non-compliance. Re-run the assessment; if it persists, check the Standard API status/credentials.`,
+                });
+              if (estimated > 0)
+                steps.push({
+                  tone: "warn",
+                  text: `${estimated} result(s) are estimates from degraded mode ([ESTIMATED], needs review) — treat as drafts and re-run once the GRC engine is reachable.`,
+                });
+              if (missing > 0)
+                steps.push({
+                  tone: "action",
+                  text: `${missing} control(s) are not compliant${
+                    gaps > 0 ? ` (${gaps} with no evidence at all)` : ""
+                  } — open this assessment's evidence detail on the Assessments page and create a Goal (remediation) or POA&M entry for each one you triage.`,
+                });
+              if (allCached)
+                steps.push({
+                  tone: "info",
+                  text: "All results were reused from the persisted cache — nothing changed in your documentation since the last run. Upload/reindex documents (or use Force re-evaluation) if you expected changes.",
+                });
+              if (steps.length === 0)
+                steps.push({
+                  tone: "info",
+                  text: "No gaps or issues to act on. Generate a Report to snapshot this baseline.",
+                });
+              return (
+                <div className="mb-4 rounded-xl border border-border-glass bg-white/[0.03] p-3.5">
+                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-text-secondary">
+                    <ListChecks className="h-3.5 w-3.5 text-primary" />
+                    What to do now
+                  </p>
+                  <ul className="space-y-1.5">
+                    {steps.map((s, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs leading-relaxed">
+                        {s.tone === "warn" ? (
+                          <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-400" />
+                        ) : s.tone === "action" ? (
+                          <ChevronDown className="mt-0.5 h-3.5 w-3.5 shrink-0 -rotate-90 text-primary" />
+                        ) : (
+                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-400" />
+                        )}
+                        <span className="text-text-secondary">{s.text}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
 
             {/* Framework Scores */}
             <div className="space-y-2">

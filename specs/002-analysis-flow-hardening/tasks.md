@@ -51,7 +51,7 @@ description: "Task list for analysis-flow hardening"
 
 ## Deferred
 
-- [ ] T040 UI: badges for inherited vs. new threats and estimated evaluations; seed-baseline form; "previous version" selector in Settings → Versions.
+- [ ] T040 UI: badges for inherited vs. new threats and estimated evaluations (DONE — threat-table lineage badges, evidence-table EST chip, detail-page baseline badge, generate-modal readiness checklist + force re-analysis + cached/limitations result states, post-assessment "what to do now" panel). Remaining: seed-baseline form; "previous version" selector in Settings → Versions.
 - [ ] T041 Regenerate Supabase generated types (live DB) to drop `(admin as any)` casts for the new columns/tables.
 - [ ] T042 Persist cache hit-rate telemetry to a queryable store (not just logs) for a real API-savings dashboard.
 - [ ] T043 [Operator] Run `docs/RUNBOOK_analysis_flow_validation.md` against staging: apply migrations, run 2× assessment (assert cache hit-rate), generate + regenerate threat model (assert `cached:true`), seed a baseline, verify inheritance. Confirm `GRC_LOCAL_FALLBACK_ENABLED` is unset in production.

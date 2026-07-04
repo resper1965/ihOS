@@ -122,6 +122,12 @@ export function GenerateThreatModelModal({
   const [isGenerating, setIsGenerating] = useState(false);
   const [allDocs, setAllDocs] = useState<any[]>([]);
   const [loadingDocs, setLoadingDocs] = useState(false);
+  const [forceReevaluate, setForceReevaluate] = useState(false);
+  const [genResult, setGenResult] = useState<any>(null);
+  // Version-readiness signals: null = unknown (still loading, or the lineage
+  // migration isn't applied yet) — the corresponding checklist row is hidden.
+  const [deltaCount, setDeltaCount] = useState<number | null>(null);
+  const [baselineState, setBaselineState] = useState<"linked" | "none" | null>(null);
 
   // Load versions and fetch docs when modal opens
   useEffect(() => {
@@ -165,11 +171,71 @@ export function GenerateThreatModelModal({
       setError(null);
       setIsGenerating(false);
       setAllDocs([]);
+      setForceReevaluate(false);
+      setGenResult(null);
+      setDeltaCount(null);
+      setBaselineState(null);
     }
   }, [open, activeVersion, versions]);
 
   // Derived dynamic document count & checklist
   const selectedVersionObj = versions.find((v) => v.version_code === version);
+  const selectedVersionId = selectedVersionObj?.id;
+
+  // Version-readiness: accumulated feature deltas + previous-version baseline.
+  // Both queries tolerate missing tables/columns (lineage migration not yet
+  // applied) by leaving the signal at null, which hides the checklist row.
+  useEffect(() => {
+    if (!open || !selectedVersionId) {
+      setDeltaCount(null);
+      setBaselineState(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      try {
+        const { count, error: deltaErr } = await supabase
+          .from("product_version_deltas")
+          .select("id", { count: "exact", head: true })
+          .eq("product_version_id", selectedVersionId);
+        if (!cancelled) setDeltaCount(deltaErr ? null : (count ?? 0));
+
+        const { data: pv, error: pvErr } = await supabase
+          .from("product_versions")
+          .select("previous_version_id")
+          .eq("id", selectedVersionId)
+          .single();
+        if (pvErr || !(pv as any)?.previous_version_id) {
+          if (!cancelled) setBaselineState(pvErr ? null : "none");
+          return;
+        }
+        const { data: prev } = await supabase
+          .from("product_versions")
+          .select("version_code")
+          .eq("id", (pv as any).previous_version_id)
+          .single();
+        const prevCode = (prev as any)?.version_code;
+        if (!prevCode) {
+          if (!cancelled) setBaselineState("none");
+          return;
+        }
+        const { count: modelCount } = await supabase
+          .from("threat_models")
+          .select("id", { count: "exact", head: true })
+          .eq("product_version", prevCode);
+        if (!cancelled) setBaselineState((modelCount ?? 0) > 0 ? "linked" : "none");
+      } catch {
+        if (!cancelled) {
+          setDeltaCount(null);
+          setBaselineState(null);
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open, selectedVersionId]);
   const applicableDocs = allDocs.filter(
     (doc) =>
       doc.product_version_id === null ||
@@ -231,6 +297,7 @@ export function GenerateThreatModelModal({
         body: JSON.stringify({
           product_version: version,
           target_frameworks: selectedFrameworks,
+          force_reevaluate: forceReevaluate,
         }),
       });
 
@@ -240,19 +307,14 @@ export function GenerateThreatModelModal({
       }
 
       const result = await res.json();
+      setGenResult(result);
       setProgress(100);
       setIsGenerating(false);
-
-      // Auto-close after 2s
-      setTimeout(() => {
-        onGenerated(result);
-        onClose();
-      }, 2000);
     } catch (err) {
       setIsGenerating(false);
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
     }
-  }, [version, selectedFrameworks, onGenerated, onClose]);
+  }, [version, selectedFrameworks, forceReevaluate]);
 
   return (
     <Dialog
@@ -379,7 +441,37 @@ export function GenerateThreatModelModal({
                     {hasTI ? "✓ Detected" : "— Optional"}
                   </span>
                 </div>
+                {deltaCount !== null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-text-muted">New features extracted (deltas)</span>
+                    <span className={deltaCount > 0 ? "text-emerald-400 font-medium" : "text-amber-500 font-medium"}>
+                      {deltaCount > 0 ? `✓ ${deltaCount} detected` : "✗ None"}
+                    </span>
+                  </div>
+                )}
+                {baselineState !== null && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-text-muted">Previous-version baseline (inheritance)</span>
+                    <span className={baselineState === "linked" ? "text-emerald-400 font-medium" : "text-slate-500 font-medium"}>
+                      {baselineState === "linked" ? "✓ Linked" : "— Not configured"}
+                    </span>
+                  </div>
+                )}
               </div>
+              {deltaCount === 0 && (
+                <p className="text-[10px] text-amber-500/80 leading-relaxed pt-1.5 border-t border-white/5">
+                  ⚠️ No feature deltas were extracted for this version — feature-level threat
+                  coverage may be incomplete. Upload the version&apos;s SAD/SRS (with the version
+                  selected in Application Scope) so new features are detected.
+                </p>
+              )}
+              {baselineState === "none" && (
+                <p className="text-[10px] text-slate-400/80 leading-relaxed pt-1.5 border-t border-white/5">
+                  ℹ️ Without a previous-version baseline, all threats will appear as new. Set the
+                  version&apos;s previous version in Settings → Versions (and approve its model) to
+                  enable inherited-vs-new labelling.
+                </p>
+              )}
               {(!hasSAD || !hasSRS) && (
                 <p className="text-[10px] text-amber-500/80 leading-relaxed pt-1.5 border-t border-white/5">
                   ⚠️ Generating models without SAD/SRS may produce generic results. We recommend uploading these files in the Documents manager first.
@@ -435,6 +527,24 @@ export function GenerateThreatModelModal({
             </div>
           </div>
 
+          {/* Force re-evaluation */}
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-border-glass bg-white/5 p-3">
+            <input
+              type="checkbox"
+              checked={forceReevaluate}
+              onChange={(e) => setForceReevaluate(e.target.checked)}
+              className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/5 accent-primary"
+            />
+            <span className="text-xs">
+              <span className="block font-medium text-text-primary">Force re-analysis</span>
+              <span className="block text-text-muted mt-0.5">
+                By default, if nothing changed in this version&apos;s extracted features since the
+                last analysis, the persisted model is reused without calling the GRC engine. Check
+                this to regenerate from scratch.
+              </span>
+            </span>
+          </label>
+
           {/* Action buttons */}
           <div className="flex gap-3">
             <Button
@@ -480,20 +590,62 @@ export function GenerateThreatModelModal({
                 Retry
               </Button>
             </div>
-          ) : progress >= 100 ? (
-            /* Success state */
-            <div className="text-center space-y-4">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10">
-                <Check className="h-7 w-7 text-emerald-400 stroke-[2.5]" />
-              </div>
-              <div>
+          ) : progress >= 100 && genResult ? (
+            /* Success state — say exactly what happened and what to do next */
+            <div className="space-y-4">
+              <div className="text-center space-y-3">
+                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500/10">
+                  <Check className="h-7 w-7 text-emerald-400 stroke-[2.5]" />
+                </div>
                 <p className="text-sm font-semibold text-text-primary">
-                  Threat Model Generated
-                </p>
-                <p className="mt-1 text-xs text-text-muted">
-                  Redirecting in a moment...
+                  {genResult.cached ? "Analysis Reused — No Product Changes" : "Threat Model Generated"}
                 </p>
               </div>
+
+              {genResult.cached ? (
+                <div className="rounded-xl border border-primary/10 bg-primary/5 px-3 py-2.5 text-xs text-text-secondary leading-relaxed">
+                  Nothing changed in this version&apos;s extracted features since the last analysis,
+                  so the persisted model was returned without calling the GRC engine. Use{" "}
+                  <span className="font-medium text-text-primary">Force re-analysis</span> if you
+                  need a regeneration anyway.
+                </div>
+              ) : (
+                (genResult.inherited_threats ?? 0) + (genResult.new_threats ?? 0) > 0 && (
+                  <div className="rounded-xl border border-border-glass bg-white/[0.03] px-3 py-2.5 text-xs text-text-secondary leading-relaxed">
+                    Compared against the previous version&apos;s baseline:{" "}
+                    <span className="font-semibold text-slate-300">{genResult.inherited_threats}</span>{" "}
+                    inherited threat(s) ·{" "}
+                    <span className="font-semibold text-emerald-400">{genResult.new_threats}</span>{" "}
+                    new to this version. Focus your review on the new ones (badged in the threat
+                    catalog).
+                  </div>
+                )
+              )}
+
+              {Array.isArray(genResult.data?.limitations) && genResult.data.limitations.length > 0 && (
+                <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2.5 space-y-1.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-400">
+                    Coverage limitations
+                  </p>
+                  {genResult.data.limitations.map((l: string, i: number) => (
+                    <p key={i} className="text-xs text-text-secondary leading-relaxed">
+                      • {l}
+                    </p>
+                  ))}
+                </div>
+              )}
+
+              <Button
+                variant="primary"
+                size="lg"
+                className="w-full"
+                onClick={() => {
+                  onGenerated(genResult);
+                  onClose();
+                }}
+              >
+                View Threat Model
+              </Button>
             </div>
           ) : (
             /* Loading state */
