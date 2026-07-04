@@ -238,6 +238,28 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
               </div>
 
               <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Document Type</label>
+                <select
+                  name="docType"
+                  defaultValue="POLICY"
+                  className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
+                >
+                  <option value="POLICY" className="bg-[#1e293b]">Policy / Norm — ISMS (assessment: policy phase)</option>
+                  <option value="PROCEDURE" className="bg-[#1e293b]">Procedure / SOP (assessment: operational evidence)</option>
+                  <option value="CONTRACT" className="bg-[#1e293b]">Contract / DPA / MSA (channel overlay)</option>
+                  <option value="CLOUD_ARCH_ORG" className="bg-[#1e293b]">Cloud Infrastructure — org-wide (CLD/NET controls)</option>
+                  <option value="SAD" className="bg-[#1e293b]">Solution Architecture (SAD) — feeds threat modeling</option>
+                  <option value="SRS_SDS" className="bg-[#1e293b]">Requirements / Design (SRS/SDS) — feeds threat modeling</option>
+                  <option value="TEST_REPORT" className="bg-[#1e293b]">Test / V&amp;V Report — version evidence</option>
+                  <option value="EVIDENCE_RECORD" className="bg-[#1e293b]">Evidence Record / Audit Report (operational evidence)</option>
+                </select>
+                <p className="text-[10px] text-text-muted leading-relaxed">
+                  Drives which analysis consumes this document. SAD/SRS types are detected by the
+                  threat-modeling readiness checklist — no longer guessed from the filename.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Application Scope</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button

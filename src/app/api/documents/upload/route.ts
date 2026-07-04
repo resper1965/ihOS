@@ -42,6 +42,9 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get('file');
     const category = (formData.get('category') as string) || 'ISMS_CORE';
+    const VALID_DOC_TYPES = ['POLICY', 'PROCEDURE', 'CONTRACT', 'CLOUD_ARCH_ORG', 'SAD', 'SRS_SDS', 'TEST_REPORT', 'EVIDENCE_RECORD', 'UNCLASSIFIED'];
+    const docTypeRaw = (formData.get('docType') as string) || 'UNCLASSIFIED';
+    const docType = VALID_DOC_TYPES.includes(docTypeRaw) ? docTypeRaw : 'UNCLASSIFIED';
     const productVersionId = formData.get('productVersionId') as string | null;
     const version = (formData.get('version') as string) || '1.0';
     const status = (formData.get('status') as string) || 'published';
@@ -131,7 +134,7 @@ export async function POST(req: Request) {
       .insert({
         filename: file.name,
         filepath: storagePath,
-        doc_type: fileType,
+        doc_type: docType,
         file_format: fileType,
         file_size_bytes: file.size,
         category: category as 'ISMS_CORE' | 'B2B_GEHC' | 'B2B_DIRECT' | 'OPERATIONAL',

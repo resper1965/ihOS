@@ -148,7 +148,7 @@ export function GenerateThreatModelModal({
           const supabase = createClient();
           const { data, error } = await supabase
             .from("compliance_documents")
-            .select("id, product_version_id, filename, status")
+            .select("id, product_version_id, filename, status, doc_type")
             .eq("status", "published");
           if (!error && data) {
             setAllDocs(data);
@@ -243,14 +243,23 @@ export function GenerateThreatModelModal({
   );
   const applicableDocsCount = applicableDocs.length;
 
-  const hasSAD = applicableDocs.some((doc) =>
-    /sad|architect|arquitetura/i.test(doc.filename || "")
+  // Detection by semantic doc_type (specs/003 F1); the filename regex remains
+  // only as a fallback for UNCLASSIFIED legacy rows not yet triaged.
+  const hasSAD = applicableDocs.some(
+    (doc) =>
+      doc.doc_type === "SAD" ||
+      (doc.doc_type === "UNCLASSIFIED" && /sad|architect|arquitetura/i.test(doc.filename || ""))
   );
-  const hasSRS = applicableDocs.some((doc) =>
-    /srs|requirement|requisito/i.test(doc.filename || "")
+  const hasSRS = applicableDocs.some(
+    (doc) =>
+      doc.doc_type === "SRS_SDS" ||
+      (doc.doc_type === "UNCLASSIFIED" && /srs|requirement|requisito/i.test(doc.filename || ""))
   );
-  const hasTI = applicableDocs.some((doc) =>
-    /psi|infra|operac|ti/i.test(doc.filename || "")
+  const hasTI = applicableDocs.some(
+    (doc) =>
+      doc.doc_type === "CLOUD_ARCH_ORG" ||
+      doc.doc_type === "PROCEDURE" ||
+      (doc.doc_type === "UNCLASSIFIED" && /psi|infra|operac|ti/i.test(doc.filename || ""))
   );
 
   // Progress animation for step 3
