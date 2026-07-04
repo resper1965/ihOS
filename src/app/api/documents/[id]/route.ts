@@ -1,9 +1,9 @@
 // src/app/api/documents/[id]/route.ts
-// PATCH — update document metadata (version, category, status)
-// DELETE — delete document and its chunks
+// PATCH — update document metadata (version, category, status, doc_type)
 
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,18 @@ export async function PATCH(
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // compliance_documents has SELECT-only RLS policies (005_rls_policies.sql),
+  // so metadata writes must go through the admin client — gated by the same
+  // role check used elsewhere (threat-modeling/seed): admin or ionic_user.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("role")
+    .eq("id", user.id)
+    .single();
+  if (profile?.role !== "admin" && profile?.role !== "ionic_user") {
+    return NextResponse.json({ error: "Forbidden: admin or ionic_user role required" }, { status: 403 });
   }
 
   const { id } = await params;
@@ -49,7 +61,8 @@ export async function PATCH(
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
   }
 
-  const { data, error } = await (supabase as any)
+  const admin = createAdminClient();
+  const { data, error } = await (admin as any)
     .from("compliance_documents")
     .update(update)
     .eq("id", docId)
