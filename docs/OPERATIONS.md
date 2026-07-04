@@ -45,6 +45,11 @@ versão estão publicados e indexados. Análise sem corpus = gap generalizado.
    - `ISMS_CORE` = políticas/normas (fase "ISMS Policy" das avaliações);
    - `OPERATIONAL` = evidências de execução (fase "Operational Evidence");
    - `B2B_GEHC` / `B2B_DIRECT` = overlays contratuais por canal.
+1b. Escolha o **tipo do documento** (POLICY, PROCEDURE, CONTRACT,
+   CLOUD_ARCH_ORG, SAD, SRS_SDS, TEST_REPORT): é ele que determina qual
+   análise consome o documento — o checklist do threat modeling detecta
+   SAD/SRS pelo **tipo**, não mais pelo nome do arquivo. Documentos antigos
+   ficam `UNCLASSIFIED` até serem triados.
 2. Se o documento é de uma **versão de produto** (SAD/SRS/SDS), associe a
    versão no passo "Application Scope". Isso alimenta a extração de **deltas**
    (features novas) que dirige o Threat Modeling.

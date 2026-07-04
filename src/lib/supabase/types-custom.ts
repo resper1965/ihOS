@@ -14,6 +14,29 @@ export type MessageRole = "user" | "assistant" | "system" | "tool";
 
 export type DocumentCategory = "ISMS_CORE" | "B2B_GEHC" | "B2B_DIRECT" | "OPERATIONAL";
 
+// Semantic document type (specs/003 F1). UNCLASSIFIED = legacy row awaiting
+// triage; the file format lives in file_format, not here.
+export type DocumentType =
+  | "POLICY"
+  | "PROCEDURE"
+  | "CONTRACT"
+  | "CLOUD_ARCH_ORG"
+  | "SAD"
+  | "SRS_SDS"
+  | "TEST_REPORT"
+  | "UNCLASSIFIED";
+
+export const DOCUMENT_TYPES: Record<DocumentType, string> = {
+  POLICY: "Policy / Norm (ISMS)",
+  PROCEDURE: "Procedure / SOP (operational evidence)",
+  CONTRACT: "Contract / DPA / MSA (sales channel)",
+  CLOUD_ARCH_ORG: "Cloud Infrastructure — organization-wide",
+  SAD: "Solution Architecture (SAD) — version",
+  SRS_SDS: "Requirements / Design (SRS/SDS) — version",
+  TEST_REPORT: "Test / V&V Report — version",
+  UNCLASSIFIED: "Unclassified (legacy — needs triage)",
+};
+
 export type PoamStatus = "open" | "in_progress" | "closed" | "risk_accepted";
 
 export type ImplementationStatus = "implemented" | "partial" | "planned" | "not_applicable";
@@ -54,7 +77,7 @@ export type ComplianceDocument = {
   id: number; // BIGINT auto-increment
   filename: string;
   filepath: string;
-  doc_type: string;
+  doc_type: DocumentType | string; // string: rows created before 20260705000001
   policy_number: string | null;
   title: string | null;
   language: string | null; // default "en"
