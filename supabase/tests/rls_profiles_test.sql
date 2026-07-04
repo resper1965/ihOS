@@ -1,37 +1,60 @@
+-- pgTAP-only test (no basejump/supabase_test_helpers dependency — nothing in
+-- this repo installs them, so helpers like rls_enabled() are unavailable).
+-- Runs as the local `postgres` superuser, which bypasses EXECUTE grants and
+-- RLS, so privilege checks use has_function_privilege() and the RLS behavior
+-- tests switch to the `authenticated` role first.
 BEGIN;
 SELECT plan(5);
 
--- Test 1: Check if Row Level Security is enabled on profiles
-SELECT rls_enabled('public', 'profiles');
+-- Test 1: Row Level Security is enabled on profiles
+SELECT ok(
+    (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.profiles'::regclass),
+    'Row Level Security must be enabled on public.profiles'
+);
 
--- Test 2: Check if the required RLS policies exist on profiles
+-- Test 2: Exactly the expected RLS policies exist on profiles
+-- (005_rls_policies.sql + 20260629210000_admin_profiles_rls.sql)
 SELECT policies_are('public', 'profiles', ARRAY[
     'profiles_select_own',
     'profiles_select_admin',
-    'profiles_update_own'
+    'profiles_update_own',
+    'profiles_update_admin',
+    'profiles_delete_admin'
 ]);
 
--- Test 3: Verify auth_role execute is denied to authenticated/public users
--- (Which was the root cause of the permission denied error)
-SELECT throws_ok(
-    $$ SELECT public.auth_role() $$,
-    '42501', -- Permission denied code
-    NULL,    -- Accept any error message
-    'Execute permission on auth_role should be revoked from PUBLIC/authenticated'
+-- Test 3: auth_role execute is denied to anon/authenticated
+-- (Root cause of the historical permission-denied error. throws_ok() can't be
+-- used here: the test session is superuser, which bypasses ACL checks.)
+SELECT ok(
+    NOT has_function_privilege('authenticated', 'public.auth_role()', 'EXECUTE')
+    AND NOT has_function_privilege('anon', 'public.auth_role()', 'EXECUTE'),
+    'Execute permission on auth_role should be revoked from anon/authenticated'
 );
 
--- Test 4: Simulate an authenticated user and check they can read their own profile
--- Set sub claim to matches user ID in our test profiles
-SELECT set_config('role', 'authenticated', true);
-SELECT set_config('request.jwt.claims', '{"sub": "722fa9dc-7378-40bd-9ac9-f045ec57d906", "app_metadata": {"role": "client_user"}}', true);
+-- Setup for tests 4-5: create a user inside this (rolled-back) transaction.
+-- The on_auth_user_created trigger (handle_new_user) creates the profile row.
+-- Then simulate an authenticated session: `role` is a GUC, so set_config()
+-- performs a transaction-local SET ROLE; auth.uid() reads request.jwt.claims.
+INSERT INTO auth.users (id, email)
+VALUES ('722fa9dc-7378-40bd-9ac9-f045ec57d906', 'rls-test@example.com');
 
+DO $$ BEGIN
+    PERFORM set_config('role', 'authenticated', true);
+    PERFORM set_config(
+        'request.jwt.claims',
+        '{"sub": "722fa9dc-7378-40bd-9ac9-f045ec57d906", "role": "authenticated", "app_metadata": {"role": "ionic_user"}}',
+        true
+    );
+END $$;
+
+-- Test 4: an authenticated user can read their own profile through RLS
 SELECT results_eq(
     $$ SELECT id FROM public.profiles WHERE id = '722fa9dc-7378-40bd-9ac9-f045ec57d906' $$,
     $$ SELECT '722fa9dc-7378-40bd-9ac9-f045ec57d906'::uuid $$,
     'Authenticated users must be able to select their own profile'
 );
 
--- Test 5: Verify get_user_role runs successfully without RLS recursion or permission errors
+-- Test 5: get_user_role runs without RLS recursion or permission errors
 SELECT lives_ok(
     $$ SELECT public.get_user_role() $$,
     'get_user_role should execute cleanly without RLS circular dependency'
