@@ -42,7 +42,7 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get('file');
     const category = (formData.get('category') as string) || 'ISMS_CORE';
-    const VALID_DOC_TYPES = ['POLICY', 'PROCEDURE', 'CONTRACT', 'CLOUD_ARCH_ORG', 'SAD', 'SRS_SDS', 'TEST_REPORT', 'UNCLASSIFIED'];
+    const VALID_DOC_TYPES = ['POLICY', 'PROCEDURE', 'CONTRACT', 'CLOUD_ARCH_ORG', 'SAD', 'SRS_SDS', 'TEST_REPORT', 'EVIDENCE_RECORD', 'UNCLASSIFIED'];
     const docTypeRaw = (formData.get('docType') as string) || 'UNCLASSIFIED';
     const docType = VALID_DOC_TYPES.includes(docTypeRaw) ? docTypeRaw : 'UNCLASSIFIED';
     const productVersionId = formData.get('productVersionId') as string | null;

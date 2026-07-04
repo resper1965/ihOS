@@ -8,7 +8,7 @@ description: "Task list for the truth-platform master plan (specs/003)"
 
 ## F1 — Semantic doc_type taxonomy
 
-- [X] T101 Migration `20260705000001_doc_type_taxonomy.sql`: backfill `file_format` from legacy format values, reset non-taxonomy `doc_type` to `UNCLASSIFIED`, add CHECK admitting the taxonomy + `UNCLASSIFIED`
+- [X] T101 Migration `20260705000001_doc_type_taxonomy.sql`: backfill `file_format` from legacy format values, reset non-taxonomy `doc_type` to `UNCLASSIFIED`, map legacy semantic values (policy/manual/soa/matrix/procedure/evidence/audit_report/internal_audit — local-engine filters) onto the taxonomy, add CHECK admitting the taxonomy (incl. `EVIDENCE_RECORD`) + `UNCLASSIFIED`
 - [X] T102 `DocumentType` union + `DOCUMENT_TYPES` labels (`src/lib/supabase/types-custom.ts`)
 - [X] T103 Upload route accepts validated `docType` (defaults `UNCLASSIFIED`); `doc_type` becomes semantic, format stays in `file_format`
 - [X] T104 UploadWizard "Document Type" select with per-type consumer descriptions

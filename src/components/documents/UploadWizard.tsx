@@ -251,6 +251,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   <option value="SAD" className="bg-[#1e293b]">Solution Architecture (SAD) — feeds threat modeling</option>
                   <option value="SRS_SDS" className="bg-[#1e293b]">Requirements / Design (SRS/SDS) — feeds threat modeling</option>
                   <option value="TEST_REPORT" className="bg-[#1e293b]">Test / V&amp;V Report — version evidence</option>
+                  <option value="EVIDENCE_RECORD" className="bg-[#1e293b]">Evidence Record / Audit Report (operational evidence)</option>
                 </select>
                 <p className="text-[10px] text-text-muted leading-relaxed">
                   Drives which analysis consumes this document. SAD/SRS types are detected by the

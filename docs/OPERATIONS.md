@@ -46,7 +46,7 @@ versão estão publicados e indexados. Análise sem corpus = gap generalizado.
    - `OPERATIONAL` = evidências de execução (fase "Operational Evidence");
    - `B2B_GEHC` / `B2B_DIRECT` = overlays contratuais por canal.
 1b. Escolha o **tipo do documento** (POLICY, PROCEDURE, CONTRACT,
-   CLOUD_ARCH_ORG, SAD, SRS_SDS, TEST_REPORT): é ele que determina qual
+   CLOUD_ARCH_ORG, SAD, SRS_SDS, TEST_REPORT, EVIDENCE_RECORD): é ele que determina qual
    análise consome o documento — o checklist do threat modeling detecta
    SAD/SRS pelo **tipo**, não mais pelo nome do arquivo. Documentos antigos
    ficam `UNCLASSIFIED` até serem triados.

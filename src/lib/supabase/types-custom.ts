@@ -24,6 +24,7 @@ export type DocumentType =
   | "SAD"
   | "SRS_SDS"
   | "TEST_REPORT"
+  | "EVIDENCE_RECORD"
   | "UNCLASSIFIED";
 
 export const DOCUMENT_TYPES: Record<DocumentType, string> = {
@@ -34,6 +35,7 @@ export const DOCUMENT_TYPES: Record<DocumentType, string> = {
   SAD: "Solution Architecture (SAD) — version",
   SRS_SDS: "Requirements / Design (SRS/SDS) — version",
   TEST_REPORT: "Test / V&V Report — version",
+  EVIDENCE_RECORD: "Evidence Record / Audit Report (operational evidence)",
   UNCLASSIFIED: "Unclassified (legacy — needs triage)",
 };
 

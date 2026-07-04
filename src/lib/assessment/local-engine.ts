@@ -114,8 +114,10 @@ export async function runLocalAssessment(
         console.error(`[Audit] ISMS Phase RPC error for ${control.id}:`, ismsError.message);
       }
 
+      // Accept both the 20260705000001 semantic taxonomy and the legacy
+      // lowercase values (rows in databases where the migration hasn't run).
       const ismsMatches = (ismsData || []).filter((chunk: any) =>
-        ['policy', 'manual', 'soa', 'matrix', 'procedure'].includes(chunk.doc_type)
+        ['POLICY', 'PROCEDURE', 'policy', 'manual', 'soa', 'matrix', 'procedure'].includes(chunk.doc_type)
       );
 
       let ismsPhase = { found: false, score: 0 } as any;
@@ -147,7 +149,8 @@ export async function runLocalAssessment(
       }
 
       const evidenceMatches = (evidenceData || []).filter((chunk: any) =>
-        chunk.doc_category === 'OPERATIONAL' || ['evidence', 'audit_report', 'internal_audit'].includes(chunk.doc_type)
+        chunk.doc_category === 'OPERATIONAL' ||
+        ['EVIDENCE_RECORD', 'TEST_REPORT', 'evidence', 'audit_report', 'internal_audit'].includes(chunk.doc_type)
       );
 
       let evidencePhase = { found: false, score: 0 } as any;
