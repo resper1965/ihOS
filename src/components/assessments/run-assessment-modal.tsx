@@ -376,7 +376,11 @@ export function RunAssessmentModal({
 
             {/* What to do now — agentic next steps derived from this run */}
             {(() => {
-              const gaps: number = result.totalGap ?? result.totalControlsMissing ?? 0;
+              const gaps: number = result.totalGap ?? 0;
+              // Missing counts every non-compliant control (hard gaps plus
+              // partial/informal below the compliance threshold) — quick scans
+              // can have missing > 0 with zero hard gaps.
+              const missing: number = result.totalControlsMissing ?? gaps;
               const errors: number = result.totalEvaluationErrors ?? 0;
               const estimated: number = result.totalEstimated ?? 0;
               const allCached =
@@ -393,10 +397,12 @@ export function RunAssessmentModal({
                   tone: "warn",
                   text: `${estimated} result(s) are estimates from degraded mode ([ESTIMATED], needs review) — treat as drafts and re-run once the GRC engine is reachable.`,
                 });
-              if (gaps > 0)
+              if (missing > 0)
                 steps.push({
                   tone: "action",
-                  text: `${gaps} gap(s) found — open the framework scores below, expand the gaps, and create a Goal (remediation) or POA&M entry for each one you triage.`,
+                  text: `${missing} control(s) are not compliant${
+                    gaps > 0 ? ` (${gaps} with no evidence at all)` : ""
+                  } — open this assessment's evidence detail on the Assessments page and create a Goal (remediation) or POA&M entry for each one you triage.`,
                 });
               if (allCached)
                 steps.push({
