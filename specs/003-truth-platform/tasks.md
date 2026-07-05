@@ -13,7 +13,7 @@ description: "Task list for the truth-platform master plan (specs/003)"
 - [X] T103 Upload route accepts validated `docType` (defaults `UNCLASSIFIED`); `doc_type` becomes semantic, format stays in `file_format`
 - [X] T104 UploadWizard "Document Type" select with per-type consumer descriptions
 - [X] T105 Threat-modeling readiness checklist detects SAD/SRS/infra by `doc_type` (filename regex kept only as fallback for `UNCLASSIFIED` legacy rows)
-- [ ] T106 Triage surface for `UNCLASSIFIED` documents (badge + count on Documents page; inline type editor) — next slice
+- [X] T106 Triage surface for `UNCLASSIFIED` documents (amber banner + count on Documents page; inline type editor via PATCH)
 - [ ] T107 Category-scoped corpus fingerprint leveraging doc_type (merges specs/002 T044) — telemetry-gated
 
 ## F2 — Mandatory version × channel context
