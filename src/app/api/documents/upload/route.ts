@@ -1,7 +1,7 @@
 // src/app/api/documents/upload/route.ts
 // POST endpoint for document upload with text extraction, chunking, and embedding.
 
-import { NextResponse } from 'next/server';
+import { NextResponse, waitUntil } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { chunkDocument } from '@/lib/chat/chunker';
 import { generateEmbeddings } from '@/lib/chat/embeddings';
@@ -224,7 +224,7 @@ export async function POST(req: Request) {
 
     // ── 10. Background Recalibration & Delta Extraction ───────────────────
     if (productVersionId) {
-      (async () => {
+      waitUntil((async () => {
         try {
           console.log(`[Background Pipeline] Extracting deltas for doc ${documentId}...`);
           const extractedDeltas = await extractDeltasFromDocument(text);
@@ -234,7 +234,7 @@ export async function POST(req: Request) {
               createAdminClient(),
               productVersionId,
               extractedDeltas,
-              documentId,
+              documentId!,
             );
             if (deltaError) {
               logger.warn('Failed to upsert deltas', { context: 'documents/upload', meta: { error: deltaError } });
@@ -247,7 +247,7 @@ export async function POST(req: Request) {
         } catch (bgErr) {
           logger.error('Background pipeline failed', { context: 'documents/upload', error: bgErr });
         }
-      })();
+      })());
     }
 
     return NextResponse.json(

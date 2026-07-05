@@ -59,6 +59,27 @@ export function RunAssessmentModal({
   const runAssessment = useRunAssessment();
 
   useEffect(() => {
+    if (open) {
+      setMode("quick");
+      setSalesChannel("all");
+      setForceReevaluate(false);
+      setFrameworkSearch("");
+      setDebouncedSearch("");
+      setSelectedFrameworks([
+        "iso27001",
+        "soc2",
+        "hipaa",
+        "nist_800_53",
+        "iso27701",
+        "fedramp",
+      ]);
+      setProgress("");
+      setResult(null);
+      setError(null);
+    }
+  }, [open]);
+
+  useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(frameworkSearch), 150);
     return () => clearTimeout(timer);
   }, [frameworkSearch]);
@@ -204,11 +225,11 @@ export function RunAssessmentModal({
                   onChange={(e) => setSalesChannel(e.target.value)}
                   className="w-full appearance-none rounded-xl border border-border-glass bg-white/5 py-2.5 pl-4 pr-10 text-sm text-text-primary outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                 >
-                  <option value="all" className="bg-[#1e293b] text-white">All Channels (combined)</option>
-                  <option value="B2B_GEHC" className="bg-[#1e293b] text-white">
+                  <option value="all" className="bg-bg-card text-text-primary">All Channels (combined)</option>
+                  <option value="B2B_GEHC" className="bg-bg-card text-text-primary">
                     GEHC Channel (GEHC as Data Controller)
                   </option>
-                  <option value="B2B_DIRECT" className="bg-[#1e293b] text-white">
+                  <option value="B2B_DIRECT" className="bg-bg-card text-text-primary">
                     Direct Sales (Ionic as Data Controller)
                   </option>
                 </select>

@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
 import { updateUserStatus } from "./actions";
 
+import { useToast } from "@/components/ui/toast";
+
 interface UserRow {
   id: string;
   email?: string;
@@ -15,13 +17,14 @@ interface UserRow {
 
 export function UserTable({ users }: { users: UserRow[] }) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const { error: toastError } = useToast();
 
   const handleAction = async (id: string, newStatus: "approved" | "rejected") => {
     setLoadingId(id);
     try {
       await updateUserStatus(id, newStatus);
     } catch (err: any) {
-      alert(`Error updating user: ${err.message}`);
+      toastError(`Error updating user: ${err.message}`);
     } finally {
       setLoadingId(null);
     }

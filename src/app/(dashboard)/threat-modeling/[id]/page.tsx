@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useVersion } from "@/lib/context/version-context";
+import { useToast } from "@/components/ui/toast";
 import type {
   ThreatModelRecord,
   ThreatModelData,
@@ -143,6 +144,7 @@ export default function ThreatModelDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { showToast } = useToast();
   const router = useRouter();
 
   const { data: record, isLoading: loading, error: queryError, refetch } = useThreatModel(id);
@@ -256,9 +258,19 @@ export default function ThreatModelDetailPage({
         method: "POST",
       });
       if (!res.ok) throw new Error("Report generation failed");
-      // On success, could navigate to reports view or show success
+      
+      showToast({
+        title: "Report Generated",
+        description: "The analysis report has been successfully created.",
+        type: "success"
+      });
     } catch (err) {
       console.error("[ThreatModeling] Report generation error:", err);
+      showToast({
+        title: "Generation Failed",
+        description: err instanceof Error ? err.message : "Could not generate report.",
+        type: "error"
+      });
     } finally {
       setReportLoading(false);
     }
@@ -279,10 +291,23 @@ export default function ThreatModelDetailPage({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status, comment }),
       });
-      if (!res.ok) throw new Error("Review submission failed");
-      refetch(); // Refresh using react-query refetch
+      if (!res.ok) throw new Error("Update failed");
+      
+      showToast({
+        title: "Status Updated",
+        description: `Threat model status changed to ${status}.`,
+        type: "success"
+      });
+      
+      router.refresh();
     } catch (err) {
-      console.error("[ThreatModeling] Review error:", err);
+      console.error("[ThreatModeling] Review submission error:", err);
+      showToast({
+        title: "Update Failed",
+        description: err instanceof Error ? err.message : "Could not update status.",
+        type: "error"
+      });
+      throw err;
     }
   };
 

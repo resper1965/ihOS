@@ -143,6 +143,8 @@ export function NotificationsDropdown() {
         }}
         className="relative rounded-xl p-2 text-text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-text-primary transition-colors"
         aria-label="Notifications"
+        aria-haspopup="true"
+        aria-expanded={open}
       >
         <Bell className="h-5 w-5 stroke-[1.5]" />
         {unreadCount > 0 && (
@@ -150,14 +152,15 @@ export function NotificationsDropdown() {
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
-        {unreadCount === 0 && (
-          <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-emerald-400" />
-        )}
       </button>
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border-glass bg-bg-card/95 shadow-2xl backdrop-blur-xl sm:w-96">
+        <div 
+          role="menu"
+          aria-label="Notifications List"
+          className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-border-glass bg-bg-card/95 shadow-2xl backdrop-blur-xl sm:w-96"
+        >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border-glass px-4 py-3">
             <h3 className="text-sm font-semibold text-text-primary">Notifications</h3>

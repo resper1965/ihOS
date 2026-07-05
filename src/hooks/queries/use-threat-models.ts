@@ -27,7 +27,13 @@ const ThreatModelRecordSchema = z.object({
   data: z.any(),
   created_at: z.string(),
   updated_at: z.string().nullable().optional(),
-});
+  // F-series top-level columns for versioning and status mapping
+  product_version: z.string().nullable().optional(),
+  status: z.string().nullable().optional(),
+  target_frameworks: z.array(z.string()).nullable().optional(),
+  source: z.string().nullable().optional(),
+  baseline_model_id: z.string().nullable().optional(),
+}).passthrough();
 
 const ThreatModelDetailResponseSchema = z.object({
   model: ThreatModelRecordSchema.nullable().optional(),

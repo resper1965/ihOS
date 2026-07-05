@@ -50,7 +50,20 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) setSelectedFile(file);
+    if (file) {
+      // M2: Client-side validation for file size (20MB limit)
+      if (file.size > 20 * 1024 * 1024) {
+        setUploadStatus({
+          state: "error",
+          fileName: file.name,
+          message: "File is too large. Maximum size is 20MB.",
+        });
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+      setSelectedFile(file);
+    }
   };
 
   const formatFileSize = (bytes: number) => {
@@ -172,16 +185,21 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="dark w-full max-w-xl overflow-hidden rounded-2xl border border-white/10 bg-[#1e293b] shadow-2xl flex flex-col max-h-[90vh]">
-        {/* Modal Header */}
+    <Dialog 
+      open={isOpen} 
+      onClose={handleClose}
+      maxWidth="max-w-xl"
+      className="p-0 overflow-hidden"
+    >
+      <div className="flex flex-col max-h-[85vh]">
+        {/* Custom Modal Header */}
         <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
           <div className="flex items-center gap-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
               <ShieldCheck className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h3 className="font-bold text-white text-base">ISMS Guideline Indexing</h3>
+              <h3 className="font-bold text-text-primary text-base">ISMS Guideline Indexing</h3>
               <p className="text-[10px] text-text-muted">Safety Gate: Required metadata to prevent RAG errors.</p>
             </div>
           </div>
@@ -230,10 +248,10 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   defaultValue="ISMS_CORE"
                   className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                 >
-                  <option value="ISMS_CORE" className="bg-[#1e293b]">ISMS Core (Organization Policies)</option>
-                  <option value="B2B_GEHC" className="bg-[#1e293b]">B2B Channel — GEHC (Privacy: GEHC as Data Controller)</option>
-                  <option value="B2B_DIRECT" className="bg-[#1e293b]">B2B Channel — Direct Sales (Privacy: Ionic as Data Controller)</option>
-                  <option value="OPERATIONAL" className="bg-[#1e293b]">Operational (Daily Technical Procedures)</option>
+                  <option value="ISMS_CORE" className="bg-bg-card text-text-primary">ISMS Core (Organization Policies)</option>
+                  <option value="B2B_GEHC" className="bg-bg-card text-text-primary">B2B Channel — GEHC (Privacy: GEHC as Data Controller)</option>
+                  <option value="B2B_DIRECT" className="bg-bg-card text-text-primary">B2B Channel — Direct Sales (Privacy: Ionic as Data Controller)</option>
+                  <option value="OPERATIONAL" className="bg-bg-card text-text-primary">Operational (Daily Technical Procedures)</option>
                 </select>
               </div>
 
@@ -244,14 +262,14 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   defaultValue="POLICY"
                   className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                 >
-                  <option value="POLICY" className="bg-[#1e293b]">Policy / Norm — ISMS (assessment: policy phase)</option>
-                  <option value="PROCEDURE" className="bg-[#1e293b]">Procedure / SOP (assessment: operational evidence)</option>
-                  <option value="CONTRACT" className="bg-[#1e293b]">Contract / DPA / MSA (channel overlay)</option>
-                  <option value="CLOUD_ARCH_ORG" className="bg-[#1e293b]">Cloud Infrastructure — org-wide (CLD/NET controls)</option>
-                  <option value="SAD" className="bg-[#1e293b]">Solution Architecture (SAD) — feeds threat modeling</option>
-                  <option value="SRS_SDS" className="bg-[#1e293b]">Requirements / Design (SRS/SDS) — feeds threat modeling</option>
-                  <option value="TEST_REPORT" className="bg-[#1e293b]">Test / V&amp;V Report — version evidence</option>
-                  <option value="EVIDENCE_RECORD" className="bg-[#1e293b]">Evidence Record / Audit Report (operational evidence)</option>
+                  <option value="POLICY" className="bg-bg-card text-text-primary">Policy / Norm — ISMS (assessment: policy phase)</option>
+                  <option value="PROCEDURE" className="bg-bg-card text-text-primary">Procedure / SOP (assessment: operational evidence)</option>
+                  <option value="CONTRACT" className="bg-bg-card text-text-primary">Contract / DPA / MSA (channel overlay)</option>
+                  <option value="CLOUD_ARCH_ORG" className="bg-bg-card text-text-primary">Cloud Infrastructure — org-wide (CLD/NET controls)</option>
+                  <option value="SAD" className="bg-bg-card text-text-primary">Solution Architecture (SAD) — feeds threat modeling</option>
+                  <option value="SRS_SDS" className="bg-bg-card text-text-primary">Requirements / Design (SRS/SDS) — feeds threat modeling</option>
+                  <option value="TEST_REPORT" className="bg-bg-card text-text-primary">Test / V&amp;V Report — version evidence</option>
+                  <option value="EVIDENCE_RECORD" className="bg-bg-card text-text-primary">Evidence Record / Audit Report (operational evidence)</option>
                 </select>
                 <p className="text-[10px] text-text-muted leading-relaxed">
                   Drives which analysis consumes this document. SAD/SRS types are detected by the
@@ -301,7 +319,7 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                   >
                     {versions.map((v) => (
-                      <option key={v.id} value={v.id} className="bg-[#1e293b]">
+                      <option key={v.id} value={v.id} className="bg-bg-card text-text-primary">
                         {v.product_name} {v.version_code}
                       </option>
                     ))}
@@ -339,9 +357,9 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                     defaultValue="published"
                     className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                   >
-                    <option value="published" className="bg-[#1e293b]">Active (Published to RAG)</option>
-                    <option value="draft" className="bg-[#1e293b]">Draft (Does not index in RAG)</option>
-                    <option value="superseded" className="bg-[#1e293b]">Superseded (Historical)</option>
+                    <option value="published" className="bg-bg-card text-text-primary">Active (Published to RAG)</option>
+                    <option value="draft" className="bg-bg-card text-text-primary">Draft (Does not index in RAG)</option>
+                    <option value="superseded" className="bg-bg-card text-text-primary">Superseded (Historical)</option>
                   </select>
                 </div>
               </div>
@@ -528,6 +546,6 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
           </div>
         </form>
       </div>
-    </div>
+    </Dialog>
   );
 }

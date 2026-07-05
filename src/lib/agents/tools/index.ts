@@ -9,6 +9,7 @@ import { searchDocuments as ragSearch } from '@/lib/chat/rag-search';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import type { Database } from '@/lib/supabase/types.generated';
+import { generateIntegratedDossier } from './dossier';
 
 // ---------------------------------------------------------------------------
 // Tool: complianceScore
@@ -926,6 +927,7 @@ export const agentTools = {
   generateThreatModel,
   detectComplianceGaps,
   evaluateControlEvidence,
+  generateIntegratedDossier,
 } as const;
 
 export type AgentToolName = keyof typeof agentTools;

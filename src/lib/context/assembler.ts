@@ -8,6 +8,7 @@ import { getMessages } from '@/lib/chat/persistence';
 import { searchDocuments } from '@/lib/chat/rag-search';
 import { createClient } from '@/lib/supabase/server';
 import { getAllOrgStates } from '@/lib/agents/org-state';
+import { buildPostureProfile } from '@/lib/context/posture-profile';
 
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_RAG_CHUNKS = 5;
@@ -78,7 +79,8 @@ function buildSystemPrompt(
   briefingContext = '',
   learningContext = '',
   orgStateContext = '',
-  autonomyContext = ''
+  autonomyContext = '',
+  postureProfileContext = ''
 ): string {
   const parts: string[] = [profile.systemPrompt];
 
@@ -113,6 +115,10 @@ function buildSystemPrompt(
 
   if (autonomyContext) {
     parts.push(autonomyContext);
+  }
+
+  if (postureProfileContext) {
+    parts.push(postureProfileContext);
   }
 
   parts.push(`\n\n## Session Metadata\n- Current time: ${new Date().toISOString()}`);
@@ -244,13 +250,16 @@ export async function assembleContext(
     }
   }
 
+  const postureProfileContext = await buildPostureProfile(options?.productVersionId);
+
   const systemPrompt = buildSystemPrompt(
     selectedProfile,
     ragChunks,
     briefingContext,
     learningContext,
     orgStateContext,
-    autonomyContext
+    autonomyContext,
+    postureProfileContext
   );
 
   return {

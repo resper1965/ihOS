@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { useEffect, useState, useCallback } from "react";
+import { useToast } from "@/components/ui/toast";
 import {
   ClipboardCheck,
   Plus,
@@ -33,6 +34,7 @@ export default function AssessmentsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [frameworks, setFrameworks] = useState<Array<{ framework_code: string; framework_name: string }>>([]);
+  const { success, error: toastError } = useToast();
 
   // T005: React Query hook replaces raw Supabase fetch
   const { data: assessments = [], isLoading: loading } = useAssessments(activeVersion?.id ?? null);
@@ -62,9 +64,10 @@ export default function AssessmentsPage() {
     if (newName !== null && newName.trim() !== "" && newName !== currentName) {
       try {
         await updateAssessment.mutateAsync({ id, data: { name: newName.trim() } });
+        success("Assessment updated successfully.");
       } catch (err) {
         console.error("Failed to update assessment", err);
-        alert("Failed to update assessment.");
+        toastError("Failed to update assessment.");
       }
     }
   };
@@ -73,9 +76,10 @@ export default function AssessmentsPage() {
     if (window.confirm("Are you sure you want to delete this assessment? This action cannot be undone.")) {
       try {
         await deleteAssessment.mutateAsync(id);
+        success("Assessment deleted successfully.");
       } catch (err) {
         console.error("Failed to delete assessment", err);
-        alert("Failed to delete assessment.");
+        toastError("Failed to delete assessment.");
       }
     }
   };

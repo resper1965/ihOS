@@ -108,9 +108,10 @@ export async function PATCH(
     return NextResponse.json({ error: 'Threat model not found' }, { status: 404 });
   }
 
-  const record = existing as unknown as ThreatModelRecord;
+  // Map DB model_data to data for consistent object handling
+  const currentModelData = (existing.model_data ?? {}) as any;
   const updatedData: ThreatModelData = {
-    ...record.data,
+    ...currentModelData,
     status: status as ThreatModelStatus,
     reviewed_by: user.email ?? user.id,
     review_comment: comment || undefined,
@@ -120,7 +121,11 @@ export async function PATCH(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: updated, error: updateError } = await (admin as any)
     .from('threat_models')
-    .update({ data: updatedData, updated_at: new Date().toISOString() })
+    .update({ 
+      model_data: updatedData, 
+      status: status, // Sync top-level column (C2 fix)
+      updated_at: new Date().toISOString() 
+    })
     .eq('id', id)
     .select('*')
     .single();
@@ -130,5 +135,12 @@ export async function PATCH(
     return NextResponse.json({ error: 'Failed to update threat model' }, { status: 500 });
   }
 
-  return NextResponse.json({ success: true, model: updated as ThreatModelRecord });
+  // DB column is model_data, TS interface expects data
+  const { model_data: final_data, ...final_rest } = updated;
+  const mappedResult = {
+    ...final_rest,
+    data: final_data,
+  };
+
+  return NextResponse.json({ success: true, model: mappedResult as unknown as ThreatModelRecord });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
@@ -67,6 +67,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     }
   }, [profile, isLoading, router]);
 
+  // Handle responsive sidebar behavior
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) {
+        setSidebarOpen(false);
+      }
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   if (profile?.status === "pending") {
     return null; // Prevents flashing the dashboard
   }
@@ -81,8 +93,22 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="pointer-events-none absolute left-[40%] top-[30%] h-[400px] w-[400px] rounded-full bg-accent/5 blur-[120px] dark:bg-accent/[0.03]" />
             <div className="pointer-events-none absolute -bottom-20 -right-20 h-[350px] w-[350px] rounded-full bg-primary/5 blur-[100px] dark:bg-primary/[0.03]" />
 
+            {/* Sidebar Overlay (Mobile) */}
+            {sidebarOpen && (
+              <div 
+                className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
+                onClick={() => setSidebarOpen(false)}
+              />
+            )}
+
             {/* Sidebar */}
-            <aside className={`glass-surface relative z-10 flex flex-col transition-all duration-300 ease-in-out ${sidebarOpen ? "w-64" : "w-20"}`}>
+            <aside 
+              aria-label="Main Navigation"
+              className={`glass-surface fixed inset-y-0 left-0 z-50 flex flex-col transition-all duration-300 ease-in-out lg:static lg:translate-x-0 ${
+              sidebarOpen 
+                ? "w-64 translate-x-0" 
+                : "w-20 -translate-x-full lg:w-20"
+            }`}>
           <div className="flex h-16 items-center gap-3 border-b border-border-glass px-5">
             {sidebarOpen ? (
               <>
@@ -144,7 +170,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <button onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="absolute -right-3 top-20 flex h-6 w-6 items-center justify-center rounded-full border border-border-glass bg-bg-card text-text-secondary shadow-md hover:text-text-primary transition-all"
+            className="absolute -right-3 top-20 hidden lg:flex h-6 w-6 items-center justify-center rounded-full border border-border-glass bg-bg-card text-text-secondary shadow-md hover:text-text-primary transition-all"
             aria-label={sidebarOpen ? "Collapse menu" : "Expand menu"}>
             <ChevronLeft className={`h-3.5 w-3.5 stroke-[1.5] transition-transform duration-300 ${sidebarOpen ? "" : "rotate-180"}`} />
           </button>
@@ -174,8 +200,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
 function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const { user, profile, isLoading } = useUser();
   const meta = useCurrentPageMeta();
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setShowUserMenu(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const displayName = user?.email?.split("@")[0] ?? "User";
   const initials = user?.email ? user.email.split("@")[0].slice(0, 2).toUpperCase() : "??";
@@ -192,7 +229,12 @@ function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border-glass bg-bg-dark/80 px-6 backdrop-blur-md">
       {/* Left — page title */}
       <div className="flex items-center gap-4">
-        <button onClick={onMenuClick} className="text-text-secondary hover:text-text-primary lg:hidden">
+        <button 
+          onClick={onMenuClick} 
+          className="text-text-secondary hover:text-text-primary lg:hidden"
+          aria-label="Toggle menu"
+          aria-expanded={sidebarOpen}
+        >
           <Menu className="h-5 w-5 stroke-[1.5]" />
         </button>
 
@@ -226,7 +268,7 @@ function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
         <HelpTrigger />
         <div className="h-6 w-px bg-border-glass" />
 
-        <div className="relative">
+        <div className="relative" ref={userMenuRef}>
           <button onClick={() => setShowUserMenu(!showUserMenu)}
             className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-xs font-bold text-white">

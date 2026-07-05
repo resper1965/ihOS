@@ -258,16 +258,55 @@ export default function ChatPage({ conversationId: initialConversationId }: Chat
 
   const isEmpty = messages.length === 0 && !isLoadingConversation;
 
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
   return (
-    <div className="flex h-full w-full overflow-hidden">
-      {/* Conversation sidebar */}
-      <div className="w-64 shrink-0 border-r border-border-glass bg-black/[0.01] dark:bg-white/[0.01]">
-        <ConversationList
-          ref={conversationListRef}
-          activeConversationId={activeConversationId}
-          onSelectConversation={handleSelectConversation}
-          onNewConversation={() => handleNewConversation()}
+    <div className="flex h-full w-full overflow-hidden relative">
+      {/* Mobile Chat Sidebar Toggle */}
+      <button
+        onClick={() => setMobileSidebarOpen(true)}
+        className="absolute left-4 top-4 z-20 rounded-lg border border-border-glass bg-bg-card/80 p-2 text-text-secondary backdrop-blur-md hover:text-text-primary lg:hidden"
+        aria-label="View history"
+      >
+        <FileText className="h-5 w-5" />
+      </button>
+
+      {/* Mobile Overlay */}
+      {mobileSidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm transition-opacity duration-300 lg:hidden"
+          onClick={() => setMobileSidebarOpen(false)}
         />
+      )}
+
+      {/* Conversation sidebar */}
+      <div className={`
+        fixed inset-y-0 left-0 z-50 w-72 transform bg-bg-card transition-transform duration-300 ease-in-out border-r border-border-glass
+        lg:relative lg:translate-x-0 lg:w-64 lg:z-0 lg:bg-black/[0.01] lg:dark:bg-white/[0.01]
+        ${mobileSidebarOpen ? "translate-x-0" : "-translate-x-full"}
+      `}>
+        <div className="flex h-full flex-col">
+          <div className="flex h-16 items-center justify-between px-4 lg:hidden">
+            <span className="font-bold text-text-primary">Chat History</span>
+            <button onClick={() => setMobileSidebarOpen(false)} className="rounded-lg p-1 text-text-muted hover:bg-white/5 transition-colors">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <ConversationList
+              ref={conversationListRef}
+              activeConversationId={activeConversationId}
+              onSelectConversation={(id) => {
+                handleSelectConversation(id);
+                setMobileSidebarOpen(false);
+              }}
+              onNewConversation={() => {
+                handleNewConversation();
+                setMobileSidebarOpen(false);
+              }}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Main chat area */}

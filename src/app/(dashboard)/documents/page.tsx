@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { FileText, Upload, Sparkles, Layers, RefreshCw, Globe, Box, Handshake } from "lucide-react";
+import { useToast } from "@/components/ui/toast";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useVersion } from "@/lib/context/version-context";
 import { useDocuments, useDeleteDocument } from "@/hooks/queries/use-documents";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 // Extracted Components
 import { UploadWizard } from "@/components/documents/UploadWizard";
@@ -29,20 +31,25 @@ export default function DocumentsPage() {
   
   // Wizard state
   const [isWizardOpen, setIsWizardOpen] = useState(false);
+  const { success, error: toastError } = useToast();
 
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const deletingId = deleteDocument.isPending ? (deleteDocument.variables ?? null) : null;
 
   const handleDelete = async (docId: number) => {
-    if (deleteDocument.isPending) return;
+    setConfirmDeleteId(docId);
+  };
 
-    const confirmDelete = window.confirm("Are you sure you want to delete this document and all its vector chunks from the RAG?");
-    if (!confirmDelete) return;
-
+  const executeDelete = async () => {
+    if (!confirmDeleteId) return;
     try {
-      await deleteDocument.mutateAsync(docId);
+      await deleteDocument.mutateAsync(confirmDeleteId);
+      success("Document deleted successfully.");
     } catch (err) {
       console.error("[documents] Delete failed:", err);
-      alert("Failed to delete document.");
+      toastError("Failed to delete document.");
+    } finally {
+      setConfirmDeleteId(null);
     }
   };
 
@@ -129,15 +136,23 @@ export default function DocumentsPage() {
       </div>
 
       {/* Tab Navigation */}
-      <div id="document-filter-tabs" className="flex items-center gap-1 p-1 rounded-xl bg-white/[0.03] border border-white/5 w-fit">
+      <div 
+        role="tablist" 
+        aria-label="Filter documents by category"
+        id="document-filter-tabs" 
+        className="flex items-center gap-1 p-1 rounded-xl bg-black/5 dark:bg-white/[0.03] border border-border-glass w-fit"
+      >
         {TABS.map((tab) => (
           <button
             key={tab.key}
+            role="tab"
+            aria-selected={activeTab === tab.key}
+            aria-controls="document-table-view"
             onClick={() => setActiveTab(tab.key)}
             className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
               activeTab === tab.key
                 ? "bg-primary/15 text-primary border border-primary/30"
-                : "text-slate-400 hover:text-slate-300 hover:bg-white/5 border border-transparent"
+                : "text-text-secondary hover:text-text-primary hover:bg-black/5 dark:hover:bg-white/5 border border-transparent"
             }`}
           >
             {tab.icon}
@@ -171,6 +186,16 @@ export default function DocumentsPage() {
         onSuccess={() => refetch()}
         versions={versions}
         activeVersion={activeVersion}
+      />
+
+      <ConfirmDialog
+        isOpen={confirmDeleteId !== null}
+        onClose={() => setConfirmDeleteId(null)}
+        onConfirm={executeDelete}
+        title="Delete Document"
+        description="Are you sure you want to delete this document and all its vector chunks from the RAG? This action cannot be undone."
+        variant="danger"
+        isLoading={deleteDocument.isPending}
       />
     </div>
   );

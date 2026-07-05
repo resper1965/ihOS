@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useToast } from "@/components/ui/toast";
 import { Search, Loader2, FileText, Calendar, Trash2, RefreshCw, AlertTriangle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import type { ComplianceDocument } from "@/lib/supabase/types";
@@ -16,6 +17,7 @@ interface DocumentTableProps {
 
 export function DocumentTable({ documents, loading, versions, activeVersion, onDelete, deletingId, onRefresh }: DocumentTableProps) {
   const [search, setSearch] = useState("");
+  const { success, error: toastError } = useToast();
   const [reindexingId, setReindexingId] = useState<number | null>(null);
   const [updatingVersionId, setUpdatingVersionId] = useState<number | null>(null);
   const [updatingTypeId, setUpdatingTypeId] = useState<number | null>(null);
@@ -65,11 +67,11 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
         const errorData = await res.json();
         throw new Error(errorData.error || "Failed to re-index");
       }
-      alert("Document re-indexed successfully!");
+      success("Document re-indexed successfully!");
       if (onRefresh) onRefresh();
     } catch (err: any) {
       console.error("[reindex]", err);
-      alert(`Error: ${err.message}`);
+      toastError("Failed to re-index document", err.message);
     } finally {
       setReindexingId(null);
     }
@@ -175,9 +177,9 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
                         className="text-[10px] rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-text-secondary cursor-pointer hover:bg-white/10 transition-colors focus:border-primary/40 focus:outline-none appearance-none dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
                         title="Assign document version"
                       >
-                        <option value="global" className="bg-[#1e293b] text-white">🌐 Global / Organizacional</option>
+                        <option value="global" className="bg-bg-card text-text-primary">🌐 Global / Organizacional</option>
                         {versions.map((v) => (
-                          <option key={v.id} value={v.id} className="bg-[#1e293b] text-white">
+                          <option key={v.id} value={v.id} className="bg-bg-card text-text-primary">
                             📦 {v.product_name} {v.version_code}
                           </option>
                         ))}
@@ -236,7 +238,7 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
                     title="Document type — decides which analysis consumes this document"
                   >
                     {Object.entries(DOCUMENT_TYPES).map(([value, label]) => (
-                      <option key={value} value={value} className="bg-[#1e293b] text-white">
+                      <option key={value} value={value} className="bg-bg-card text-text-primary">
                         {value === "UNCLASSIFIED" ? "⚠️ " : ""}{label}
                       </option>
                     ))}

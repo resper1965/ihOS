@@ -46,13 +46,38 @@ function Dialog({
     };
   }, [open]);
 
-  // Focus trap
+  // Focus trap with cycling
   useEffect(() => {
     if (!open || !dialogRef.current) return;
-    const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+
+    const focusableElements = dialogRef.current.querySelectorAll<HTMLElement>(
       'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
     );
-    if (focusable.length > 0) focusable[0].focus();
+    
+    if (focusableElements.length === 0) return;
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    function handleTab(e: KeyboardEvent) {
+      if (e.key !== "Tab") return;
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement.focus();
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement.focus();
+        }
+      }
+    }
+
+    firstElement.focus();
+    document.addEventListener("keydown", handleTab);
+    return () => document.removeEventListener("keydown", handleTab);
   }, [open]);
 
   if (!open) return null;
@@ -71,7 +96,7 @@ function Dialog({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-label={title}
+        aria-labelledby="dialog-title"
         className={`
           relative w-full ${maxWidth}
           glass-card border border-white/10 bg-slate-950/80 shadow-2xl p-6
@@ -81,25 +106,23 @@ function Dialog({
         `}
       >
         {/* Header */}
-        <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-3">
-          {title ? (
-            <h3 className="text-lg font-semibold text-text-primary">
+        {title && (
+          <div className="mb-4 flex items-center justify-between border-b border-white/5 pb-3">
+            <h3 id="dialog-title" className="text-lg font-semibold text-text-primary">
               {title}
             </h3>
-          ) : (
-            <div />
-          )}
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-text-muted hover:bg-white/10 hover:text-text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
-            aria-label="Fechar"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+            <button
+              onClick={onClose}
+              className="rounded-lg p-1 text-text-muted hover:bg-white/10 hover:text-text-primary transition-colors focus:outline-none focus:ring-2 focus:ring-primary/40"
+              aria-label="Close"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        )}
 
         {/* Content */}
-        <div className="text-sm text-text-secondary leading-relaxed">
+        <div className={title ? "text-sm text-text-secondary leading-relaxed" : ""}>
           {children}
         </div>
       </div>

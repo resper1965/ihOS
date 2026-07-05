@@ -132,6 +132,15 @@ export function GenerateThreatModelModal({
   // Load versions and fetch docs when modal opens
   useEffect(() => {
     if (open) {
+      // Reset state for new session
+      setStep(1);
+      setProgress(0);
+      setStageIdx(0);
+      setError(null);
+      setIsGenerating(false);
+      setGenResult(null);
+      setForceReevaluate(false);
+      
       // Set initial version based on active version or first version
       if (activeVersion) {
         setVersion(activeVersion.version_code);
@@ -348,9 +357,9 @@ export function GenerateThreatModelModal({
                 onChange={(e) => setVersion(e.target.value)}
                 className="w-full appearance-none rounded-xl border border-border-glass bg-white/5 px-4 py-2.5 pr-10 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-300 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
               >
-                <option value="" disabled>Select a version...</option>
+                <option value="" disabled className="bg-bg-card text-text-primary">Select a version...</option>
                 {versions.map((v) => (
-                  <option key={v.id} value={v.version_code}>
+                  <option key={v.id} value={v.version_code} className="bg-bg-card text-text-primary">
                     {v.product_name} ({v.version_code})
                   </option>
                 ))}

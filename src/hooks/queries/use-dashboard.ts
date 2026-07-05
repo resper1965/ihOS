@@ -2,40 +2,40 @@ import { useQuery } from '@tanstack/react-query';
 import { z } from 'zod';
 
 const StatsSchema = z.object({
-  frameworks: z.string(),
-  documents: z.string(),
-  assessments: z.string(),
-  score: z.string(),
-});
+  frameworks: z.union([z.string(), z.number()]).transform(v => String(v)),
+  documents: z.union([z.string(), z.number()]).transform(v => String(v)),
+  assessments: z.union([z.string(), z.number()]).transform(v => String(v)),
+  score: z.union([z.string(), z.number()]).transform(v => String(v)),
+}).passthrough();
 
 const ActivitySchema = z.object({
-  action: z.string(),
-  time: z.string(),
-  type: z.enum(["assessment", "analysis", "document", "review", "score"]),
-});
+  action: z.string().nullable().transform(v => v || "Unnamed Activity"),
+  time: z.string().nullable().transform(v => v || "Recently"),
+  type: z.enum(["assessment", "analysis", "document", "review", "score"]).catch("assessment"),
+}).passthrough();
 
 const MsrBaselineSchema = z.object({
   id: z.string(),
-  name: z.string(),
-  description: z.string(),
-  version_code: z.string(),
-});
+  name: z.string().nullable().transform(v => v || "No Name"),
+  description: z.string().nullable().transform(v => v || ""),
+  version_code: z.string().nullable().transform(v => v || "N/A"),
+}).passthrough();
 
 const MsrStatsSchema = z.object({
-  totalMCR: z.number(),
-  acceptedMCR: z.number(),
-  totalDSR: z.number(),
-  acceptedDSR: z.number(),
-  pendingDSR: z.number(),
-  rejectedDSR: z.number(),
+  totalMCR: z.number().default(0),
+  acceptedMCR: z.number().default(0),
+  totalDSR: z.number().default(0),
+  acceptedDSR: z.number().default(0),
+  pendingDSR: z.number().default(0),
+  rejectedDSR: z.number().default(0),
   pptdf: z.object({
-    People: z.number(),
-    Process: z.number(),
-    Technology: z.number(),
-    Data: z.number(),
-    Facilities: z.number(),
-  }),
-});
+    People: z.number().default(0),
+    Process: z.number().default(0),
+    Technology: z.number().default(0),
+    Data: z.number().default(0),
+    Facilities: z.number().default(0),
+  }).default({}),
+}).passthrough();
 
 const MsrDataSchema = z.object({
   baseline: MsrBaselineSchema,
@@ -45,8 +45,8 @@ const MsrDataSchema = z.object({
 const DashboardDataSchema = z.object({
   stats: StatsSchema,
   activities: z.array(ActivitySchema),
-  msrData: MsrDataSchema,
-});
+  msrData: MsrDataSchema.optional(),
+}).passthrough();
 
 export type DashboardData = z.infer<typeof DashboardDataSchema>;
 

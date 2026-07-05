@@ -20,12 +20,12 @@
   
   --color-text-primary: #1d1d1f;
   --color-text-secondary: #434345;
-  --color-text-muted: #86868b;
+  --color-text-muted: #6e6e73;
   
   --color-cyan-400: #0891b2;
   
   --color-danger: #EF4444;
-  --color-warning: #EAB308;
+  --color-warning: #CA8A04;
   --color-success: #37962D;
   --color-info: #5D99FF;
 }
@@ -47,12 +47,12 @@
   
   --color-text-primary: #f5f5f7;
   --color-text-secondary: #a1a1a6;
-  --color-text-muted: #6e6e73;
+  --color-text-muted: #86868b;
   
   --color-cyan-400: #22d3ee;
   
   --color-danger: #EF4444;
-  --color-warning: #EAB308;
+  --color-warning: #FBBF24;
   --color-success: #37962D;
   --color-info: #5D99FF;
 }
@@ -124,7 +124,7 @@ body {
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--color-border-glass);
-  border-radius: 4px;
+  border-radius: 16px;
   box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.015), 0 1px 2px 0 rgba(0, 0, 0, 0.01);
   transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
               box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1), 
@@ -132,7 +132,6 @@ body {
               background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .dark .glass-card {
-  border-radius: 16px;
   box-shadow: 0 4px 24px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
 }
 .glass-card:hover {

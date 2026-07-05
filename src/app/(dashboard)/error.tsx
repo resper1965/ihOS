@@ -15,15 +15,15 @@ export default function DashboardError({
   }, [error]);
 
   return (
-    <div className="flex max-w-lg flex-col items-center justify-center px-4 py-24">
+    <div className="flex w-full h-full min-h-[60vh] flex-col items-center justify-center px-4 py-12">
       <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-2xl bg-red-500/10">
         <AlertTriangle className="h-8 w-8 text-red-400" />
       </div>
       <h2 className="mb-2 text-xl font-bold text-text-primary">
-        Failed to load dashboard
+        Something went wrong
       </h2>
       <p className="mb-6 text-center text-sm text-text-secondary">
-        We were unable to load the dashboard data.
+        We encountered an error while loading this page.
         Please try again or contact support if the problem persists.
       </p>
       <button
