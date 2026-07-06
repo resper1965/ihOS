@@ -478,10 +478,6 @@ export interface StrideThreat {
   title: string;
   description: string;
   affected_component: string;
-  severity: SeverityLevel;
-  likelihood: "very_high" | "high" | "medium" | "low" | "very_low";
-  risk_level: SeverityLevel;
-  rpn: number;
   mitigations: string[];
   related_controls: string[];
   // Version-lineage annotations (stamped by annotateInheritance when the

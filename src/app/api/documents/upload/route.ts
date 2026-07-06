@@ -3,7 +3,8 @@
 
 import { NextResponse, waitUntil } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { chunkDocument } from '@/lib/chat/chunker';
+import { chunkComplianceDocument } from '@/lib/chat/chunker';
+import { runPostIngestPipeline } from '@/lib/chat/post-ingest-pipeline';
 import { generateEmbeddings } from '@/lib/chat/embeddings';
 import { resolveFileType, extractText } from '@/lib/chat/document-extractor';
 import { verifyClarity } from '@/lib/chat/clarity-gate';
@@ -163,7 +164,7 @@ export async function POST(req: Request) {
     documentId = docRecord.id;
 
     // ── 6. Chunk text ────────────────────────────────────────────────────
-    const chunks = chunkDocument(text);
+    const chunks = chunkComplianceDocument(text);
 
     if (chunks.length === 0) {
       await adminSupabase
@@ -221,6 +222,27 @@ export async function POST(req: Request) {
       .from('compliance_documents')
       .update({ total_chunks: chunks.length })
       .eq('id', documentId);
+
+    // ── 9b. SCF Auto-tagging & Provenance (2-stage pipeline) ─────────────
+    const ingestChunks = chunks.map((chunk, idx) => ({
+      content: chunk.content,
+      chunk_index: chunk.index,
+      embedding: JSON.stringify(embeddings[idx]),
+    }));
+
+    waitUntil((async () => {
+      try {
+        const result = await runPostIngestPipeline(
+          adminSupabase,
+          documentId!,
+          productVersionId || null,
+          ingestChunks,
+        );
+        console.log(`[Post-Ingest] Tagged ${result.tagged} chunks, ${result.provenance} provenance records for doc ${documentId}`);
+      } catch (err) {
+        logger.error('Post-ingest pipeline failed', { context: 'documents/upload', error: err });
+      }
+    })());
 
     // ── 10. Background Recalibration & Delta Extraction ───────────────────
     if (productVersionId) {

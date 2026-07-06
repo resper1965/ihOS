@@ -14,6 +14,7 @@ export interface GenerateRequest {
   target_frameworks?: string[];
   llm_model?: string;
   skip_grc_enrichment?: boolean;
+  skip_fmea?: boolean;
 }
 
 export interface ReviewRequest {
@@ -51,17 +52,22 @@ export interface ThreatModelMetadata {
   llm_model: string;
 }
 
+export interface FmeaCorrelation {
+  threat_id: string;
+  risk_category: RiskCategory;
+  severity: number;
+  occurrence: number;
+  detection: number;
+  rpn: number;
+  justification?: string;
+}
+
 export interface Threat {
   id: string;
   stride_category: StrideCategory;
   title: string;
   description: string;
   affected_component: string;
-  risk_category: RiskCategory;
-  severity: number;
-  occurrence: number;
-  detection: number;
-  rpn: number;
   mitigations: string[];
   evidence_references: string[];
   confidence: string;
@@ -92,7 +98,7 @@ export interface ThreatModel {
   rag_context: Record<string, unknown>;
   threat_model: {
     threats: Threat[];
-    fmea_correlations: Record<string, unknown>[];
+    fmea_correlations: FmeaCorrelation[];
   };
   standard_api_enrichment?: Record<string, unknown>;
   gaps: Gap[];

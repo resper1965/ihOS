@@ -152,6 +152,7 @@ export default function ThreatModelDetailPage({
 
   const [activeTab, setActiveTab] = useState<Tab>("Scope");
   const [reportLoading, setReportLoading] = useState(false);
+  const [fmeaLoading, setFmeaLoading] = useState(false);
 
   // Compliance documents fetching and context
   const { versions } = useVersion();
@@ -179,13 +180,13 @@ export default function ThreatModelDetailPage({
     if (!data) return { totalThreats: 0, criticalHigh: 0, avgRpn: 0, totalGaps: 0 };
     return {
       totalThreats: threats.length,
-      criticalHigh: threats.filter(
-        (t) => t.severity === "critical" || t.severity === "high"
-      ).length,
-      avgRpn: data.fmea?.summary?.avg_rpn ?? 0,
+      criticalHigh: fmeaItems.length > 0 ? fmeaItems.filter(
+        (t) => t.severity >= 7
+      ).length : "-",
+      avgRpn: fmeaItems.length > 0 ? (data.fmea?.summary?.avg_rpn ?? 0) : "-",
       totalGaps: gaps.length,
     };
-  }, [data, threats, gaps]);
+  }, [data, threats, fmeaItems, gaps]);
 
   // Find version object from context to get its database ID
   const selectedVersionObj = useMemo(() => {
@@ -226,28 +227,27 @@ export default function ThreatModelDetailPage({
 
   // Identified Architecture Components (derived from threats)
   const identifiedComponents = useMemo(() => {
-    const componentsMap: Record<string, { name: string; total: number; criticalHigh: number; maxRpn: number }> = {};
+    const componentsMap: Record<string, { name: string; total: number; maxRpn: number }> = {};
     
     threats.forEach((t) => {
       const compName = t.affected_component || "General / Unspecified";
       if (!componentsMap[compName]) {
-        componentsMap[compName] = { name: compName, total: 0, criticalHigh: 0, maxRpn: 0 };
+        componentsMap[compName] = { name: compName, total: 0, maxRpn: 0 };
       }
       
       const comp = componentsMap[compName];
       comp.total += 1;
-      if (t.severity === "critical" || t.severity === "high") {
-        comp.criticalHigh += 1;
-      }
-      if (t.rpn && t.rpn > comp.maxRpn) {
-        comp.maxRpn = t.rpn;
+      
+      const fmea = fmeaItems.find(f => f.threat_id === t.id);
+      if (fmea && fmea.rpn > comp.maxRpn) {
+        comp.maxRpn = fmea.rpn;
       }
     });
     
     return Object.values(componentsMap).sort(
-      (a, b) => b.criticalHigh - a.criticalHigh || b.maxRpn - a.maxRpn
+      (a, b) => b.maxRpn - a.maxRpn || b.total - a.total
     );
-  }, [threats]);
+  }, [threats, fmeaItems]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
 
@@ -273,6 +273,32 @@ export default function ThreatModelDetailPage({
       });
     } finally {
       setReportLoading(false);
+    }
+  };
+
+  const handleRunFmea = async () => {
+    setFmeaLoading(true);
+    try {
+      const res = await fetch(`/api/threat-modeling/${id}/fmea`, {
+        method: "POST",
+      });
+      if (!res.ok) throw new Error("FMEA quantification failed");
+      
+      showToast({
+        title: "FMEA Completed",
+        description: "Risk quantification has been successfully correlated.",
+        type: "success"
+      });
+      refetch();
+    } catch (err) {
+      console.error("[ThreatModeling] FMEA error:", err);
+      showToast({
+        title: "Quantification Failed",
+        description: err instanceof Error ? err.message : "Could not run FMEA.",
+        type: "error"
+      });
+    } finally {
+      setFmeaLoading(false);
     }
   };
 
@@ -574,24 +600,17 @@ export default function ThreatModelDetailPage({
                   </thead>
                   <tbody className="divide-y divide-white/5 text-text-secondary">
                     {identifiedComponents.map((comp) => {
-                      const riskColor =
-                        comp.criticalHigh > 0
-                          ? "text-red-400"
-                          : comp.maxRpn > 100
-                            ? "text-amber-400"
-                            : "text-emerald-400";
-
                       const exposureLabel =
-                        comp.criticalHigh >= 3
+                        comp.maxRpn >= 150
                           ? "High Exposure"
-                          : comp.criticalHigh > 0 || comp.maxRpn > 150
+                          : comp.maxRpn > 80
                             ? "Medium Exposure"
                             : "Low Exposure";
 
                       const exposureBg =
-                        comp.criticalHigh >= 3
+                        comp.maxRpn >= 150
                           ? "bg-red-500/10 text-red-400 border-red-500/20"
-                          : comp.criticalHigh > 0 || comp.maxRpn > 150
+                          : comp.maxRpn > 80
                             ? "bg-amber-500/10 text-amber-400 border-amber-500/20"
                             : "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
 
@@ -604,10 +623,10 @@ export default function ThreatModelDetailPage({
                             {comp.total}
                           </td>
                           <td className="py-3 text-center font-medium font-mono text-sm text-red-400">
-                            {comp.criticalHigh}
+                            -
                           </td>
                           <td className="py-3 text-center font-medium font-mono text-sm">
-                            {comp.maxRpn}
+                            {comp.maxRpn > 0 ? comp.maxRpn : "-"}
                           </td>
                           <td className="py-3 text-right">
                             <span className={`inline-block rounded border px-2 py-0.5 text-[10px] font-medium ${exposureBg}`}>
@@ -656,24 +675,35 @@ export default function ThreatModelDetailPage({
       {/* ═══════════════════ STEP 3: FMEA Risk ═══════════════════ */}
       {activeTab === "FMEA" && (
         <div className="space-y-8 animate-in fade-in duration-300">
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-            <div className="lg:col-span-1 glass-card p-6 flex flex-col justify-center">
-              <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-4">
-                Risk Matrix (Likelihood vs Severity)
-              </h3>
-              <RiskMatrix threats={threats} />
-            </div>
-            <div className="lg:col-span-2 space-y-4">
-              {fmeaItems.length > 0 ? (
+          {fmeaItems.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+              <div className="lg:col-span-1 glass-card p-6 flex flex-col justify-center">
+                <h3 className="text-sm font-semibold uppercase tracking-wider text-text-muted mb-4">
+                  Risk Matrix (Likelihood vs Severity)
+                </h3>
+                <RiskMatrix fmeaItems={fmeaItems} />
+              </div>
+              <div className="lg:col-span-2 space-y-4">
                 <FmeaTable items={fmeaItems} />
-              ) : (
-                <div className="glass-card flex flex-col items-center justify-center p-12 text-center h-full">
-                  <Shield className="h-8 w-8 text-text-muted mb-3" />
-                  <p className="text-sm text-text-muted">No FMEA analysis available for this model.</p>
-                </div>
-              )}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="glass-card flex flex-col items-center justify-center p-12 text-center">
+              <Shield className="h-12 w-12 text-text-muted mb-4" />
+              <h3 className="text-lg font-semibold text-text-primary mb-2">Risk Quantification Pending</h3>
+              <p className="text-sm text-text-muted max-w-md mb-6">
+                FMEA (Failure Mode and Effects Analysis) has not been run for this threat model yet.
+                Run the confrontation phase to quantify risks.
+              </p>
+              <Button onClick={handleRunFmea} disabled={fmeaLoading || threats.length === 0}>
+                {fmeaLoading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Correlating FMEA...</>
+                ) : (
+                  "Run Risk Quantification"
+                )}
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

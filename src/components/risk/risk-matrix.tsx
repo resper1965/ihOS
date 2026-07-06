@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import type { StrideThreat, SeverityLevel } from "@/lib/supabase/types";
+import type { FmeaItem } from "@/lib/supabase/types";
 
 interface RiskMatrixProps {
-  threats: StrideThreat[];
+  fmeaItems: FmeaItem[];
 }
 
 const IMPACT_LABELS = ["Negligible", "Minor", "Moderate", "Major", "Critical"];
@@ -16,20 +16,7 @@ const LIKELIHOOD_LABELS = [
   "Rare",
 ];
 
-const severityToImpact: Record<SeverityLevel, number> = {
-  critical: 5,
-  high: 4,
-  medium: 3,
-  low: 2,
-};
 
-const likelihoodToRow: Record<string, number> = {
-  very_high: 5,
-  high: 4,
-  medium: 3,
-  low: 2,
-  very_low: 1,
-};
 
 function getCellColor(risk: number): string {
   if (risk >= 20) return "bg-red-700/30 hover:bg-red-700/40";
@@ -47,20 +34,20 @@ function getCellTextColor(risk: number): string {
   return "text-emerald-400";
 }
 
-export function RiskMatrix({ threats }: RiskMatrixProps) {
+export function RiskMatrix({ fmeaItems }: RiskMatrixProps) {
   const [hoveredCell, setHoveredCell] = useState<string | null>(null);
 
   const cellMap = useMemo(() => {
-    const map: Record<string, StrideThreat[]> = {};
-    for (const t of threats) {
-      const impact = severityToImpact[t.severity] ?? 1;
-      const likelihood = likelihoodToRow[t.likelihood] ?? 1;
+    const map: Record<string, FmeaItem[]> = {};
+    for (const item of fmeaItems) {
+      const impact = Math.ceil(item.severity / 2) || 1;
+      const likelihood = Math.ceil(item.occurrence / 2) || 1;
       const key = `${likelihood}-${impact}`;
       if (!map[key]) map[key] = [];
-      map[key].push(t);
+      map[key].push(item);
     }
     return map;
-  }, [threats]);
+  }, [fmeaItems]);
 
   return (
     <div className="glass-card p-6">
@@ -128,11 +115,11 @@ export function RiskMatrix({ threats }: RiskMatrixProps) {
                         <ul className="space-y-1">
                           {cellThreats.map((t) => (
                             <li
-                              key={t.id}
+                              key={t.threat_id}
                               className="flex items-start gap-1.5 text-xs text-text-secondary"
                             >
                               <span className="mt-1.5 h-1 w-1 shrink-0 rounded-full bg-primary" />
-                              {t.title}
+                              {t.failure_mode}
                             </li>
                           ))}
                         </ul>

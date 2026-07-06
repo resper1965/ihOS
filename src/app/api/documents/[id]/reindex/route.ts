@@ -1,12 +1,14 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { chunkDocument } from '@/lib/chat/chunker';
+import { chunkComplianceDocument } from '@/lib/chat/chunker';
 import { generateEmbeddings } from '@/lib/chat/embeddings';
 import { extractText } from '@/lib/chat/document-extractor';
 import { extractDeltasFromDocument, persistDeltas } from '@/lib/assessment/delta-extractor';
 import { triggerGrcRecalibration } from '@/lib/assessment/grc-trigger';
 import { createAdminClient } from '@/lib/supabase/admin';
+import { deleteControlProvenance } from '@/lib/chat/control-provenance';
+import { runPostIngestPipeline } from '@/lib/chat/post-ingest-pipeline';
 
 export const maxDuration = 120; // 2 minutes max
 
@@ -104,9 +106,21 @@ export async function POST(
     }
 
     // ── 5. Chunking ──────────────────────────────────────────────────────
-    const chunks = chunkDocument(text);
+    const chunks = chunkComplianceDocument(text);
 
-    // ── 6. Delete old chunks ─────────────────────────────────────────────
+    // ── 6. Delete old provenance & invalidate caches ───────────────────
+    const adminReindex = createAdminClient();
+
+    await deleteControlProvenance(adminReindex, documentId);
+
+    if (doc.product_version_id) {
+      await (adminReindex as any)
+        .from('control_evaluation_cache')
+        .delete()
+        .eq('product_version_id', doc.product_version_id);
+    }
+
+    // ── 6b. Delete old chunks ────────────────────────────────────────
     const { error: deleteError } = await supabase
       .from('document_chunks')
       .delete()
@@ -168,11 +182,32 @@ export async function POST(
       );
     }
 
-    // ── 9. Update Document metadata ──────────────────────────────────────
+    // ── 9. Update Document metadata ────────────────────────────────
     await supabase
       .from('compliance_documents')
       .update({ total_chunks: chunks.length })
       .eq('id', documentId);
+
+    // ── 9b. SCF Auto-tagging & Provenance (2-stage pipeline) ─────────────
+    const ingestChunks = chunks.map((chunk, idx) => ({
+      content: chunk.content,
+      chunk_index: chunk.index,
+      embedding: JSON.stringify(embeddings[idx]),
+    }));
+
+    (async () => {
+      try {
+        const result = await runPostIngestPipeline(
+          adminReindex,
+          documentId,
+          doc.product_version_id || null,
+          ingestChunks,
+        );
+        console.log(`[Post-Ingest/Reindex] Tagged ${result.tagged} chunks, ${result.provenance} provenance records for doc ${documentId}`);
+      } catch (err) {
+        logger.error('Post-ingest pipeline failed during reindex', { context: 'documents/reindex', error: err });
+      }
+    })();
 
     // ── 10. Background Recalibration & Delta Extraction ───────────────────
     if (doc.product_version_id) {

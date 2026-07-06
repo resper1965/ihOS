@@ -194,7 +194,17 @@ export async function POST(request: NextRequest) {
       product_version,
       target_frameworks,
       skip_grc_enrichment: skip_enrichment,
+      skip_fmea: true,
     }, token);
+
+    // Stripping FMEA fields just in case the external API hasn't implemented skip_fmea yet
+    if (result?.threat_model?.threats) {
+      result.threat_model.threats = result.threat_model.threats.map((t: any) => {
+        const { severity, occurrence, detection, rpn, risk_category, ...pureThreat } = t;
+        return pureThreat;
+      });
+      result.threat_model.fmea_correlations = [];
+    }
 
     generatedData = result as any;
   } catch (err) {

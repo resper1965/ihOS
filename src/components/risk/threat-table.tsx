@@ -9,7 +9,7 @@ import { STRIDE_LABELS } from "@/lib/supabase/types";
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
 
-type SortField = "rpn" | "severity" | "category";
+type SortField = "category" | "title";
 type SortDir = "asc" | "desc";
 
 interface ThreatTableProps {
@@ -185,11 +185,10 @@ const categoryOrder: Record<StrideCategory, number> = {
 };
 
 export function ThreatTable({ threats }: ThreatTableProps) {
-  const [sortField, setSortField] = useState<SortField>("rpn");
+  const [sortField, setSortField] = useState<SortField>("category");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [filterCategory, setFilterCategory] = useState<StrideCategory | "all">("all");
-  const [filterSeverity, setFilterSeverity] = useState<SeverityLevel | "all">("all");
 
   function handleSort(field: SortField) {
     if (sortField === field) {
@@ -205,22 +204,16 @@ export function ThreatTable({ threats }: ThreatTableProps) {
     if (filterCategory !== "all") {
       result = result.filter((t) => t.stride_category === filterCategory);
     }
-    if (filterSeverity !== "all") {
-      result = result.filter((t) => t.severity === filterSeverity);
-    }
     return result;
-  }, [threats, filterCategory, filterSeverity]);
+  }, [threats, filterCategory]);
 
   const sorted = useMemo(() => {
     const copy = [...filtered];
     copy.sort((a, b) => {
       let cmp = 0;
       switch (sortField) {
-        case "rpn":
-          cmp = a.rpn - b.rpn;
-          break;
-        case "severity":
-          cmp = severityOrder[a.severity] - severityOrder[b.severity];
+        case "title":
+          cmp = a.title.localeCompare(b.title);
           break;
         case "category":
           cmp = categoryOrder[a.stride_category] - categoryOrder[b.stride_category];
@@ -260,17 +253,6 @@ export function ThreatTable({ threats }: ThreatTableProps) {
                 </option>
               ))}
             </select>
-            <select
-              value={filterSeverity}
-              onChange={(e) => setFilterSeverity(e.target.value as SeverityLevel | "all")}
-              className="rounded-lg border border-border-glass bg-white/5 px-2.5 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
-            >
-              <option value="all">All Severities</option>
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
           </div>
         </div>
       </div>
@@ -294,24 +276,6 @@ export function ThreatTable({ threats }: ThreatTableProps) {
               </th>
               <th className="hidden px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-text-muted lg:table-cell">
                 Component
-              </th>
-              <th className="px-4 py-3 text-left">
-                <SortHeader
-                  label="Severity"
-                  field="severity"
-                  currentField={sortField}
-                  currentDir={sortDir}
-                  onSort={handleSort}
-                />
-              </th>
-              <th className="px-4 py-3 text-left">
-                <SortHeader
-                  label="RPN"
-                  field="rpn"
-                  currentField={sortField}
-                  currentDir={sortDir}
-                  onSort={handleSort}
-                />
               </th>
               <th className="w-10 px-4 py-3" />
             </tr>
@@ -361,12 +325,6 @@ export function ThreatTable({ threats }: ThreatTableProps) {
                         <span className="rounded-md bg-black/5 dark:bg-white/5 px-2 py-0.5 text-xs font-medium text-text-muted">
                           {threat.affected_component}
                         </span>
-                      </span>
-                      <span className="w-[120px] shrink-0 px-4 py-3.5 text-left">
-                        <SeverityBadge severity={threat.severity} />
-                      </span>
-                      <span className="w-[140px] shrink-0 px-4 py-3.5 text-left">
-                        <RpnBar value={threat.rpn} />
                       </span>
                       <span className="w-10 shrink-0 px-4 py-3.5 text-center">
                         <ChevronDown

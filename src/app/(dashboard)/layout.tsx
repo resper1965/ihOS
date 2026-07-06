@@ -30,14 +30,14 @@ import { HelpSidebar } from "@/components/dashboard/help-sidebar";
 import { HelpCircle } from "lucide-react";
 
 const NAV_ITEMS = [
-  { label: "Dashboard", href: "/", icon: LayoutDashboard },
-  { label: "Compliance", href: "/compliance", icon: ShieldCheck },
-  { label: "SCRMS (MSR)", href: "/compliance/scrms", icon: Target },
-  { label: "GRC Mapping", href: "/compliance/mappings", icon: Database },
-  { label: "Threat Modeling", href: "/threat-modeling", icon: AlertTriangle },
+  { label: "Overview", href: "/", icon: LayoutDashboard },
+  { label: "Standards & Norms", href: "/compliance", icon: ShieldCheck },
+  { label: "Partner Requirements", href: "/compliance/scrms", icon: Target },
+  { label: "Evidence Map", href: "/compliance/mappings", icon: Database },
+  { label: "Risk Analysis", href: "/threat-modeling", icon: AlertTriangle },
   { label: "Chat", href: "/chat", icon: MessageSquare },
-  { label: "Assessments", href: "/assessments", icon: ClipboardCheck },
-  { label: "Documents", href: "/documents", icon: FileText },
+  { label: "Audits & Checks", href: "/assessments", icon: ClipboardCheck },
+  { label: "Knowledge Base", href: "/documents", icon: FileText },
   { label: "Reports", href: "/reports", icon: BarChart3 },
 ] as const;
 

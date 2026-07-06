@@ -38,6 +38,14 @@ const DEFAULT_CHUNK_SIZE = 2000;
 const DEFAULT_OVERLAP = 600;
 const DEFAULT_SEPARATORS = ['\n\n', '\n', '. ', ' '];
 
+// ── Compliance-specific constants ────────────────────────────────────────────
+// Smaller chunks and compliance-aware separators for higher precision when
+// matching against SCF controls. One chunk ≈ one clause/control statement.
+
+const COMPLIANCE_CHUNK_SIZE = 1200;
+const COMPLIANCE_OVERLAP = 400;
+const COMPLIANCE_SEPARATORS = ['\n\n', '\n', '. ', ' '];
+
 /**
  * Regex to detect section headers:
  * - Markdown headings: `# Title`, `## Sub-title`, etc.
@@ -184,6 +192,120 @@ export function chunkDocument(
         startChar: currentStartChar,
         endChar: currentStartChar + currentContent.length,
         sectionTitle: detectSectionTitle(remaining),
+      },
+    });
+  }
+
+  return chunks;
+}
+
+// ── Compliance-Specific Chunker ──────────────────────────────────────────────
+
+/**
+ * Extended regex for compliance documents — detects:
+ * - Markdown headings
+ * - Numbered clauses (4.1, 5.2.3)
+ * - ISO Annex references (A.5.1, A.12.3)
+ * - NIST function prefixes (PR., DE., RS.)
+ * - Policy/Procedure/Control headers
+ */
+const COMPLIANCE_HEADER_RE =
+  /^(?:#{1,6}\s+.+|(?:\d+\.)+\s+.+|A\.\d+(?:\.\d+)*\s+.+|(?:PR|DE|RS|ID|RC)\.\w+.+|(?:Policy|Procedure|Control|Objective|Requirement):\s*.+)$/m;
+
+function detectComplianceSectionTitle(text: string): string | undefined {
+  const lines = text.split('\n');
+  let lastHeader: string | undefined;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (COMPLIANCE_HEADER_RE.test(trimmed)) {
+      lastHeader = trimmed.replace(/^#+\s+/, '');
+    }
+  }
+
+  return lastHeader;
+}
+
+/**
+ * Chunk a compliance document (ISMS, PIMS, SAD, SRS, policies) with
+ * smaller chunks (~1200 chars) and compliance-aware section detection.
+ * Produces higher-precision chunks for SCF control matching.
+ */
+export function chunkComplianceDocument(
+  text: string,
+  options: ChunkOptions = {},
+): DocumentChunk[] {
+  const {
+    chunkSize = COMPLIANCE_CHUNK_SIZE,
+    overlap = COMPLIANCE_OVERLAP,
+    separators = COMPLIANCE_SEPARATORS,
+  } = options;
+
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return [];
+
+  if (trimmed.length <= chunkSize) {
+    return [
+      {
+        content: trimmed,
+        index: 0,
+        metadata: {
+          startChar: 0,
+          endChar: trimmed.length,
+          sectionTitle: detectComplianceSectionTitle(trimmed),
+        },
+      },
+    ];
+  }
+
+  const segments = splitBySeparator(trimmed, separators);
+  const chunks: DocumentChunk[] = [];
+  let currentContent = '';
+  let currentStartChar = 0;
+  let charOffset = 0;
+
+  for (const segment of segments) {
+    if (currentContent.length > 0 && currentContent.length + segment.length > chunkSize) {
+      const chunkText = currentContent.trim();
+      if (chunkText.length > 0) {
+        chunks.push({
+          content: chunkText,
+          index: chunks.length,
+          metadata: {
+            startChar: currentStartChar,
+            endChar: currentStartChar + currentContent.length,
+            sectionTitle: detectComplianceSectionTitle(chunkText),
+          },
+        });
+      }
+
+      if (overlap > 0 && currentContent.length > overlap) {
+        const overlapText = currentContent.slice(-overlap);
+        currentContent = overlapText + segment;
+        currentStartChar = charOffset - overlapText.length;
+      } else {
+        currentContent = segment;
+        currentStartChar = charOffset;
+      }
+    } else {
+      if (currentContent.length === 0) {
+        currentStartChar = charOffset;
+      }
+      currentContent += segment;
+    }
+
+    charOffset += segment.length;
+  }
+
+  const remaining = currentContent.trim();
+  if (remaining.length > 0) {
+    chunks.push({
+      content: remaining,
+      index: chunks.length,
+      metadata: {
+        startChar: currentStartChar,
+        endChar: currentStartChar + currentContent.length,
+        sectionTitle: detectComplianceSectionTitle(remaining),
       },
     });
   }

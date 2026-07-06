@@ -32,7 +32,17 @@ export async function getCorpusFingerprint(productVersionId?: string | null): Pr
   // timestamp: a replacement (one doc removed, another added with an older
   // updated_at) can leave count and max unchanged, which would wrongly keep the
   // fingerprint identical and serve stale cached evaluations.
-  const signature = rows.map((r) => `${r.id}@${r.updated_at}`).sort().join('|');
+  const docSignature = rows.map((r) => `${r.id}@${r.updated_at}`).sort().join('|');
+
+  // Include control provenance count so that re-tagging (without document
+  // changes) also invalidates cached evaluations.
+  const docIds = rows.map((r) => r.id);
+  const { count: provCount } = await (admin as any)
+    .from('document_control_provenance')
+    .select('id', { count: 'exact', head: true })
+    .in('document_id', docIds);
+
+  const signature = `${docSignature}|prov:${provCount ?? 0}`;
   return hash(signature);
 }
 

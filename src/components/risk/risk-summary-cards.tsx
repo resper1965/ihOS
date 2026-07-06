@@ -4,8 +4,8 @@ import { AlertTriangle, ShieldAlert, Activity, FileWarning } from "lucide-react"
 
 interface RiskSummaryCardsProps {
   totalThreats: number;
-  criticalHigh: number;
-  avgRpn: number;
+  criticalHigh: number | string;
+  avgRpn: number | string;
   totalGaps: number;
 }
 
@@ -35,7 +35,7 @@ const cards = [
     color: "text-amber-500",
     border: "border-amber-500/15",
     bg: "from-amber-500/[0.08] to-amber-500/[0.02]",
-    getValue: (p: RiskSummaryCardsProps) => p.avgRpn.toFixed(1),
+    getValue: (p: RiskSummaryCardsProps) => typeof p.avgRpn === "number" ? p.avgRpn.toFixed(1) : p.avgRpn,
   },
   {
     key: "gaps",
