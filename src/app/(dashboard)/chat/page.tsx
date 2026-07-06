@@ -16,6 +16,7 @@ import {
   X,
   FileSpreadsheet,
   AlertCircle,
+  FileText,
 } from "lucide-react";
 import { MessageBubble } from "@/components/chat/message-bubble";
 import { SuggestionChips } from "@/components/chat/suggestion-chips";
