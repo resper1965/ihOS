@@ -178,7 +178,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
         {/* Main */}
         <div className="flex flex-1 flex-col overflow-hidden">
-          <HeaderWithTitle onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+          <HeaderWithTitle 
+            sidebarOpen={sidebarOpen}
+            onMenuClick={() => setSidebarOpen(!sidebarOpen)} 
+          />
 
           {pathname.startsWith("/chat") ? (
             <main className="flex-1 overflow-hidden">{children}</main>
@@ -198,7 +201,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 // Header sub-component — reads page meta from context
 // ─────────────────────────────────────────────────────────────────────────────
 
-function HeaderWithTitle({ onMenuClick }: { onMenuClick: () => void }) {
+function HeaderWithTitle({ 
+  sidebarOpen, 
+  onMenuClick 
+}: { 
+  sidebarOpen: boolean; 
+  onMenuClick: () => void 
+}) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const { user, profile, isLoading } = useUser();
