@@ -41,7 +41,14 @@ export async function POST(req: Request) {
     logger.info('Cron assessment triggered', { context: 'cron/run-assessment', meta: { frameworks, mode } });
 
     // ── Run assessment engine ───────────────────────────────────────────────
-    const result = await runAssessment({ frameworks, mode, forceReevaluate });
+    let result;
+    try {
+      result = await runAssessment({ frameworks, mode, forceReevaluate });
+    } catch (runErr) {
+      const msg = runErr instanceof Error ? runErr.message : String(runErr);
+      logger.error('runAssessment threw: ' + msg, { context: 'cron/run-assessment', error: runErr });
+      return NextResponse.json({ success: false, error: 'runAssessment failed: ' + msg, stage: 'run' }, { status: 500 });
+    }
 
     const adminSupabase = createAdminClient();
 
@@ -103,7 +110,8 @@ export async function POST(req: Request) {
 
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Cron assessment failed';
+    const stack = err instanceof Error ? err.stack?.slice(0, 500) : undefined;
     logger.error(message, { context: 'cron/run-assessment', error: err });
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return NextResponse.json({ success: false, error: message, stack }, { status: 500 });
   }
 }
