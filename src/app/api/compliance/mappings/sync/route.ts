@@ -6,6 +6,7 @@ import { getLatestScfVersion, getScfControls } from "@/lib/standard-api/client";
 import { generateEmbeddings } from "@/lib/chat/embeddings";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
