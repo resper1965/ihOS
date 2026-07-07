@@ -49,9 +49,9 @@ export function resolveFrameworkIcon(id: string): string {
 /** The 6 default frameworks shown in the Run Assessment modal */
 export const DEFAULT_FRAMEWORKS = [
   { id: 'iso27001', name: 'ISO/IEC 27001:2022' },
-  { id: 'soc2', name: 'SOC 2 Type II' },
-  { id: 'HI-2013', name: 'HIPAA' },
-  { id: 'nist_800_53', name: 'NIST SP 800-53' },
   { id: 'iso27701', name: 'ISO/IEC 27701:2019' },
-  { id: 'fedramp', name: 'FedRAMP' },
+  { id: 'BR-LGPD', name: 'LGPD' },
+  { id: 'soc2', name: 'SOC 2 Type II' },
+  { id: 'nist_800_53', name: 'NIST SP 800-53' },
+  { id: 'TX-LEVEL-2', name: 'TX-RAMP Level 2' },
 ];
