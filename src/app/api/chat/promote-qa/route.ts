@@ -1,6 +1,14 @@
 // src/app/api/chat/promote-qa/route.ts
-// Promotes approved Q&A pairs into the knowledge base (document_chunks)
-// and records learning corrections when the user edited the AI draft.
+// Promotes approved Q&A pairs into the verified-answer memory
+// (verified_answers) and records learning corrections when the user edited
+// the AI draft.
+//
+// F5 safeguard (specs/003 Onda 4): promotions NEVER touch document_chunks.
+// The old path inserted VERIFIED_QA rows there, letting document RAG
+// (layer 2) cite previous answers (layer 3) as documentation — the echo
+// chamber the roadmap forbids. Promotions without an explicit sales channel
+// are parked as needs_review (unscoped answers are never served) until the
+// caller provides the channel/version context.
 
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
@@ -8,6 +16,8 @@ import { embed } from 'ai';
 import { getOpenAI } from '@/lib/chat/openai';
 
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
+import { getCorpusFingerprint } from '@/lib/assessment/corpus-fingerprint';
 import type {
   PromotionPayload,
   PromotionResult,
@@ -33,7 +43,7 @@ export async function POST(req: Request) {
 
     // ── Parse body ──────────────────────────────────────────────────────
     const body = (await req.json()) as PromotionPayload;
-    const { items, conversationId } = body;
+    const { items, conversationId, salesChannel, productVersionId, sourceAssessmentId } = body;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json(
@@ -46,7 +56,24 @@ export async function POST(req: Request) {
       );
     }
 
-    let chunksInserted = 0;
+    if (salesChannel !== undefined && salesChannel !== null &&
+        salesChannel !== 'B2B_GEHC' && salesChannel !== 'B2B_DIRECT') {
+      return NextResponse.json(
+        { success: false, error: 'salesChannel must be "B2B_GEHC" or "B2B_DIRECT" when provided.' },
+        { status: 400 },
+      );
+    }
+
+    // verified_answers is newer than the generated Supabase types.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const admin = createAdminClient() as any;
+
+    // Channel-less promotions cannot be safely served (no scope) — park them
+    // for triage instead of refusing, so the legacy UI keeps working.
+    const status = salesChannel ? 'active' : 'needs_review';
+    const postureFingerprint = await getCorpusFingerprint(productVersionId ?? null);
+
+    let answersInserted = 0;
     let correctionsWritten = 0;
 
     const openai = await getOpenAI();
@@ -61,24 +88,27 @@ export async function POST(req: Request) {
         value: combinedText,
       });
 
-      // 2. Insert into document_chunks as a verified QA entry
-      const { error: insertError } = await (supabase as any)
-        .from('document_chunks')
+      // 2. Insert into the verified-answer memory (layer 3 — NOT document_chunks)
+      const { error: insertError } = await admin
+        .from('verified_answers')
         .insert({
-          document_id: null, // standalone verified QA — not linked to a document
-          content: combinedText,
-          chunk_index: 0,
-          section_title: 'VERIFIED_QA',
+          question_text: item.questionText,
+          final_answer: item.finalAnswer,
           embedding,
-          char_count: combinedText.length,
+          sales_channel: salesChannel ?? null,
+          product_version_id: productVersionId ?? null,
+          posture_fingerprint: postureFingerprint,
+          source_assessment_id: sourceAssessmentId ?? null,
+          status,
+          created_by: user.id,
         });
 
       if (insertError) {
-        logger.error("Failed to insert chunk", { context: "chat/promote-qa", meta: { questionId: item.questionId, error: insertError.message } });
+        logger.error("Failed to insert verified answer", { context: "chat/promote-qa", meta: { questionId: item.questionId, error: insertError.message } });
         continue; // skip but don't abort the whole batch
       }
 
-      chunksInserted++;
+      answersInserted++;
 
       // 3. If user edited the AI draft, record a learning correction
       if (item.wasEdited) {
@@ -92,6 +122,7 @@ export async function POST(req: Request) {
           learned_context: item.questionText,
         };
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error: corrError } = await (supabase as any)
           .from('agent_learning_corrections')
           .insert(correctionPayload);
@@ -104,7 +135,11 @@ export async function POST(req: Request) {
       }
     }
 
-    const result: PromotionResult = { chunksInserted, correctionsWritten };
+    const result: PromotionResult = {
+      answersInserted,
+      correctionsWritten,
+      parkedForTriage: status === 'needs_review' ? answersInserted : 0,
+    };
 
     return NextResponse.json(
       { success: true, data: result },

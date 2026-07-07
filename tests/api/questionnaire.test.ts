@@ -3,7 +3,7 @@
 // Each route exports a POST(req: Request) function that we call directly.
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { mockSupabaseServer } from '../setup';
+import { mockSupabaseServer, mockSupabaseAdmin } from '../setup';
 
 // ---------------------------------------------------------------------------
 // XLSX mock (needed by download-filled route)
@@ -214,9 +214,11 @@ describe('POST /api/chat/promote-qa', () => {
     expect(body.success).toBe(false);
   });
 
-  it('inserts into document_chunks for valid items', async () => {
-    // insert chain: from().insert() should resolve (no error)
-    mockSupabaseServer.insert.mockResolvedValue({ data: null, error: null });
+  it('writes verified_answers for valid items and never touches document_chunks (F5)', async () => {
+    // admin insert chain resolves ok; corpus-fingerprint select resolves empty
+    mockSupabaseAdmin.insert.mockResolvedValue({ data: null, error: null });
+    mockSupabaseAdmin.select.mockReturnThis();
+    mockSupabaseAdmin.eq.mockResolvedValue({ data: [], error: null });
 
     const { POST } = await import(
       '@/app/api/chat/promote-qa/route'
@@ -226,6 +228,7 @@ describe('POST /api/chat/promote-qa', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        salesChannel: 'B2B_GEHC',
         items: [
           {
             questionId: 'q-0',
@@ -243,7 +246,14 @@ describe('POST /api/chat/promote-qa', () => {
 
     expect(res.status).toBe(200);
     expect(body.success).toBe(true);
-    expect(body.data.chunksInserted).toBeGreaterThanOrEqual(0);
+    expect(body.data.answersInserted).toBeGreaterThanOrEqual(0);
+
+    // Anti-echo-chamber: the promotion path must never write layer-3 answers
+    // into the layer-2 document store.
+    const adminTables = mockSupabaseAdmin.from.mock.calls.map((c: unknown[]) => c[0]);
+    const serverTables = mockSupabaseServer.from.mock.calls.map((c: unknown[]) => c[0]);
+    expect(adminTables).not.toContain('document_chunks');
+    expect(serverTables).not.toContain('document_chunks');
   });
 });
 

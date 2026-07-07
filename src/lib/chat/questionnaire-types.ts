@@ -119,13 +119,21 @@ export interface PromotionPayload {
   }>;
   /** Conversation context for learning corrections */
   conversationId?: string;
+  /** Scope of the promoted answers (F5): without a channel they are parked
+   *  as needs_review and never served until triaged. */
+  salesChannel?: 'B2B_GEHC' | 'B2B_DIRECT' | null;
+  productVersionId?: string | null;
+  /** Customer assessment these answers came from, when applicable (F4). */
+  sourceAssessmentId?: string | null;
 }
 
 export interface PromotionResult {
-  /** Number of chunks inserted into document_chunks */
-  chunksInserted: number;
+  /** Number of rows written to verified_answers (never document_chunks — F5) */
+  answersInserted: number;
   /** Number of learning corrections written */
   correctionsWritten: number;
+  /** Answers stored as needs_review because no sales channel was provided */
+  parkedForTriage: number;
 }
 
 // ── Download ─────────────────────────────────────────────────────────────────

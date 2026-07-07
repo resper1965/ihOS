@@ -18,6 +18,10 @@ import {
   getPersistedVerdicts,
   buildPostureGrounding,
 } from '@/lib/assessment/posture-answering';
+import {
+  searchVerifiedAnswers,
+  buildVerifiedAnswerBlock,
+} from '@/lib/chat/verified-answers';
 import type {
   ExtractedQuestion,
   GeneratedAnswer,
@@ -131,6 +135,16 @@ async function processQuestion(
     };
   }
 
+  // Layer 3 (F5): previously approved answers from the SAME channel/version,
+  // as phrasing references only. Without a channel there is no safe scope.
+  const verifiedSuggestions = salesChannel
+    ? await searchVerifiedAnswers(admin, embedding, {
+        salesChannel,
+        productVersionId: productVersionId ?? null,
+      })
+    : [];
+  const verifiedBlock = buildVerifiedAnswerBlock(verifiedSuggestions);
+
   // Build the layered context for the LLM
   const citationsBlock =
     chunks.length > 0
@@ -155,9 +169,10 @@ Ground rules (STRICT — Constitution Principle VIII):
 - If neither the posture block nor the excerpts contain the information asked, state exactly: the information is not covered by the indexed documentation. NEVER give a best-effort or invented answer.
 - Do not disclose internal remediation plans, deadlines, or POA&M details.
 - If a verdict is flagged STALE, add: "Note: this verdict may be outdated — internal re-assessment pending."
+- Previously approved answers, when present, are phrasing references ONLY — they are not evidence and never override the evaluated posture.
 - Be concise, professional, and factual.
 
-${grounding.contextBlock ? `${grounding.contextBlock}\n\n` : ''}POLICY CONTEXT:
+${grounding.contextBlock ? `${grounding.contextBlock}\n\n` : ''}${verifiedBlock ? `${verifiedBlock}\n\n` : ''}POLICY CONTEXT:
 ${citationsBlock}`,
     prompt: `Question: ${question.text}${question.context ? `\nCategory/Context: ${question.context}` : ''}`,
   });
