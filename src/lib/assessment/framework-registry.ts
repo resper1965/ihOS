@@ -51,7 +51,7 @@ export const DEFAULT_FRAMEWORKS = [
   { id: 'iso27001', name: 'ISO/IEC 27001:2022' },
   { id: 'iso27701', name: 'ISO/IEC 27701:2019' },
   { id: 'BR-LGPD', name: 'LGPD' },
+  { id: 'EU-GDPR', name: 'EU GDPR' },
   { id: 'soc2', name: 'SOC 2 Type II' },
   { id: 'nist_800_53', name: 'NIST SP 800-53' },
-  { id: 'TX-LEVEL-2', name: 'TX-RAMP Level 2' },
 ];
