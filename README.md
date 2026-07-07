@@ -117,6 +117,12 @@ DEFECTDOJO_API_KEY=your-dd-api-token
 # Fallback product when defectdojo_product_links has no rows. Prefer linking
 # products to product versions via the defectdojo_product_links table.
 DEFECTDOJO_PRODUCT_ID=1
+
+# MCP posture surface (optional) — read-only JSON-RPC endpoint at /api/mcp
+# for external agents (get_posture, list_gaps, get_threat_posture).
+# Disabled (503) until a service token of at least 32 chars is set.
+# Every call is audited in mcp_audit_log with the token's SHA-256 fingerprint.
+MCP_SERVICE_TOKEN=generate-a-random-token-of-32-plus-chars
 ```
 
 ### Scripts Disponíveis
