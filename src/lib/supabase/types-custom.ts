@@ -484,6 +484,16 @@ export interface StrideThreat {
   // version declares a previous_version_id with an approved baseline model)
   is_new?: boolean;
   inherited_from_version?: string | null;
+  // Analytical-axis annotations (stamped by annotateEmpiricalConfirmation):
+  // active DefectDojo findings whose CWE class lands on this threat's STRIDE
+  // category. Category-level correlation — see empirical-correlation.ts.
+  empirically_observed?: boolean;
+  empirical_findings?: Array<{
+    dd_finding_id: number;
+    title: string;
+    severity: string;
+    cwe: number | null;
+  }>;
 }
 
 export interface FmeaItem {
@@ -594,6 +604,13 @@ export interface ThreatModelReportData {
     recommendations_count: number;
     risk_rating: SeverityLevel;
     narrative: string;
+    // Analytical axis: how much of the documental model is empirically
+    // observed via active runtime findings (absent when never correlated).
+    observed?: {
+      observed_threat_count: number;
+      correlated_finding_count: number;
+      correlation_level: string;
+    };
   };
 
   risk_matrix: {

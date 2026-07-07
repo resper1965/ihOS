@@ -14,6 +14,7 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import { ihosEngine } from '@/lib/ihos-engine';
 import { getDeltaFingerprint } from '@/lib/assessment/corpus-fingerprint';
 import { resolveVersionContext, findBaselineModel, annotateInheritance } from '@/lib/threat-modeling/lineage';
+import { loadActiveFindingsForVersion, annotateEmpiricalConfirmation } from '@/lib/threat-modeling/empirical-correlation';
 import type {
   ThreatModelRecord,
   ThreatModelSummary,
@@ -170,10 +171,30 @@ export async function POST(request: NextRequest) {
         context: 'threat-modeling',
         meta: { product_version, delta_fingerprint: deltaFingerprint },
       });
+
+      // The documental model is still valid, but the ANALYTICAL axis moves
+      // daily: refresh the empirical (DefectDojo) correlation on the cached
+      // copy so a finding fixed/opened since the last run is reflected.
+      let refreshedData = existing.model_data as Record<string, any>;
+      try {
+        const findings = await loadActiveFindingsForVersion(admin, productVersionId);
+        const { data: correlated } = annotateEmpiricalConfirmation(refreshedData, findings);
+        refreshedData = correlated;
+        await (admin as any)
+          .from('threat_models')
+          .update({ model_data: refreshedData })
+          .eq('id', existing.id);
+      } catch (correlationErr) {
+        logger.warn('Empirical correlation refresh failed on cached model', {
+          context: 'threat-modeling',
+          meta: { error: correlationErr instanceof Error ? correlationErr.message : 'unknown' },
+        });
+      }
+
       return NextResponse.json({
         success: true,
         cached: true,
-        data: { ...(existing.model_data as any), id: existing.id },
+        data: { ...refreshedData, id: existing.id },
       });
     }
   }
@@ -247,6 +268,19 @@ export async function POST(request: NextRequest) {
   );
   generatedData = annotatedData;
 
+  // ── Empirical correlation (analytical axis) ─────────────────────────────
+  // Cross-reference the documental STRIDE model with live DefectDojo
+  // findings: threats whose STRIDE category is hit by an active finding's
+  // CWE class are flagged empirically observed. Post-hoc annotation only —
+  // the engine's generation is untouched.
+  const activeFindings = await loadActiveFindingsForVersion(admin, productVersionId);
+  const {
+    data: empiricallyAnnotated,
+    observedThreatCount,
+    correlatedFindingCount,
+  } = annotateEmpiricalConfirmation(generatedData, activeFindings);
+  generatedData = empiricallyAnnotated;
+
   // ── Coverage-gap warnings (never silently omit) ─────────────────────────
   const warnings: string[] = [];
   if (deltas.length === 0) {
@@ -257,6 +291,11 @@ export async function POST(request: NextRequest) {
   if (needsReviewCount > 0) {
     warnings.push(
       `${needsReviewCount} extracted feature delta(s) were flagged low-confidence and need review. Threat coverage derived from them may be unreliable until confirmed.`,
+    );
+  }
+  if (observedThreatCount > 0) {
+    warnings.push(
+      `${observedThreatCount} threat(s) are empirically observed: ${correlatedFindingCount} active DefectDojo finding(s) land on the same STRIDE category. Correlation is category-level — confirm the affected component before treating a threat as exploit-confirmed.`,
     );
   }
   if (warnings.length > 0) {
@@ -317,6 +356,8 @@ export async function POST(request: NextRequest) {
       deltas_needing_review: needsReviewCount,
       inherited_threats: inheritedCount,
       new_threats: newCount,
+      empirically_observed_threats: observedThreatCount,
+      correlated_findings: correlatedFindingCount,
     },
   });
 
@@ -326,6 +367,8 @@ export async function POST(request: NextRequest) {
     source: modelSource,
     inherited_threats: inheritedCount,
     new_threats: newCount,
+    empirically_observed_threats: observedThreatCount,
+    correlated_findings: correlatedFindingCount,
     data: { ...(inserted.model_data as any), id: inserted.id },
   });
 }
