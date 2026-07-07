@@ -3,12 +3,28 @@
   "framework": "nextjs",
   "crons": [
     {
-      "path": "/api/cron/agentic-triggers",
-      "schedule": "0 */6 * * *"
+      "path": "/api/cron/sync-knowledge-base",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron/run-assessment",
+      "schedule": "0 2 * * *"
     },
     {
       "path": "/api/cron/defectdojo-sync",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/run-threat-model",
+      "schedule": "0 4 * * *"
+    },
+    {
+      "path": "/api/cron/recalibrate-scrms",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/agentic-triggers",
+      "schedule": "0 */6 * * *"
     }
   ]
 }
