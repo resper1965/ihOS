@@ -51,6 +51,18 @@ export interface RAGReference {
   excerpt: string;
 }
 
+/** Which layer grounded the answer (F3 — posture-grounded answering). */
+export type AnswerSource = 'posture' | 'document' | 'gap';
+
+/** SCF control the question mapped to, with its persisted verdict when any. */
+export interface AnswerMappedControl {
+  code: string;
+  name: string;
+  similarity: number;
+  status?: 'conforming' | 'partial' | 'informal' | 'gap';
+  stale?: boolean;
+}
+
 /** A generated answer for a single question */
 export interface GeneratedAnswer {
   questionId: string;
@@ -62,6 +74,14 @@ export interface GeneratedAnswer {
   confidenceScore: number;
   /** RAG sources used */
   references: RAGReference[];
+  /** Layer that grounded the answer: persisted verdict > documents > gap */
+  answerSource?: AnswerSource;
+  /** SCF controls the question was mapped to (T301) */
+  mappedControls?: AnswerMappedControl[];
+  /** Human review required (weak mapping, stale verdict, or declared gap) */
+  needsReview?: boolean;
+  /** Present when a grounding verdict predates the current corpus (T303) */
+  stalenessWarning?: string;
 }
 
 // ── HITL Review ──────────────────────────────────────────────────────────────
