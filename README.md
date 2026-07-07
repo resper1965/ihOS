@@ -106,6 +106,17 @@ GRC_LOCAL_FALLBACK_ENABLED=false
 
 # Vercel AI
 VERCEL_AI_GATEWAY_URL=https://gateway.ai.vercel.com/v1
+
+# DefectDojo (optional) — analytical posture axis ("observed moment").
+# When set, the daily cron /api/cron/defectdojo-sync pulls active findings,
+# maps them onto SCF controls via scf_framework_mappings, and feeds the
+# runtime_control_signals table (observed posture: violated/degraded/clean,
+# shown ALONGSIDE the documental verdict, never replacing it).
+DEFECTDOJO_URL=https://defectdojo.example.com
+DEFECTDOJO_API_KEY=your-dd-api-token
+# Fallback product when defectdojo_product_links has no rows. Prefer linking
+# products to product versions via the defectdojo_product_links table.
+DEFECTDOJO_PRODUCT_ID=1
 ```
 
 ### Scripts Disponíveis

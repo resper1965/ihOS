@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getFrameworkScores, getTopGaps } from "@/lib/data/compliance-data";
+import { getObservedPosture } from "@/lib/posture/observed-status";
 
 export async function buildPostureProfile(productVersionId: string | undefined): Promise<string> {
   if (!productVersionId) {
@@ -78,6 +79,24 @@ export async function buildPostureProfile(productVersionId: string | undefined):
       topGaps.slice(0, 3).forEach((gap) => {
         profile += `- [${gap.status.toUpperCase()}] ${gap.code} (${gap.domain}): ${gap.name}\n`;
       });
+    }
+
+    // Analytical axis: runtime signals (DefectDojo) observed against SCF
+    // controls. Shown NEXT TO the documental posture, never replacing it.
+    const observed = await getObservedPosture(supabase, productVersionId);
+    if (observed.violated.length > 0 || observed.degraded.length > 0) {
+      profile += `\n### Observed Runtime Posture (analytical axis)\n`;
+      profile += `Live security findings currently contradict or degrade the documented posture:\n`;
+      observed.violated.slice(0, 5).forEach((v) => {
+        profile += `- [VIOLATED] ${v.scfControlCode}: ${v.criticalOrHigh} active Critical/High finding(s)\n`;
+      });
+      observed.degraded.slice(0, 3).forEach((d) => {
+        profile += `- [DEGRADED] ${d.scfControlCode}: ${d.activeSignals} active lower-severity or risk-accepted finding(s)\n`;
+      });
+      if (observed.lastSyncedAt) {
+        profile += `_Signals last synced: ${observed.lastSyncedAt}_\n`;
+      }
+      profile += `When answering about these controls, present BOTH views: the documented status AND the observed runtime exposure.\n`;
     }
 
     profile += `\n*Instruction: Use this profile to accurately answer questions about the current state of NCommand Lite without asking the user for this context.*`;
