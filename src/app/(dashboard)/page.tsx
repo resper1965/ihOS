@@ -13,6 +13,7 @@ import { OnboardingGate } from "@/components/onboarding/onboarding-gate";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { ActivityFeed } from "@/components/dashboard/activity-feed";
 import { GoalsWidget } from "@/components/dashboard/goals-widget";
+import { VulnerabilityPosture } from "@/components/dashboard/vulnerability-posture";
 import { RealtimeRefresher } from "@/components/dashboard/realtime-refresher";
 import { Progress } from "@/components/ui/progress";
 import Link from "next/link";
@@ -298,6 +299,11 @@ export default function DashboardPage() {
         <div id="goals-widget-card">
           <GoalsWidget />
         </div>
+      </div>
+
+      {/* Moment 2 — continuous observation (DefectDojo → SCF) */}
+      <div id="observed-posture-card">
+        <VulnerabilityPosture />
       </div>
 
       <RealtimeRefresher />

@@ -56,6 +56,8 @@ export default function ChatPage({ conversationId: initialConversationId }: Chat
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const conversationListRef = useRef<{ refresh: () => void }>(null);
+  // Questionnaire waiting for its mandatory sales-channel context
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   const questionnaire = useQuestionnaire();
 
@@ -222,6 +224,9 @@ export default function ChatPage({ conversationId: initialConversationId }: Chat
   }
 
   // ── File upload handlers ───────────────────────────────────────────────
+  // A questionnaire answer must never mix sales-channel overlays (NPR v3
+  // Moment 1), so the channel is chosen BEFORE any answer is generated.
+  // The product version comes from the global Version Switcher.
 
   function handleFileButtonClick() {
     fileInputRef.current?.click();
@@ -230,11 +235,21 @@ export default function ChatPage({ conversationId: initialConversationId }: Chat
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    questionnaire.uploadFile(file);
+    setPendingFile(file);
     e.target.value = "";
   }
 
+  function handleChannelChosen(channel: "B2B_GEHC" | "B2B_DIRECT") {
+    if (!pendingFile) return;
+    questionnaire.uploadFile(pendingFile, {
+      salesChannel: channel,
+      productVersionId: activeVersion?.id ?? null,
+    });
+    setPendingFile(null);
+  }
+
   function handleRemoveFile() {
+    setPendingFile(null);
     questionnaire.reset();
   }
 
@@ -509,6 +524,54 @@ export default function ChatPage({ conversationId: initialConversationId }: Chat
           ihOS AI can make mistakes. Verify important information.
         </p>
       </div>
+
+      {/* ─── Mandatory channel context before answering (NPR v3) ─── */}
+      {pendingFile && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="glass-card w-full max-w-md rounded-2xl border border-border-glass bg-bg-card p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-sm font-semibold text-text-primary">
+                  Which sales channel is this questionnaire for?
+                </h3>
+                <p className="mt-1 text-xs text-text-muted leading-relaxed">
+                  Ionic&apos;s privacy role differs per channel, so answers are grounded in
+                  that channel&apos;s contracts and posture — overlays are never mixed.
+                </p>
+              </div>
+              <button
+                onClick={() => setPendingFile(null)}
+                className="rounded-lg p-1 text-text-muted hover:bg-white/5 hover:text-text-primary"
+                aria-label="Cancel questionnaire upload"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="rounded-lg bg-white/[0.03] border border-border-glass px-3 py-2 text-xs text-text-secondary">
+              <span className="font-medium text-text-primary">{pendingFile.name}</span>
+              <span className="block mt-0.5 text-text-muted">
+                Version scope: {activeVersion ? `nCommand Lite ${activeVersion.version_code}` : "Global (no version selected)"}
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <button
+                onClick={() => handleChannelChosen("B2B_GEHC")}
+                className="rounded-xl border border-border-glass bg-white/5 px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/10"
+              >
+                <span className="block text-sm font-semibold text-text-primary">B2B via GEHC</span>
+                <span className="block mt-0.5 text-[11px] text-text-muted">Ionic as processor / operadora</span>
+              </button>
+              <button
+                onClick={() => handleChannelChosen("B2B_DIRECT")}
+                className="rounded-xl border border-border-glass bg-white/5 px-4 py-3 text-left transition-colors hover:border-primary/40 hover:bg-primary/10"
+              >
+                <span className="block text-sm font-semibold text-text-primary">B2B Direct</span>
+                <span className="block mt-0.5 text-[11px] text-text-muted">Ionic as controller / controladora</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ─── Questionnaire Review Modal ─── */}
       {showReviewModal && (

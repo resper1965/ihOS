@@ -164,6 +164,27 @@ function ReviewRow({
             {item.questionText}
           </p>
 
+          {/* Provenance: which layer grounded this answer (F3) */}
+          {(item.answerSource || item.needsReview || item.stalenessWarning) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {item.answerSource === "posture" && (
+                <Badge variant="success">Grounded in evaluated posture</Badge>
+              )}
+              {item.answerSource === "document" && (
+                <Badge variant="info">Document-grounded</Badge>
+              )}
+              {item.answerSource === "gap" && (
+                <Badge variant="danger">Declared gap — do not send as-is</Badge>
+              )}
+              {item.needsReview && item.answerSource !== "gap" && (
+                <Badge variant="warning">Needs review</Badge>
+              )}
+              {item.stalenessWarning && (
+                <span className="text-[11px] text-amber-500/90">{item.stalenessWarning}</span>
+              )}
+            </div>
+          )}
+
           {/* Answer */}
           {isEditing ? (
             <div className="space-y-2">

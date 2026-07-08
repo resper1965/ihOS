@@ -18,6 +18,7 @@ import {
   Database,
   AlertTriangle,
   Users,
+  Flag,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { signOut } from "@/lib/supabase/auth-actions";
@@ -37,7 +38,12 @@ const NAV_ITEMS = [
   { label: "Risk Analysis", href: "/threat-modeling", icon: AlertTriangle },
   { label: "Chat", href: "/chat", icon: MessageSquare },
   { label: "Audits & Checks", href: "/assessments", icon: ClipboardCheck },
-  { label: "Knowledge Base", href: "/documents", icon: FileText },
+  // Goals was only reachable through the Overview widget — a tracked
+  // remediation program deserves first-class navigation (spec US11).
+  { label: "Goals & Tasks", href: "/goals", icon: Flag },
+  // Label must match the destination: /documents manages documents;
+  // the RAG-health page (/knowledge-base) is linked from Documents.
+  { label: "Documents", href: "/documents", icon: FileText },
   { label: "Reports", href: "/reports", icon: BarChart3 },
 ] as const;
 

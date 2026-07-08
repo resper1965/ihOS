@@ -22,6 +22,13 @@ export type QuestionnaireState =
   | "complete"
   | "error";
 
+/** Mandatory analysis context (NPR v3 Moment 1): sales channel selects the
+ *  contractual overlay and Ionic's privacy role; version scopes the corpus. */
+export interface QuestionnaireContext {
+  salesChannel: "B2B_GEHC" | "B2B_DIRECT";
+  productVersionId?: string | null;
+}
+
 export interface QuestionnaireStore {
   /** Current state of the flow */
   state: QuestionnaireState;
@@ -39,6 +46,8 @@ export interface QuestionnaireStore {
   error: string | null;
   /** Parse metadata */
   parseResult: ParseResult | null;
+  /** Context the answers were generated under (echoed on promotion) */
+  context: QuestionnaireContext | null;
 }
 
 const INITIAL_STORE: QuestionnaireStore = {
@@ -50,6 +59,7 @@ const INITIAL_STORE: QuestionnaireStore = {
   progress: 0,
   error: null,
   parseResult: null,
+  context: null,
 };
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
@@ -94,13 +104,13 @@ export function useQuestionnaire() {
   // ── 1. Upload & Parse ──────────────────────────────────────────────────
 
   const uploadFile = useCallback(
-    async (file: File) => {
+    async (file: File, context: QuestionnaireContext) => {
       try {
         abortRef.current?.abort();
         const controller = new AbortController();
         abortRef.current = controller;
 
-        patch({ state: "uploading", fileName: file.name, progress: 10, error: null });
+        patch({ state: "uploading", fileName: file.name, progress: 10, error: null, context });
 
         // Convert to base64 in parallel
         const base64 = await fileToBase64(file);
@@ -137,7 +147,11 @@ export function useQuestionnaire() {
         const genRes = await fetch("/api/chat/generate-answers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ questions: parseData.questions }),
+          body: JSON.stringify({
+            questions: parseData.questions,
+            salesChannel: context.salesChannel,
+            productVersionId: context.productVersionId ?? undefined,
+          }),
           signal: controller.signal,
         });
 
@@ -158,6 +172,10 @@ export function useQuestionnaire() {
           confidenceScore: ga.confidenceScore ?? 0,
           references: ga.references ?? [],
           status: 'pending' as ReviewStatus,
+          // Provenance for the human reviewer (F3)
+          answerSource: ga.answerSource,
+          needsReview: ga.needsReview ?? false,
+          stalenessWarning: ga.stalenessWarning,
         }));
 
         // Merge cell coords from parse result into review items
@@ -255,6 +273,10 @@ export function useQuestionnaire() {
             aiDraftAnswer: a.aiDraftAnswer,
             wasEdited: a.status === "edited",
           })),
+          // Scope the promoted answers (F5): without this they would be
+          // parked as needs_review and never served.
+          salesChannel: store.context?.salesChannel ?? null,
+          productVersionId: store.context?.productVersionId ?? null,
         }),
         signal: controller.signal,
       });
@@ -307,7 +329,7 @@ export function useQuestionnaire() {
       if (err instanceof DOMException && err.name === "AbortError") return;
       fail(err instanceof Error ? err.message : "Unknown error");
     }
-  }, [store.answers, store.originalFileBase64, store.fileName, store.parseResult, patch, fail]);
+  }, [store.answers, store.originalFileBase64, store.fileName, store.parseResult, store.context, patch, fail]);
 
   // ── Public API ─────────────────────────────────────────────────────────
 

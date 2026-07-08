@@ -103,6 +103,10 @@ export interface ReviewableQA {
   cellCoords?: string;
   sheetName?: string;
   rowIndex?: number;
+  /** Provenance surfaced to the human reviewer (F3) */
+  answerSource?: AnswerSource;
+  needsReview?: boolean;
+  stalenessWarning?: string;
 }
 
 // ── Promotion to Knowledge Base ──────────────────────────────────────────────

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { FileText, Upload, Sparkles, Layers, RefreshCw, Globe, Box, Handshake } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
@@ -122,7 +123,12 @@ export default function DocumentsPage() {
         <Card title="RAG Index (pgvector)" icon={<Sparkles className="h-5 w-5 text-emerald-400" />}>
           <div className="mt-2">
             <span className="text-3xl font-bold text-text-primary">{totalChunks}</span>
-            <p className="text-xs text-text-muted mt-1">Indexed paragraphs for chat AI.</p>
+            <p className="text-xs text-text-muted mt-1">
+              Indexed paragraphs for chat AI.{" "}
+              <Link href="/knowledge-base" className="text-primary hover:underline">
+                Index health →
+              </Link>
+            </p>
           </div>
         </Card>
         <Card title="Active Scope" icon={<Layers className="h-5 w-5 text-purple-400" />}>
