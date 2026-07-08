@@ -37,12 +37,30 @@ async function requireInternalUser(supabase: Awaited<ReturnType<typeof createCli
 }
 
 async function refreshCounts(admin: any, assessmentId: string) {
-  const { data: rows } = await admin
+  const { data: rows, error: selectError } = await admin
     .from('customer_assessment_answers')
     .select('draft_answer, review_status')
     .eq('assessment_id', assessmentId);
+  // Don't persist zeroed counts on a read failure — that would wipe correct
+  // values. Return nulls so the caller reports "unknown", not a false zero.
+  if (selectError) {
+    logger.error('refreshCounts select failed', {
+      context: 'customer-assessments/answers',
+      meta: { assessment_id: assessmentId, error: selectError.message },
+    });
+    return null;
+  }
   const counts = computeCounts((rows ?? []) as Array<{ draft_answer: string | null; review_status: string }>);
-  await admin.from('customer_assessments').update(counts).eq('id', assessmentId);
+  const { error: updateError } = await admin
+    .from('customer_assessments')
+    .update(counts)
+    .eq('id', assessmentId);
+  if (updateError) {
+    logger.error('refreshCounts update failed', {
+      context: 'customer-assessments/answers',
+      meta: { assessment_id: assessmentId, error: updateError.message },
+    });
+  }
   return counts;
 }
 

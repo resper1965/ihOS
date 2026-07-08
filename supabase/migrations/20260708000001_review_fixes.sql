@@ -16,12 +16,16 @@ BEGIN;
 
 -- ── 1. Notification type ─────────────────────────────────────────────────────
 
+-- Add NOT VALID first (skips the blocking full-table scan), then validate in
+-- a separate step — safe for larger tables. The set only widens the allowed
+-- values, so validation of existing rows cannot fail.
 ALTER TABLE public.agent_notifications DROP CONSTRAINT IF EXISTS agent_notifications_type_check;
 ALTER TABLE public.agent_notifications ADD CONSTRAINT agent_notifications_type_check
   CHECK (type IN (
     'poam_expiry', 'score_change', 'task_deadline', 'document_expired',
     'assessment_complete', 'runtime_posture_violation'
-  ));
+  )) NOT VALID;
+ALTER TABLE public.agent_notifications VALIDATE CONSTRAINT agent_notifications_type_check;
 
 -- ── 2. Atomic answer replace ─────────────────────────────────────────────────
 

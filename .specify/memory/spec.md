@@ -47,6 +47,22 @@ resolve its document set through three mandatory context variables:
    version. Version lineage (previous_version_id) supports inheritance-aware
    threat modeling.
 
+**Fail closed on missing context.** A customer-facing answer surface (chat
+questionnaire, customer-assessment answering, MCP `get_posture`) MUST reject
+the request when the required context is absent rather than infer, default,
+or fall back: sales channel is mandatory (no answer is produced without it),
+and version defaults only to the explicit "Global / organization" scope, never
+to an arbitrary version. Internal aggregate views ("all channels") are the
+sole exception and never emit a customer-facing answer.
+
+**Allowed answer inputs (Moment 1).** Answer generation reads: (a) the
+document corpus resolved by the three variables above, and (b) the
+**verified-answer store** — human-approved answers from past assessments,
+themselves derived from documents and scoped by the same channel/version.
+Verified answers are a phrasing/precedent reference, never authoritative over
+the current document-grounded verdict. Nothing from Moment 2 (DefectDojo /
+observation) is ever an answer input.
+
 ### Moment 2 — Continuous Observation (Ionic SI view, dynamic)
 
 The security team's live view over the same SCF control spine, fed by
