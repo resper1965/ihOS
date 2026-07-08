@@ -129,11 +129,15 @@ async function resolveVersionId(
   admin: SupabaseClient,
   productVersionCode: string,
 ): Promise<string> {
-  const { data } = await admin
+  const { data, error } = await admin
     .from('product_versions')
     .select('id')
     .eq('version_code', productVersionCode)
     .maybeSingle();
+  // A query failure is an infra fault, not an unknown version — report it as such.
+  if (error) {
+    throw new McpToolError(`Version lookup failed: ${error.message}`, 'QUERY_FAILED');
+  }
   const id = (data as { id?: string } | null)?.id;
   if (!id) {
     throw new McpToolError(
@@ -179,8 +183,14 @@ async function getPosture(
       ? {
           generated_at: snapshot.created_at,
           frameworks: snapshot.snapshot_data?.frameworks ?? snapshot.snapshot_data ?? null,
+          // Honest scoping: intelligence_snapshots carries no version/channel
+          // fields yet, so this scorecard is the latest ORGANIZATION-WIDE
+          // snapshot — do not present it as isolated to the requested scope.
+          scope: 'organization-wide',
+          scope_note:
+            'Scorecard snapshots are not yet version/channel-scoped; the requested context applies fully to the observed axis and to answer surfaces, not to this aggregate scorecard.',
         }
-      : { generated_at: null, frameworks: null, note: 'No scorecard snapshot persisted yet — run an assessment.' },
+      : { generated_at: null, frameworks: null, scope: 'organization-wide', note: 'No scorecard snapshot persisted yet — run an assessment.' },
     observed: {
       violated_controls: observed.violated,
       degraded_controls: observed.degraded,
@@ -241,12 +251,16 @@ async function getThreatPosture(
   // select * and filter in JS: sales_channel is a newer column and legacy
   // rows/databases read as NULL (channel-less), matching only channel-less
   // requests — GEHC posture is never served from a Direct analysis.
-  const { data: rows } = await admin
+  const { data: rows, error: threatQueryError } = await admin
     .from('threat_models')
     .select('*')
     .eq('product_version', versionCode)
     .order('created_at', { ascending: false })
     .limit(25);
+
+  if (threatQueryError) {
+    throw new McpToolError(`Threat model lookup failed: ${threatQueryError.message}`, 'QUERY_FAILED');
+  }
 
   const wanted = (channel as string | undefined) ?? null;
   const row = ((rows ?? []) as Array<{

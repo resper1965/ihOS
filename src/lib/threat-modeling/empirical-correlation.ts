@@ -98,6 +98,10 @@ export async function loadActiveFindingsForVersion(
 
     if (productVersionId) {
       query = query.or(`product_version_id.eq.${productVersionId},product_version_id.is.null`);
+    } else {
+      // Unresolved/unknown version: only org-wide findings may correlate —
+      // never another product's version-scoped findings.
+      query = query.is('product_version_id', null);
     }
 
     const { data, error } = await query;

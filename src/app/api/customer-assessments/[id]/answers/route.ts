@@ -14,7 +14,6 @@ import {
   BulkAnswersSchema,
   ReviewAnswerSchema,
   computeCounts,
-  canTransition,
   type AssessmentStatus,
 } from '@/lib/assessment/customer-assessments';
 
@@ -88,68 +87,52 @@ export async function POST(
     );
   }
 
-  // Replace semantics: a regeneration supersedes the previous answer set —
-  // partial merges would leave orphaned rows from removed questions.
-  const { error: deleteError } = await admin
-    .from('customer_assessment_answers')
-    .delete()
-    .eq('assessment_id', id);
-  if (deleteError) {
-    return NextResponse.json({ error: deleteError.message }, { status: 500 });
-  }
-
-  const rows = parsed.data.answers.map((a) => ({
-    assessment_id: id,
+  // Atomic replace: delete + insert + counters + status transition + audit
+  // event run in ONE transaction (replace_customer_assessment_answers RPC),
+  // so a mid-flight failure can never leave the assessment half-applied.
+  const answersPayload = parsed.data.answers.map((a) => ({
     question_text: a.question_text,
     question_context: a.question_context ?? null,
     cell_coords: a.cell_coords ?? null,
     sheet_name: a.sheet_name ?? null,
     row_index: a.row_index ?? null,
     draft_answer: a.draft_answer ?? null,
-    final_answer: null,
     answer_source: a.answer_source ?? null,
     mapped_controls: a.mapped_controls,
     references: a.references,
     confidence: a.confidence ?? null,
-    review_status: 'pending',
     needs_review: a.needs_review,
   }));
 
-  const { error: insertError } = await admin
-    .from('customer_assessment_answers')
-    .insert(rows);
-  if (insertError) {
-    logger.error('Answer batch insert failed', { context: 'customer-assessments/answers', meta: { error: insertError.message } });
-    return NextResponse.json({ error: insertError.message }, { status: 500 });
-  }
-
-  const assessmentUpdates: Record<string, unknown> = {};
-  if (parsed.data.posture_fingerprint) {
-    assessmentUpdates.posture_fingerprint = parsed.data.posture_fingerprint;
-  }
-  if (status === 'received' && canTransition('received', 'answering')) {
-    assessmentUpdates.status = 'answering';
-  }
-  if (Object.keys(assessmentUpdates).length > 0) {
-    await admin.from('customer_assessments').update(assessmentUpdates).eq('id', id);
-  }
-
-  const counts = await refreshCounts(admin, id);
-
-  await admin.from('customer_assessment_events').insert({
-    assessment_id: id,
-    event_type: 'answers_generated',
-    from_status: status,
-    to_status: assessmentUpdates.status ?? status,
-    actor_id: auth.user!.id,
-    detail: {
-      answer_count: rows.length,
-      needs_review_count: rows.filter((r) => r.needs_review).length,
-      posture_fingerprint: parsed.data.posture_fingerprint ?? null,
+  const { data: rpcResult, error: rpcError } = await admin.rpc(
+    'replace_customer_assessment_answers',
+    {
+      p_assessment_id: id,
+      p_answers: answersPayload,
+      p_posture_fingerprint: parsed.data.posture_fingerprint ?? null,
+      p_actor_id: auth.user!.id,
     },
-  });
+  );
 
-  return NextResponse.json({ inserted: rows.length, counts }, { status: 201 });
+  if (rpcError) {
+    // Concurrent state change surfaces as a 409, everything else as a 500.
+    if (String(rpcError.message).includes('invalid_status')) {
+      return NextResponse.json(
+        { error: `Answers can only be written while received/answering` },
+        { status: 409 },
+      );
+    }
+    logger.error('Atomic answer replace failed (apply 20260708000001)', {
+      context: 'customer-assessments/answers',
+      meta: { assessment_id: id, error: rpcError.message },
+    });
+    return NextResponse.json({ error: rpcError.message }, { status: 500 });
+  }
+
+  return NextResponse.json(
+    { inserted: rpcResult?.inserted ?? answersPayload.length, counts: rpcResult },
+    { status: 201 },
+  );
 }
 
 export async function PATCH(
@@ -213,7 +196,7 @@ export async function PATCH(
 
   const counts = await refreshCounts(admin, id);
 
-  await admin.from('customer_assessment_events').insert({
+  const { error: eventError } = await admin.from('customer_assessment_events').insert({
     assessment_id: id,
     event_type: 'answer_reviewed',
     actor_id: auth.user!.id,
@@ -223,6 +206,12 @@ export async function PATCH(
       was_edited: parsed.data.review_status === 'edited',
     },
   });
+  if (eventError) {
+    logger.error('Customer assessment audit event insert failed', {
+      context: 'customer-assessments/answers',
+      meta: { assessment_id: id, error: eventError.message },
+    });
+  }
 
   return NextResponse.json({ answer: updated, counts });
 }

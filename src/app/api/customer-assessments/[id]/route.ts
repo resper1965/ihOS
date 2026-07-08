@@ -157,7 +157,7 @@ export async function PATCH(
   }
 
   if (toStatus && toStatus !== fromStatus) {
-    await admin.from('customer_assessment_events').insert({
+    const { error: eventError } = await admin.from('customer_assessment_events').insert({
       assessment_id: id,
       event_type: 'status_change',
       from_status: fromStatus,
@@ -165,6 +165,12 @@ export async function PATCH(
       actor_id: auth.user!.id,
       detail: body.note ? { note: body.note } : {},
     });
+    if (eventError) {
+      logger.error('Customer assessment audit event insert failed', {
+        context: 'customer-assessments',
+        meta: { assessment_id: id, error: eventError.message },
+      });
+    }
   }
 
   return NextResponse.json({

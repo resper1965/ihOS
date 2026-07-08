@@ -130,6 +130,22 @@ export async function GET(req: Request) {
       fetched.push({ target, findings, totalFromApi });
     }
 
+    // Truncation guard: when a product has more active findings than the
+    // page cap, unfetched findings must NOT be treated as resolved — skip
+    // stale deactivation/cleanup for the whole run rather than silently
+    // dropping observed posture (fail-closed).
+    const feedComplete = fetched.every((f) => f.findings.length >= f.totalFromApi);
+    if (!feedComplete) {
+      logger.warn('DefectDojo feed truncated by page cap — stale cleanup skipped this run', {
+        context: 'cron/defectdojo-sync',
+        meta: {
+          truncated_products: fetched
+            .filter((f) => f.findings.length < f.totalFromApi)
+            .map((f) => ({ dd_product_id: f.target.ddProductId, fetched: f.findings.length, total: f.totalFromApi })),
+        },
+      });
+    }
+
     // ── Resolve the SCF spine once for the whole run ────────────────────────
     const allFindings = fetched.flatMap((f) => f.findings);
     const mappedByFindingId = new Map<number, ReturnType<typeof mapFindingToControls>>();
@@ -207,9 +223,11 @@ export async function GET(req: Request) {
 
     // Findings that disappeared from the active feed were resolved/closed in
     // DefectDojo — flip them inactive so the posture doesn't show stale risk.
+    // Only safe when the feed was fetched completely: with a truncated feed,
+    // unfetched findings would be wrongly marked resolved.
     const activeIds = allFindings.map((f) => f.id);
     let deactivated = 0;
-    {
+    if (feedComplete) {
       let staleQuery = supabase
         .from('defectdojo_findings')
         .update({ active: false, synced_at: now })
@@ -228,33 +246,52 @@ export async function GET(req: Request) {
       }
     }
 
-    // ── Rebuild the DefectDojo slice of runtime_control_signals ─────────────
-    // All fetches succeeded, so a full rebuild is safe and keeps the stream
-    // exactly in step with the source (mitigations, closures, acceptances).
+    // ── Refresh the DefectDojo slice of runtime_control_signals ─────────────
+    // Upsert FIRST, then remove only rows this run did not refresh: a failed
+    // write never leaves the analytical axis empty (which would read as a
+    // falsely clean posture). Stale cleanup is skipped on truncated feeds.
     let signalsRebuilt = false;
     {
-      const { error: deleteError } = await supabase
-        .from('runtime_control_signals')
-        .delete()
-        .eq('source', 'defectdojo');
-
-      if (deleteError) {
-        // Table may not exist yet (migration pending) — findings are still
-        // synced above; the observed axis just stays empty.
-        logger.warn('runtime_control_signals rebuild skipped (apply 20260707000001)', {
-          context: 'cron/defectdojo-sync',
-          meta: { error: deleteError.message },
-        });
-      } else if (signalRows.length > 0) {
-        const { error: insertError } = await supabase
+      if (signalRows.length > 0) {
+        const { error: upsertSignalsError } = await supabase
           .from('runtime_control_signals')
-          .insert(signalRows);
-        if (insertError) {
-          throw new Error(`runtime_control_signals insert failed: ${insertError.message}`);
+          .upsert(signalRows, { onConflict: 'source,source_ref,scf_control_code' });
+        if (upsertSignalsError) {
+          // Table may not exist yet (migration pending) — findings are still
+          // synced above; the observed axis just stays as it was.
+          logger.warn('runtime_control_signals upsert skipped (apply 20260707000001)', {
+            context: 'cron/defectdojo-sync',
+            meta: { error: upsertSignalsError.message },
+          });
+        } else if (feedComplete) {
+          const { error: staleSignalError } = await supabase
+            .from('runtime_control_signals')
+            .delete()
+            .eq('source', 'defectdojo')
+            .lt('synced_at', now);
+          if (staleSignalError) {
+            logger.warn('runtime_control_signals stale cleanup failed', {
+              context: 'cron/defectdojo-sync',
+              meta: { error: staleSignalError.message },
+            });
+          } else {
+            signalsRebuilt = true;
+          }
         }
-        signalsRebuilt = true;
-      } else {
-        signalsRebuilt = true;
+      } else if (feedComplete) {
+        // No active findings at all — clearing the slice IS the correct state.
+        const { error: clearError } = await supabase
+          .from('runtime_control_signals')
+          .delete()
+          .eq('source', 'defectdojo');
+        if (clearError) {
+          logger.warn('runtime_control_signals clear skipped (apply 20260707000001)', {
+            context: 'cron/defectdojo-sync',
+            meta: { error: clearError.message },
+          });
+        } else {
+          signalsRebuilt = true;
+        }
       }
     }
 
@@ -345,6 +382,7 @@ export async function GET(req: Request) {
       total_synced: allFindings.length,
       deactivated_findings: deactivated,
       severity_counts: severityCounts,
+      feed_complete: feedComplete,
       scf: {
         signals_written: signalRows.length,
         signals_rebuilt: signalsRebuilt,

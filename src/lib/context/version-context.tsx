@@ -11,6 +11,21 @@ import { useVersions } from "@/hooks/queries/use-versions";
 export type SalesChannel = "B2B_GEHC" | "B2B_DIRECT";
 
 const CHANNEL_STORAGE_KEY = "ihos_active_sales_channel";
+const CHANNEL_CHANGE_EVENT = "ihos-channel-change";
+
+function readChannelSnapshot(): SalesChannel | null {
+  const stored = window.localStorage.getItem(CHANNEL_STORAGE_KEY);
+  return stored === "B2B_GEHC" || stored === "B2B_DIRECT" ? stored : null;
+}
+
+function subscribeToChannelStore(callback: () => void): () => void {
+  window.addEventListener("storage", callback);
+  window.addEventListener(CHANNEL_CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(CHANNEL_CHANGE_EVENT, callback);
+  };
+}
 
 interface VersionContextType {
   versions: ProductVersion[];
@@ -29,12 +44,14 @@ export function VersionProvider({ children }: { children: React.ReactNode }) {
   const versions = versionsData as unknown as ProductVersion[];
   
   const [activeVersion, setActiveVersionState] = useState<ProductVersion | null>(null);
-  // Lazy init restores the persisted commercial context (guarded for SSR).
-  const [salesChannel, setSalesChannelState] = useState<SalesChannel | null>(() => {
-    if (typeof window === "undefined") return null;
-    const stored = window.localStorage.getItem(CHANNEL_STORAGE_KEY);
-    return stored === "B2B_GEHC" || stored === "B2B_DIRECT" ? stored : null;
-  });
+  // Persisted commercial context via useSyncExternalStore: hydration-safe
+  // (server snapshot = null, client syncs after hydration — no mismatch) and
+  // reactive to changes from other tabs.
+  const salesChannel = React.useSyncExternalStore(
+    subscribeToChannelStore,
+    readChannelSnapshot,
+    () => null,
+  );
   const [isInit, setIsInit] = useState(false);
   const [isLoadingDefault, setIsLoadingDefault] = useState(true);
 
@@ -114,12 +131,13 @@ export function VersionProvider({ children }: { children: React.ReactNode }) {
   };
 
   const setSalesChannel = (channel: SalesChannel | null) => {
-    setSalesChannelState(channel);
     if (channel) {
       localStorage.setItem(CHANNEL_STORAGE_KEY, channel);
     } else {
       localStorage.removeItem(CHANNEL_STORAGE_KEY);
     }
+    // localStorage 'storage' events don't fire in the writing tab — notify it.
+    window.dispatchEvent(new Event(CHANNEL_CHANGE_EVENT));
   };
 
   const isLoading = isQueryLoading || isLoadingDefault;

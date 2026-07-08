@@ -28,8 +28,23 @@ BEGIN;
 
 ALTER TABLE public.defectdojo_findings
     ADD COLUMN IF NOT EXISTS mapped_scf_controls TEXT[] NOT NULL DEFAULT '{}',
-    ADD COLUMN IF NOT EXISTS product_version_id UUID NULL
-        REFERENCES public.product_versions(id) ON DELETE SET NULL;
+    ADD COLUMN IF NOT EXISTS product_version_id UUID NULL;
+
+-- FK added NOT VALID (no full-table scan under SHARE ROW EXCLUSIVE) and
+-- validated right after — validation takes a lighter lock and the column was
+-- just created NULL everywhere, so it cannot fail.
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'defectdojo_findings_product_version_id_fkey'
+  ) THEN
+    ALTER TABLE public.defectdojo_findings
+        ADD CONSTRAINT defectdojo_findings_product_version_id_fkey
+        FOREIGN KEY (product_version_id) REFERENCES public.product_versions(id)
+        ON DELETE SET NULL NOT VALID;
+    ALTER TABLE public.defectdojo_findings
+        VALIDATE CONSTRAINT defectdojo_findings_product_version_id_fkey;
+  END IF;
+END $$;
 
 COMMENT ON COLUMN public.defectdojo_findings.mapped_scf_controls IS
   'SCF control codes resolved from the finding''s ISO/NIST mappings via scf_framework_mappings. Empty = unmapped (surfaced as a coverage gap, never guessed).';
@@ -74,13 +89,23 @@ CREATE INDEX IF NOT EXISTS idx_runtime_signals_source
 
 ALTER TABLE public.runtime_control_signals ENABLE ROW LEVEL SECURITY;
 
+-- Reads are INTERNAL-ONLY: runtime signals carry finding titles/severities
+-- across every product version — client_user must never see them. (The DROP
+-- also cleans up the broader authenticated-read policy from earlier drafts.)
+DROP POLICY IF EXISTS runtime_signals_select_authenticated ON public.runtime_control_signals;
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
-    WHERE tablename = 'runtime_control_signals' AND policyname = 'runtime_signals_select_authenticated'
+    WHERE tablename = 'runtime_control_signals' AND policyname = 'runtime_signals_select_internal'
   ) THEN
-    CREATE POLICY runtime_signals_select_authenticated ON public.runtime_control_signals
-        FOR SELECT USING (auth.role() = 'authenticated');
+    CREATE POLICY runtime_signals_select_internal ON public.runtime_control_signals
+        FOR SELECT USING (
+          auth.role() = 'service_role'
+          OR EXISTS (
+            SELECT 1 FROM public.profiles p
+            WHERE p.id = auth.uid() AND p.role IN ('admin', 'ionic_user')
+          )
+        );
   END IF;
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies

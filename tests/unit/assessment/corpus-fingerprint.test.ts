@@ -12,12 +12,15 @@ vi.mock('@/lib/supabase/admin', () => ({
 }));
 
 // Minimal thenable query-builder stub: supports the chain shape used by
-// corpus-fingerprint.ts (select().eq()) and resolves like a Supabase query.
+// corpus-fingerprint.ts (select().eq() and select(count).in()) and resolves
+// like a Supabase query. The provenance count query resolves with count: 0.
 function makeQuery(result: { data: unknown; error: unknown }) {
   const query = {
     select: vi.fn(() => query),
     eq: vi.fn(() => query),
-    then: (resolve: (value: typeof result) => unknown) => resolve(result),
+    in: vi.fn(() => query),
+    then: (resolve: (value: { data: unknown; error: unknown; count: number }) => unknown) =>
+      resolve({ ...result, count: 0 }),
   };
   return query;
 }

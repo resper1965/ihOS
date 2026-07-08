@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  await admin.from('customer_assessment_events').insert({
+  const { error: eventError } = await admin.from('customer_assessment_events').insert({
     assessment_id: inserted.id,
     event_type: 'status_change',
     from_status: null,
@@ -111,6 +111,13 @@ export async function POST(request: NextRequest) {
     actor_id: auth.user!.id,
     detail: { client_name: parsed.data.client_name, source_file: parsed.data.source_file ?? null },
   });
+  if (eventError) {
+    // A missing audit event is a real compliance gap — never drop it silently.
+    logger.error('Customer assessment audit event insert failed', {
+      context: 'customer-assessments',
+      meta: { assessment_id: inserted.id, error: eventError.message },
+    });
+  }
 
   return NextResponse.json({ assessment: inserted }, { status: 201 });
 }

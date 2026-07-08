@@ -103,7 +103,10 @@ RETURNS TABLE (
     similarity FLOAT
 )
 LANGUAGE sql STABLE
-SET search_path = public
+-- The vector extension lives in the `extensions` schema on Supabase; without
+-- it in the search_path the <=> operator fails to resolve (same fix as
+-- match_documents_hybrid).
+SET search_path = public, extensions
 AS $$
   SELECT
     va.id,
