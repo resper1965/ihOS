@@ -5,10 +5,20 @@ import { createClient } from "@/lib/supabase/client";
 import type { ProductVersion } from "@/lib/supabase/types";
 import { useVersions } from "@/hooks/queries/use-versions";
 
+/** Commercial context (NPR v3 Moment 1, variable 2). null = "All channels" —
+ *  an internal aggregate view that must never produce a customer-facing
+ *  answer (surfaces that answer customers ask for the channel explicitly). */
+export type SalesChannel = "B2B_GEHC" | "B2B_DIRECT";
+
+const CHANNEL_STORAGE_KEY = "ihos_active_sales_channel";
+
 interface VersionContextType {
   versions: ProductVersion[];
   activeVersion: ProductVersion | null; // null means "Organizacional / Global SGSI"
   setActiveVersion: (version: ProductVersion | null) => void;
+  /** Global commercial context — the second axis of the Context Bar */
+  salesChannel: SalesChannel | null;
+  setSalesChannel: (channel: SalesChannel | null) => void;
   isLoading: boolean;
 }
 
@@ -19,6 +29,12 @@ export function VersionProvider({ children }: { children: React.ReactNode }) {
   const versions = versionsData as unknown as ProductVersion[];
   
   const [activeVersion, setActiveVersionState] = useState<ProductVersion | null>(null);
+  // Lazy init restores the persisted commercial context (guarded for SSR).
+  const [salesChannel, setSalesChannelState] = useState<SalesChannel | null>(() => {
+    if (typeof window === "undefined") return null;
+    const stored = window.localStorage.getItem(CHANNEL_STORAGE_KEY);
+    return stored === "B2B_GEHC" || stored === "B2B_DIRECT" ? stored : null;
+  });
   const [isInit, setIsInit] = useState(false);
   const [isLoadingDefault, setIsLoadingDefault] = useState(true);
 
@@ -97,10 +113,21 @@ export function VersionProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const setSalesChannel = (channel: SalesChannel | null) => {
+    setSalesChannelState(channel);
+    if (channel) {
+      localStorage.setItem(CHANNEL_STORAGE_KEY, channel);
+    } else {
+      localStorage.removeItem(CHANNEL_STORAGE_KEY);
+    }
+  };
+
   const isLoading = isQueryLoading || isLoadingDefault;
 
   return (
-    <VersionContext.Provider value={{ versions, activeVersion, setActiveVersion, isLoading }}>
+    <VersionContext.Provider
+      value={{ versions, activeVersion, setActiveVersion, salesChannel, setSalesChannel, isLoading }}
+    >
       {children}
     </VersionContext.Provider>
   );

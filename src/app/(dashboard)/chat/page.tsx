@@ -41,7 +41,7 @@ interface ChatPageProps {
 }
 
 export default function ChatPage({ conversationId: initialConversationId }: ChatPageProps = {}) {
-  const { activeVersion } = useVersion();
+  const { activeVersion, salesChannel: globalChannel } = useVersion();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -235,7 +235,17 @@ export default function ChatPage({ conversationId: initialConversationId }: Chat
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setPendingFile(file);
+    // Context Bar channel is an explicit choice — use it directly. Only ask
+    // when the global scope is "All channels" (an internal aggregate that
+    // must never ground a customer-facing answer).
+    if (globalChannel) {
+      questionnaire.uploadFile(file, {
+        salesChannel: globalChannel,
+        productVersionId: activeVersion?.id ?? null,
+      });
+    } else {
+      setPendingFile(file);
+    }
     e.target.value = "";
   }
 

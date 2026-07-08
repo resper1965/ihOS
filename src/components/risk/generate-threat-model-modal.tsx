@@ -111,10 +111,11 @@ export function GenerateThreatModelModal({
   onClose,
   onGenerated,
 }: GenerateThreatModelModalProps) {
-  const { versions, activeVersion } = useVersion();
+  const { versions, activeVersion, salesChannel: globalChannel } = useVersion();
   const [step, setStep] = useState<WizardStep>(1);
   const [version, setVersion] = useState("");
-  const [salesChannel, setSalesChannel] = useState<string>("");
+  // Default to the Context Bar's commercial scope (NPR v3)
+  const [salesChannel, setSalesChannel] = useState<string>(globalChannel ?? "");
   const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>(DEFAULT_FRAMEWORKS);
   const [frameworkSearch, setFrameworkSearch] = useState("");
   const [progress, setProgress] = useState(0);

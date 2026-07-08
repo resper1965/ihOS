@@ -25,6 +25,7 @@ import { signOut } from "@/lib/supabase/auth-actions";
 import { NotificationsDropdown } from "@/components/dashboard/notifications-dropdown";
 import { VersionProvider } from "@/lib/context/version-context";
 import { VersionSwitcher } from "@/components/dashboard/version-switcher";
+import { ChannelSwitcher } from "@/components/dashboard/channel-switcher";
 import { PageTitleProvider, useCurrentPageMeta } from "@/lib/context/page-title-context";
 import { HelpProvider, useHelp } from "@/lib/context/help-context";
 import { HelpSidebar } from "@/components/dashboard/help-sidebar";
@@ -274,9 +275,10 @@ function HeaderWithTitle({
         )}
       </div>
 
-      {/* Right — actions */}
+      {/* Right — actions (Context Bar: version × channel, NPR v3) */}
       <div className="flex items-center gap-3">
         <VersionSwitcher />
+        <ChannelSwitcher />
         <div className="h-6 w-px bg-border-glass" />
         <NotificationsDropdown />
         <div className="h-6 w-px bg-border-glass" />
