@@ -484,6 +484,17 @@ export interface StrideThreat {
   // version declares a previous_version_id with an approved baseline model)
   is_new?: boolean;
   inherited_from_version?: string | null;
+  // Analytical-axis annotations (computed ON DEMAND for the SI view by
+  // annotateEmpiricalConfirmation — NPR v3: never persisted into the stored
+  // documental model; may still appear on legacy rows written before the
+  // separation-of-views rule).
+  empirically_observed?: boolean;
+  empirical_findings?: Array<{
+    dd_finding_id: number;
+    title: string;
+    severity: string;
+    cwe: number | null;
+  }>;
 }
 
 export interface FmeaItem {

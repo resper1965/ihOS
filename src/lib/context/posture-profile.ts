@@ -80,6 +80,10 @@ export async function buildPostureProfile(productVersionId: string | undefined):
       });
     }
 
+    // NPR v3 rule: chat answers are DOCUMENT-grounded. The observed
+    // (DefectDojo) view belongs to the SI team's own surfaces and is never
+    // injected into answer context.
+
     profile += `\n*Instruction: Use this profile to accurately answer questions about the current state of NCommand Lite without asking the user for this context.*`;
 
     return profile;

@@ -5,10 +5,35 @@ import { createClient } from "@/lib/supabase/client";
 import type { ProductVersion } from "@/lib/supabase/types";
 import { useVersions } from "@/hooks/queries/use-versions";
 
+/** Commercial context (NPR v3 Moment 1, variable 2). null = "All channels" —
+ *  an internal aggregate view that must never produce a customer-facing
+ *  answer (surfaces that answer customers ask for the channel explicitly). */
+export type SalesChannel = "B2B_GEHC" | "B2B_DIRECT";
+
+const CHANNEL_STORAGE_KEY = "ihos_active_sales_channel";
+const CHANNEL_CHANGE_EVENT = "ihos-channel-change";
+
+function readChannelSnapshot(): SalesChannel | null {
+  const stored = window.localStorage.getItem(CHANNEL_STORAGE_KEY);
+  return stored === "B2B_GEHC" || stored === "B2B_DIRECT" ? stored : null;
+}
+
+function subscribeToChannelStore(callback: () => void): () => void {
+  window.addEventListener("storage", callback);
+  window.addEventListener(CHANNEL_CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(CHANNEL_CHANGE_EVENT, callback);
+  };
+}
+
 interface VersionContextType {
   versions: ProductVersion[];
   activeVersion: ProductVersion | null; // null means "Organizacional / Global SGSI"
   setActiveVersion: (version: ProductVersion | null) => void;
+  /** Global commercial context — the second axis of the Context Bar */
+  salesChannel: SalesChannel | null;
+  setSalesChannel: (channel: SalesChannel | null) => void;
   isLoading: boolean;
 }
 
@@ -19,6 +44,14 @@ export function VersionProvider({ children }: { children: React.ReactNode }) {
   const versions = versionsData as unknown as ProductVersion[];
   
   const [activeVersion, setActiveVersionState] = useState<ProductVersion | null>(null);
+  // Persisted commercial context via useSyncExternalStore: hydration-safe
+  // (server snapshot = null, client syncs after hydration — no mismatch) and
+  // reactive to changes from other tabs.
+  const salesChannel = React.useSyncExternalStore(
+    subscribeToChannelStore,
+    readChannelSnapshot,
+    () => null,
+  );
   const [isInit, setIsInit] = useState(false);
   const [isLoadingDefault, setIsLoadingDefault] = useState(true);
 
@@ -97,10 +130,22 @@ export function VersionProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const setSalesChannel = (channel: SalesChannel | null) => {
+    if (channel) {
+      localStorage.setItem(CHANNEL_STORAGE_KEY, channel);
+    } else {
+      localStorage.removeItem(CHANNEL_STORAGE_KEY);
+    }
+    // localStorage 'storage' events don't fire in the writing tab — notify it.
+    window.dispatchEvent(new Event(CHANNEL_CHANGE_EVENT));
+  };
+
   const isLoading = isQueryLoading || isLoadingDefault;
 
   return (
-    <VersionContext.Provider value={{ versions, activeVersion, setActiveVersion, isLoading }}>
+    <VersionContext.Provider
+      value={{ versions, activeVersion, setActiveVersion, salesChannel, setSalesChannel, isLoading }}
+    >
       {children}
     </VersionContext.Provider>
   );

@@ -119,6 +119,9 @@ export async function POST(
   const maxRpn = d.fmea?.summary?.max_rpn ?? 0;
   const riskRating = computeRiskRating(criticalCount, highCount);
 
+  // NPR v3 rule: reports are documental outputs — DefectDojo observation is
+  // never included (the SI team has its own operational surface).
+
   // AI narrative — try engine, fallback to static summary
   let narrative = '';
   let engineEnriched = false;

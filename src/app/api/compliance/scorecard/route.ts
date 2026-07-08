@@ -1,16 +1,16 @@
 // src/app/api/compliance/scorecard/route.ts
 // Returns compliance scores for all frameworks
 // Source: intelligence_snapshots (scorecard type) + fallback to hardcoded data
+//
+// NPR v3 rule: this is a DOCUMENTAL output — framework scores come from
+// document-grounded evaluations only. The observed (DefectDojo) view is the
+// SI team's own surface, served separately by /api/dashboard/observed-posture
+// and never mixed into documental results.
 
 import { logger } from '@/lib/logger';
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import type {
-  IntelligenceSnapshot,
-  EvidenceEvaluation,
-  ScfFrameworkMapping,
-} from "@/lib/supabase/types";
+import type { IntelligenceSnapshot } from "@/lib/supabase/types";
 import { getFrameworkScores, calculateFrameworkScoresLocally } from "@/lib/data/compliance-data";
 
 export const dynamic = "force-dynamic";
@@ -25,6 +25,7 @@ export async function GET() {
     }
 
     // Try to fetch the latest scorecard snapshot
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: rawSnapshot, error: snapshotError } = await (supabase as any)
       .from("intelligence_snapshots")
       .select("*")

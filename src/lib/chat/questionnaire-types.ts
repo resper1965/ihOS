@@ -51,6 +51,18 @@ export interface RAGReference {
   excerpt: string;
 }
 
+/** Which layer grounded the answer (F3 — posture-grounded answering). */
+export type AnswerSource = 'posture' | 'document' | 'gap';
+
+/** SCF control the question mapped to, with its persisted verdict when any. */
+export interface AnswerMappedControl {
+  code: string;
+  name: string;
+  similarity: number;
+  status?: 'conforming' | 'partial' | 'informal' | 'gap';
+  stale?: boolean;
+}
+
 /** A generated answer for a single question */
 export interface GeneratedAnswer {
   questionId: string;
@@ -62,6 +74,14 @@ export interface GeneratedAnswer {
   confidenceScore: number;
   /** RAG sources used */
   references: RAGReference[];
+  /** Layer that grounded the answer: persisted verdict > documents > gap */
+  answerSource?: AnswerSource;
+  /** SCF controls the question was mapped to (T301) */
+  mappedControls?: AnswerMappedControl[];
+  /** Human review required (weak mapping, stale verdict, or declared gap) */
+  needsReview?: boolean;
+  /** Present when a grounding verdict predates the current corpus (T303) */
+  stalenessWarning?: string;
 }
 
 // ── HITL Review ──────────────────────────────────────────────────────────────
@@ -83,6 +103,10 @@ export interface ReviewableQA {
   cellCoords?: string;
   sheetName?: string;
   rowIndex?: number;
+  /** Provenance surfaced to the human reviewer (F3) */
+  answerSource?: AnswerSource;
+  needsReview?: boolean;
+  stalenessWarning?: string;
 }
 
 // ── Promotion to Knowledge Base ──────────────────────────────────────────────
@@ -99,13 +123,21 @@ export interface PromotionPayload {
   }>;
   /** Conversation context for learning corrections */
   conversationId?: string;
+  /** Scope of the promoted answers (F5): without a channel they are parked
+   *  as needs_review and never served until triaged. */
+  salesChannel?: 'B2B_GEHC' | 'B2B_DIRECT' | null;
+  productVersionId?: string | null;
+  /** Customer assessment these answers came from, when applicable (F4). */
+  sourceAssessmentId?: string | null;
 }
 
 export interface PromotionResult {
-  /** Number of chunks inserted into document_chunks */
-  chunksInserted: number;
+  /** Number of rows written to verified_answers (never document_chunks — F5) */
+  answersInserted: number;
   /** Number of learning corrections written */
   correctionsWritten: number;
+  /** Answers stored as needs_review because no sales channel was provided */
+  parkedForTriage: number;
 }
 
 // ── Download ─────────────────────────────────────────────────────────────────

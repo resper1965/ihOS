@@ -132,6 +132,28 @@ vi.mock('@/lib/chat/rag-search', () => ({
   searchDocuments: vi.fn().mockResolvedValue([]),
 }));
 
+// Mock: @/lib/ihos-engine — tests must never hit the real GRC engine over the
+// network (in CI the fetch hangs past the test timeout). Every method rejects
+// so routes exercise their graceful fallbacks; individual tests override via
+// vi.spyOn(ihosEngine, '...').mockResolvedValue(...).
+vi.mock('@/lib/ihos-engine', () => {
+  const reject = () => Promise.reject(new Error('ihos-engine disabled in tests'));
+  return {
+    ihosEngine: {
+      health: vi.fn(reject),
+      generateThreatModel: vi.fn(reject),
+      getThreatModel: vi.fn(reject),
+      reviewThreatModel: vi.fn(reject),
+      correlateFmea: vi.fn(reject),
+      search: vi.fn(reject),
+      detectGaps: vi.fn(reject),
+      generateGapReport: vi.fn(reject),
+      getRecommendations: vi.fn(reject),
+      evaluateEvidence: vi.fn(reject),
+    },
+  };
+});
+
 vi.mock('@/lib/standard-api/client', () => {
   class MockStandardApiClientError extends Error {
     public readonly code: string;
@@ -204,6 +226,8 @@ vi.mock('next/server', () => {
   return {
     NextResponse: MockNextResponse,
     NextRequest: vi.fn(),
+    // Next 16 background-work API used by ingest routes: run inline in tests.
+    waitUntil: vi.fn((promise: Promise<unknown>) => promise),
   };
 });
 

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRunAssessment } from "@/hooks/queries/use-assessments";
+import { useVersion } from "@/lib/context/version-context";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -38,6 +39,7 @@ export function RunAssessmentModal({
   frameworks,
   loadingFrameworks,
 }: RunAssessmentModalProps) {
+  const { salesChannel: globalChannel } = useVersion();
   const [mode, setMode] = useState<"quick" | "deep">("quick");
   const [salesChannel, setSalesChannel] = useState<string>("all");
   const [forceReevaluate, setForceReevaluate] = useState(false);
@@ -61,7 +63,9 @@ export function RunAssessmentModal({
   useEffect(() => {
     if (open) {
       setMode("quick");
-      setSalesChannel("all");
+      // Default to the Context Bar's commercial scope (NPR v3); the user can
+      // still switch to the internal aggregate ("all") explicitly.
+      setSalesChannel(globalChannel ?? "all");
       setForceReevaluate(false);
       setFrameworkSearch("");
       setDebouncedSearch("");
@@ -77,7 +81,7 @@ export function RunAssessmentModal({
       setResult(null);
       setError(null);
     }
-  }, [open]);
+  }, [open, globalChannel]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(frameworkSearch), 150);

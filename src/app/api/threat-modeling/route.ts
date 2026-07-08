@@ -105,6 +105,7 @@ export async function POST(request: NextRequest) {
   let body: {
     product_version?: string;
     target_frameworks?: string[];
+    sales_channel?: string | null;
     skip_enrichment?: boolean;
     force_reevaluate?: boolean;
   };
@@ -126,6 +127,20 @@ export async function POST(request: NextRequest) {
   if (!Array.isArray(target_frameworks) || target_frameworks.length === 0) {
     return NextResponse.json(
       { error: 'target_frameworks is required and must be a non-empty array' },
+      { status: 400 },
+    );
+  }
+
+  // Commercial context (NPR v3 Moment 1, variable 2): threat models are
+  // channel-scoped because Ionic's privacy role differs per channel.
+  // NULL = internal aggregate analysis (legacy behavior, still allowed).
+  const salesChannel =
+    body.sales_channel === 'B2B_GEHC' || body.sales_channel === 'B2B_DIRECT'
+      ? body.sales_channel
+      : null;
+  if (body.sales_channel != null && salesChannel === null) {
+    return NextResponse.json(
+      { error: 'sales_channel must be "B2B_GEHC" or "B2B_DIRECT" when provided' },
       { status: 400 },
     );
   }
@@ -162,7 +177,11 @@ export async function POST(request: NextRequest) {
       const rowFrameworks = [...(row.target_frameworks ?? [])].sort();
       const sameFrameworks = JSON.stringify(rowFrameworks) === JSON.stringify(sortedFrameworks);
       const sameDeltas = row.model_data?.metadata?.delta_fingerprint === deltaFingerprint;
-      return sameFrameworks && sameDeltas;
+      // Channel isolation: a cached GEHC analysis never answers a Direct
+      // request (and vice versa). Legacy rows without the column read as
+      // NULL and only match channel-less requests.
+      const sameChannel = (row.sales_channel ?? row.model_data?.metadata?.sales_channel ?? null) === salesChannel;
+      return sameFrameworks && sameDeltas && sameChannel;
     }) as any;
 
     if (existing) {
@@ -173,7 +192,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         cached: true,
-        data: { ...(existing.model_data as any), id: existing.id },
+        data: { ...(existing.model_data as Record<string, any>), id: existing.id },
       });
     }
   }
@@ -195,6 +214,9 @@ export async function POST(request: NextRequest) {
       target_frameworks,
       skip_grc_enrichment: skip_enrichment,
       skip_fmea: true,
+      // Mirror of SearchRequest.channel_filter so the engine's RAG pulls the
+      // channel's contractual overlay alongside the global/version corpus.
+      channel_filter: salesChannel === 'B2B_GEHC' ? 'gehc' : salesChannel === 'B2B_DIRECT' ? 'direct' : undefined,
     }, token);
 
     // Stripping FMEA fields just in case the external API hasn't implemented skip_fmea yet
@@ -233,6 +255,7 @@ export async function POST(request: NextRequest) {
       ...generatedData.metadata,
       delta_fingerprint: deltaFingerprint,
       applied_deltas: deltas.map((d) => d.feature_slug),
+      sales_channel: salesChannel,
     } as any,
   };
 
@@ -240,7 +263,11 @@ export async function POST(request: NextRequest) {
   // If this version declares a previous version, diff against its approved
   // analysis so inherited vs. new threats are labelled. The external engine is
   // NOT incremental — this is a post-hoc annotation, not a partial generation.
-  const baseline = await findBaselineModel(admin, previousVersionId, target_frameworks);
+  // NPR v3 rule: the threat model is a DOCUMENTAL calculation. DefectDojo
+  // observation never enters its data — the SI team reads the empirical
+  // correlation through its own operational surface
+  // (/api/threat-modeling/[id]/observed), computed on demand, not persisted.
+  const baseline = await findBaselineModel(admin, previousVersionId, target_frameworks, salesChannel);
   const { data: annotatedData, inheritedCount, newCount, baselineModelId } = annotateInheritance(
     generatedData,
     baseline,
@@ -282,15 +309,16 @@ export async function POST(request: NextRequest) {
   let insertError: { message?: string } | null;
   ({ data: inserted, error: insertError } = await admins
     .from('threat_models')
-    .insert({ ...baseRow, baseline_model_id: baselineModelId, source: modelSource })
+    .insert({ ...baseRow, baseline_model_id: baselineModelId, source: modelSource, sales_channel: salesChannel })
     .select('*')
     .single());
 
   if (insertError) {
-    logger.warn('Threat model insert with lineage columns failed; retrying with base columns (apply 20260702000002_version_baseline_lineage.sql)', {
+    logger.warn('Threat model insert with lineage/channel columns failed; retrying with base columns (apply 20260702000002 and 20260707000005)', {
       context: 'threat-modeling',
       meta: { error: insertError.message },
     });
+    // sales_channel remains recoverable from model_data.metadata on old schemas.
     ({ data: inserted, error: insertError } = await admins
       .from('threat_models')
       .insert(baseRow)

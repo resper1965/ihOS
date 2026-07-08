@@ -81,13 +81,15 @@ describe('DEFAULT_FRAMEWORKS', () => {
   });
 
   it('contains all expected framework IDs', () => {
+    // Core prioritized set: ISO 27001/27701, LGPD, GDPR, SOC 2, NIST 800-53
+    // (re-prioritized on main, 2026-07 — HIPAA/FedRAMP left the default set).
     const ids = DEFAULT_FRAMEWORKS.map((f) => f.id);
     expect(ids).toContain('iso27001');
-    expect(ids).toContain('soc2');
-    expect(ids).toContain('HI-2013');
-    expect(ids).toContain('nist_800_53');
     expect(ids).toContain('iso27701');
-    expect(ids).toContain('fedramp');
+    expect(ids).toContain('BR-LGPD');
+    expect(ids).toContain('EU-GDPR');
+    expect(ids).toContain('soc2');
+    expect(ids).toContain('nist_800_53');
   });
 
   it('each entry has an id and a name', () => {

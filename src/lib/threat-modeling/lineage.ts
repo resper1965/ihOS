@@ -63,6 +63,7 @@ export async function findBaselineModel(
   admin: AdminClient,
   previousVersionId: string | null,
   targetFrameworks: string[] = [],
+  salesChannel: string | null = null,
 ): Promise<{ id: string; model_data: Record<string, any> } | null> {
   if (!previousVersionId) return null;
 
@@ -76,14 +77,17 @@ export async function findBaselineModel(
   const prevCode = (prevVersion as { version_code?: string } | null)?.version_code;
   if (!prevCode) return null;
 
+  // sales_channel is a newer column (20260707000005); select * and read it
+  // defensively so older databases keep working.
   const { data: rows } = await admin
     .from('threat_models')
-    .select('id, model_data, status, created_at, target_frameworks')
+    .select('*')
     .eq('product_version', prevCode)
     .order('created_at', { ascending: false });
 
   let list = (rows ?? []) as unknown as Array<{
     id: string; model_data: Record<string, any>; status: string; target_frameworks?: string[];
+    sales_channel?: string | null;
   }>;
   if (list.length === 0) return null;
 
@@ -97,6 +101,14 @@ export async function findBaselineModel(
     if (overlapping.length === 0) return null;
     list = overlapping;
   }
+
+  // Channel isolation (NPR v3 Moment 1): a GEHC analysis never inherits from
+  // a Direct baseline — the privacy role differs, so inherited/new labels
+  // would be misleading. Channel-less legacy baselines only serve
+  // channel-less requests.
+  const channelMatches = list.filter((r) => (r.sales_channel ?? null) === salesChannel);
+  if (channelMatches.length === 0) return null;
+  list = channelMatches;
 
   const byStatus = (s: string) => list.find((r) => String(r.status).toLowerCase().includes(s));
   const chosen = byStatus('approved') ?? byStatus('reviewed') ?? list[0];

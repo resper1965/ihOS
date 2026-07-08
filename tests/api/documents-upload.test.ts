@@ -4,7 +4,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockSupabaseServer, mockSupabaseAdmin } from '../setup';
 import { verifyClarity } from '@/lib/chat/clarity-gate';
-import { chunkDocument } from '@/lib/chat/chunker';
+import { chunkDocument, chunkComplianceDocument } from '@/lib/chat/chunker';
 import { generateEmbeddings } from '@/lib/chat/embeddings';
 
 // Mock the dependencies
@@ -14,6 +14,11 @@ vi.mock('@/lib/chat/clarity-gate', () => ({
 
 vi.mock('@/lib/chat/chunker', () => ({
   chunkDocument: vi.fn().mockReturnValue([
+    { content: 'Chunk 1 content', index: 0, metadata: {} },
+  ]),
+  // The ingest routes moved to the compliance-oriented chunker
+  // (vectorization hardening) — mock both exports.
+  chunkComplianceDocument: vi.fn().mockReturnValue([
     { content: 'Chunk 1 content', index: 0, metadata: {} },
   ]),
 }));
@@ -129,7 +134,8 @@ describe('Document Upload and Ingestion API', () => {
     expect(body.error).toBe('Document fails Clarity Gate quality check.');
     expect(body.clarityReport.clarityStatus).toBe('UNCLEAR');
     expect(verifyClarity).toHaveBeenCalledWith('Unproven security claims will be achieved in 2027.');
-    expect(chunkDocument).not.toHaveBeenCalled(); // Blocked ingestion
+    expect(chunkDocument).not.toHaveBeenCalled();
+    expect(chunkComplianceDocument).not.toHaveBeenCalled(); // Blocked ingestion
   });
 
   it('bypasses Clarity Gate check and indexes successfully if forceIndex is true', async () => {
@@ -154,7 +160,7 @@ describe('Document Upload and Ingestion API', () => {
     expect(body.data.documentId).toBe(100);
     expect(body.data.chunkCount).toBe(1);
     expect(verifyClarity).not.toHaveBeenCalled(); // Bypassed
-    expect(chunkDocument).toHaveBeenCalled(); // Executed chunking
+    expect(chunkComplianceDocument).toHaveBeenCalled(); // Executed chunking
     expect(generateEmbeddings).toHaveBeenCalled(); // Executed embeddings
   });
 });

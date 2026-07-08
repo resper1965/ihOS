@@ -316,8 +316,8 @@ describe('recordUserCorrection tool', () => {
 // ---------------------------------------------------------------------------
 
 describe('agentTools map', () => {
-  it('exports all 16 tools', () => {
-    expect(Object.keys(agentTools)).toHaveLength(16);
+  it('exports all 17 tools', () => {
+    expect(Object.keys(agentTools)).toHaveLength(17);
     expect(agentTools).toHaveProperty('complianceScore');
     expect(agentTools).toHaveProperty('crossCoverage');
     expect(agentTools).toHaveProperty('blastRadius');

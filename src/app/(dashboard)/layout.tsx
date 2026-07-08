@@ -18,12 +18,14 @@ import {
   Database,
   AlertTriangle,
   Users,
+  Flag,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { signOut } from "@/lib/supabase/auth-actions";
 import { NotificationsDropdown } from "@/components/dashboard/notifications-dropdown";
 import { VersionProvider } from "@/lib/context/version-context";
 import { VersionSwitcher } from "@/components/dashboard/version-switcher";
+import { ChannelSwitcher } from "@/components/dashboard/channel-switcher";
 import { PageTitleProvider, useCurrentPageMeta } from "@/lib/context/page-title-context";
 import { HelpProvider, useHelp } from "@/lib/context/help-context";
 import { HelpSidebar } from "@/components/dashboard/help-sidebar";
@@ -37,7 +39,12 @@ const NAV_ITEMS = [
   { label: "Risk Analysis", href: "/threat-modeling", icon: AlertTriangle },
   { label: "Chat", href: "/chat", icon: MessageSquare },
   { label: "Audits & Checks", href: "/assessments", icon: ClipboardCheck },
-  { label: "Knowledge Base", href: "/documents", icon: FileText },
+  // Goals was only reachable through the Overview widget — a tracked
+  // remediation program deserves first-class navigation (spec US11).
+  { label: "Goals & Tasks", href: "/goals", icon: Flag },
+  // Label must match the destination: /documents manages documents;
+  // the RAG-health page (/knowledge-base) is linked from Documents.
+  { label: "Documents", href: "/documents", icon: FileText },
   { label: "Reports", href: "/reports", icon: BarChart3 },
 ] as const;
 
@@ -268,9 +275,10 @@ function HeaderWithTitle({
         )}
       </div>
 
-      {/* Right — actions */}
+      {/* Right — actions (Context Bar: version × channel, NPR v3) */}
       <div className="flex items-center gap-3">
         <VersionSwitcher />
+        <ChannelSwitcher />
         <div className="h-6 w-px bg-border-glass" />
         <NotificationsDropdown />
         <div className="h-6 w-px bg-border-glass" />

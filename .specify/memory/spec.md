@@ -4,7 +4,7 @@
 
 **Created**: 2026-06-29
 
-**Status**: Draft (v2 — updated with full inventory)
+**Status**: Draft (v3 — two operating moments formalized, 2026-07-07)
 
 **Input**: User description: "Spec completa do ihOS como produto (visão geral de todos os módulos)"
 
@@ -15,6 +15,88 @@
 **ihOS** (Ionic Health OS) is a multi-framework GRC Compliance Intelligence Platform built for **Ionic Health** to manage regulatory compliance for **nCommand Lite** — a SaaS medical device for remote MRI/CT/PET-CT operation via WebRTC.
 
 The platform unifies **RAG-powered evidence evaluation**, **automated threat modeling (STRIDE + FMEA)**, **agentic AI compliance assistant**, and **multi-framework compliance assessments** across 231 frameworks (ISO 27001, HIPAA, LGPD, SOC 2, NIST 800-53, TX-RAMP, GDPR, IEC 62304) into a single dashboard with real-time gap analysis, POA&M tracking, and remediation goal management.
+
+---
+
+## Operating Model — The Two Moments *(normative, v3)*
+
+The platform operates in **two distinct moments**. They answer different questions,
+move at different cadences, and must never overwrite each other — every posture
+surface presents them side by side.
+
+### Moment 1 — Documental (always document-grounded)
+
+Gap analysis against any standard/framework. **Every analysis** — framework
+posture, answering a customer assessment, or generating a threat model — MUST
+resolve its document set through three mandatory context variables:
+
+1. **Global corpus**: ISMS/PIMS policies, procedures and organization-wide
+   documents. Applies to every analysis.
+2. **Commercial context (sales channel)**: when Ionic sells **through GEHC**,
+   Ionic's privacy role is DIFFERENT from when it sells **direct**. This is
+   not merely a document filter — the role changes which privacy obligations
+   apply (controller vs. processor; ISO 27701 Annex A vs. Annex B; LGPD
+   controlador vs. operador). Channel context therefore selects both the
+   contractual documents (DPAs, MSAs, EULAs) AND the applicable control
+   subset. Analyses must never mix channel overlays, and "all channels" is
+   restricted to internal aggregate views that never produce a
+   customer-facing answer.
+3. **Product version**: nCommand Lite versions carry different control
+   realities in their documentation (SAD/SRS/test reports). Each version is
+   analyzed separately; version-scoped documents never answer for another
+   version. Version lineage (previous_version_id) supports inheritance-aware
+   threat modeling.
+
+**Fail closed on missing context.** A customer-facing answer surface (chat
+questionnaire, customer-assessment answering, MCP `get_posture`) MUST reject
+the request when the required context is absent rather than infer, default,
+or fall back: sales channel is mandatory (no answer is produced without it),
+and version defaults only to the explicit "Global / organization" scope, never
+to an arbitrary version. Internal aggregate views ("all channels") are the
+sole exception and never emit a customer-facing answer.
+
+**Allowed answer inputs (Moment 1).** Answer generation reads: (a) the
+document corpus resolved by the three variables above, and (b) the
+**verified-answer store** — human-approved answers from past assessments,
+themselves derived from documents and scoped by the same channel/version.
+Verified answers are a phrasing/precedent reference, never authoritative over
+the current document-grounded verdict. Nothing from Moment 2 (DefectDojo /
+observation) is ever an answer input.
+
+### Moment 2 — Continuous Observation (Ionic SI view, dynamic)
+
+The security team's live view over the same SCF control spine, fed by
+operational security tooling.
+
+**Normative rule: DefectDojo is the single heart of ALL vulnerabilities.**
+Every vulnerability, from every source, lands in DefectDojo first; ihOS
+integrates with DefectDojo only (one pipe, many feeds). Planned/actual feeds:
+
+| Feed | Status |
+|---|---|
+| CI/CD pipeline scans (SAST/DAST/SCA) | ✅ already flowing into DefectDojo |
+| Pentest results (imported reports) | ⏳ to be aggregated |
+| External surface scan of every `ionic.health` asset/URL (SecurityScorecard-like) | ⏳ to be aggregated |
+| Wazuh findings across all company assets (desktops to firewalls) | 🚧 in deployment |
+
+ihOS syncs DefectDojo findings, resolves them onto SCF controls
+(`runtime_control_signals`), and derives an observed status per control
+(`violated` / `degraded` / `clean`).
+
+**Separation-of-views rule (normative, 2026-07-08).** Documental
+calculations and their outputs — customer assessments and their answers,
+threat models and their reports, SCF gap analysis / framework scorecards —
+use DOCUMENTS ONLY. DefectDojo/observation data never enters them. The
+observed view (DefectDojo findings, plus ISMS/PIMS weaknesses lacking
+operational evidence) is the SI team's OPERATIONAL surface: internal-role
+gated, served by dedicated endpoints (dashboard observed-posture; on-demand
+threat-correlation reads), and never shared into document-based answers or
+results. The only permitted cross-moment interaction is a TRIGGER: a control
+documentally conforming but observed violated invalidates its cached
+evaluation (forcing a documents-only re-evaluation) and alerts the SI team —
+observation may prompt documental work, never inform its result. A
+second-phase spec will define the mandatory routing of all vulnerability
+sources into DefectDojo.
 
 ### Architecture
 

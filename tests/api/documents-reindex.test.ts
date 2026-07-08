@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockSupabaseServer, mockSupabaseAdmin } from '../setup';
 import { extractText } from '@/lib/chat/document-extractor';
-import { chunkDocument } from '@/lib/chat/chunker';
+import { chunkComplianceDocument } from '@/lib/chat/chunker';
 import { generateEmbeddings } from '@/lib/chat/embeddings';
 import { extractDeltasFromDocument } from '@/lib/assessment/delta-extractor';
 import { triggerGrcRecalibration } from '@/lib/assessment/grc-trigger';
@@ -14,6 +14,9 @@ vi.mock('@/lib/chat/document-extractor', () => ({
 
 vi.mock('@/lib/chat/chunker', () => ({
   chunkDocument: vi.fn(),
+  // The ingest routes moved to the compliance-oriented chunker
+  // (vectorization hardening) — mock both exports.
+  chunkComplianceDocument: vi.fn(),
 }));
 
 vi.mock('@/lib/chat/embeddings', () => ({
@@ -128,7 +131,7 @@ describe('Document Re-indexing API', () => {
 
     // Setup mock implementations for extraction & chunking
     (extractText as any).mockResolvedValue('Extracted document text content.');
-    (chunkDocument as any).mockReturnValue([
+    (chunkComplianceDocument as any).mockReturnValue([
       { content: 'Chunk 1', index: 0, metadata: { sectionTitle: 'Section 1' } },
     ]);
     (generateEmbeddings as any).mockResolvedValue([[0.1, 0.2, 0.3]]);
@@ -154,7 +157,7 @@ describe('Document Re-indexing API', () => {
     expect(body.data.chunkCount).toBe(1);
 
     expect(extractText).toHaveBeenCalled();
-    expect(chunkDocument).toHaveBeenCalledWith('Extracted document text content.');
+    expect(chunkComplianceDocument).toHaveBeenCalledWith('Extracted document text content.');
     
     // Wait briefly for background promises to settle
     await new Promise((resolve) => setTimeout(resolve, 50));
