@@ -119,21 +119,8 @@ export async function POST(
   const maxRpn = d.fmea?.summary?.max_rpn ?? 0;
   const riskRating = computeRiskRating(criticalCount, highCount);
 
-  // Analytical axis: threats flagged empirically observed by the DefectDojo
-  // correlation (stamped on model_data by the generation route).
-  const observedThreats = threats.filter((t) => t.empirically_observed === true);
-  const empiricalMeta = (d.metadata as Record<string, unknown> | undefined)
-    ?.empirical_correlation as
-    | { correlated_finding_count?: number; correlation_level?: string }
-    | undefined;
-  const observedSummary =
-    observedThreats.length > 0
-      ? {
-          observed_threat_count: observedThreats.length,
-          correlated_finding_count: empiricalMeta?.correlated_finding_count ?? 0,
-          correlation_level: empiricalMeta?.correlation_level ?? 'stride-category',
-        }
-      : undefined;
+  // NPR v3 rule: reports are documental outputs — DefectDojo observation is
+  // never included (the SI team has its own operational surface).
 
   // AI narrative — try engine, fallback to static summary
   let narrative = '';
@@ -157,10 +144,6 @@ export async function POST(
       `Threat modeling analysis identified ${totalThreats} threats ` +
       `(${criticalCount} critical, ${highCount} high) with an average RPN of ${avgRpn.toFixed(1)}. ` +
       `${gaps.length} compliance gaps and ${recommendations.length} recommendations were generated.`;
-    if (observedSummary) {
-      narrative +=
-        ` ${observedSummary.observed_threat_count} threat(s) are empirically observed via active runtime findings (category-level correlation).`;
-    }
   }
 
   const reportData: ThreatModelReportData = {
@@ -182,7 +165,6 @@ export async function POST(
       recommendations_count: recommendations.length,
       risk_rating: riskRating,
       narrative,
-      observed: observedSummary,
     },
 
     risk_matrix: buildRiskMatrix(threats),

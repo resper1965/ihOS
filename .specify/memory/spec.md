@@ -65,11 +65,22 @@ integrates with DefectDojo only (one pipe, many feeds). Planned/actual feeds:
 
 ihOS syncs DefectDojo findings, resolves them onto SCF controls
 (`runtime_control_signals`), and derives an observed status per control
-(`violated` / `degraded` / `clean`) shown NEXT TO the documental verdict
-(`conforming` / `partial` / `informal` / `gap`). The only cross-moment
-interaction: a control documentally conforming but observed violated
-invalidates its cached evaluation and alerts operators. A second-phase spec
-will define the mandatory routing of all sources into DefectDojo.
+(`violated` / `degraded` / `clean`).
+
+**Separation-of-views rule (normative, 2026-07-08).** Documental
+calculations and their outputs — customer assessments and their answers,
+threat models and their reports, SCF gap analysis / framework scorecards —
+use DOCUMENTS ONLY. DefectDojo/observation data never enters them. The
+observed view (DefectDojo findings, plus ISMS/PIMS weaknesses lacking
+operational evidence) is the SI team's OPERATIONAL surface: internal-role
+gated, served by dedicated endpoints (dashboard observed-posture; on-demand
+threat-correlation reads), and never shared into document-based answers or
+results. The only permitted cross-moment interaction is a TRIGGER: a control
+documentally conforming but observed violated invalidates its cached
+evaluation (forcing a documents-only re-evaluation) and alerts the SI team —
+observation may prompt documental work, never inform its result. A
+second-phase spec will define the mandatory routing of all vulnerability
+sources into DefectDojo.
 
 ### Architecture
 

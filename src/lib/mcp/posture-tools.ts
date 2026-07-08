@@ -95,7 +95,7 @@ export const MCP_TOOLS = [
   {
     name: 'get_threat_posture',
     description:
-      'Latest threat-model summary for a product version: STRIDE threat counts, empirically observed threats (confirmed by active runtime findings), gaps and review status. Threat models are channel-scoped (NPR v3): pass sales_channel to read that channel\'s analysis; omit it to read only channel-less internal aggregate models.',
+      'Latest DOCUMENTAL threat-model summary for a product version: STRIDE threat counts, gaps and review status. Threat models are channel-scoped (NPR v3): pass sales_channel to read that channel\'s analysis; omit it to read only channel-less internal aggregate models. Runtime observation is never part of this output.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -303,7 +303,6 @@ async function getThreatPosture(
       target_frameworks: row.target_frameworks ?? [],
       threat_count: threats.length,
       threats_by_stride_category: byCategory,
-      empirically_observed_threats: threats.filter((t) => t.empirically_observed === true).length,
       inherited_threats: threats.filter((t) => t.is_new === false).length,
       gap_count: (d?.gaps ?? []).length,
       limitations: d?.limitations ?? [],

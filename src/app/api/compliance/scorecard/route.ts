@@ -2,68 +2,18 @@
 // Returns compliance scores for all frameworks
 // Source: intelligence_snapshots (scorecard type) + fallback to hardcoded data
 //
-// Every response also carries the `observed` overlay — the analytical posture
-// axis (runtime signals from DefectDojo mapped onto SCF controls, projected
-// per framework via scf_framework_mappings). It is additive: the documental
-// framework scores are never adjusted by it.
+// NPR v3 rule: this is a DOCUMENTAL output — framework scores come from
+// document-grounded evaluations only. The observed (DefectDojo) view is the
+// SI team's own surface, served separately by /api/dashboard/observed-posture
+// and never mixed into documental results.
 
 import { logger } from '@/lib/logger';
 import { NextResponse } from "next/server";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { IntelligenceSnapshot } from "@/lib/supabase/types";
 import { getFrameworkScores, calculateFrameworkScoresLocally } from "@/lib/data/compliance-data";
-import { getObservedPosture, type ObservedPostureSummary } from "@/lib/posture/observed-status";
 
 export const dynamic = "force-dynamic";
-
-interface ObservedOverlay {
-  violatedControls: string[];
-  degradedControls: string[];
-  /** framework_code → count of violated SCF controls mapped to it */
-  violationsByFramework: Record<string, number>;
-  lastSyncedAt: string | null;
-}
-
-async function buildObservedOverlay(): Promise<ObservedOverlay> {
-  const admin = createAdminClient();
-  const posture: ObservedPostureSummary = await getObservedPosture(admin);
-
-  const violatedControls = posture.violated.map((v) => v.scfControlCode);
-  const degradedControls = posture.degraded.map((d) => d.scfControlCode);
-  const violationsByFramework: Record<string, number> = {};
-
-  if (violatedControls.length > 0) {
-    const { data, error } = await admin
-      .from("scf_framework_mappings")
-      .select("framework_code, scf_control_code")
-      .in("scf_control_code", violatedControls);
-
-    if (error) {
-      logger.warn("Observed overlay framework projection failed", {
-        context: "compliance/scorecard",
-        meta: { error: error.message },
-      });
-    } else {
-      const perFramework = new Map<string, Set<string>>();
-      for (const row of (data ?? []) as Array<{ framework_code: string; scf_control_code: string }>) {
-        const set = perFramework.get(row.framework_code) ?? new Set<string>();
-        set.add(row.scf_control_code);
-        perFramework.set(row.framework_code, set);
-      }
-      for (const [framework, controls] of perFramework) {
-        violationsByFramework[framework] = controls.size;
-      }
-    }
-  }
-
-  return {
-    violatedControls,
-    degradedControls,
-    violationsByFramework,
-    lastSyncedAt: posture.lastSyncedAt,
-  };
-}
 
 export async function GET() {
   try {
@@ -72,20 +22,6 @@ export async function GET() {
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    // Analytical axis overlay — attached to every response variant below.
-    // Failure degrades to an empty overlay; it never blocks the scorecard.
-    let observed: ObservedOverlay = {
-      violatedControls: [],
-      degradedControls: [],
-      violationsByFramework: {},
-      lastSyncedAt: null,
-    };
-    try {
-      observed = await buildObservedOverlay();
-    } catch (overlayError) {
-      logger.warn("Observed overlay unavailable", { context: "compliance/scorecard", error: overlayError });
     }
 
     // Try to fetch the latest scorecard snapshot
@@ -106,7 +42,6 @@ export async function GET() {
         source: "database",
         generatedAt: snapshot.created_at,
         frameworks: snapshotData.frameworks ?? snapshotData,
-        observed,
       });
     }
 
@@ -118,7 +53,6 @@ export async function GET() {
           source: "computed",
           generatedAt: new Date().toISOString(),
           frameworks: computedScores,
-          observed,
         });
       }
     } catch (calcError) {
@@ -131,7 +65,6 @@ export async function GET() {
       source: "static",
       generatedAt: new Date().toISOString(),
       frameworks: scores,
-      observed,
     });
   } catch (error) {
     logger.error("Scorecard fetch failed", { context: "compliance/scorecard", error: error });
