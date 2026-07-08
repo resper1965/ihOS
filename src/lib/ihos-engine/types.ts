@@ -15,6 +15,9 @@ export interface GenerateRequest {
   llm_model?: string;
   skip_grc_enrichment?: boolean;
   skip_fmea?: boolean;
+  /** Commercial context (NPR v3 Moment 1): restricts the engine's RAG to the
+   *  channel's document overlay, mirroring SearchRequest.channel_filter. */
+  channel_filter?: 'all' | 'gehc' | 'direct';
 }
 
 export interface ReviewRequest {

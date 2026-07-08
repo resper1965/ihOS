@@ -152,4 +152,25 @@ describe("findBaselineModel", () => {
     const res = await findBaselineModel(admin, "prev-id", ["soc2"]);
     expect(res).toBeNull();
   });
+
+  // Channel isolation (NPR v3 Moment 1): baselines only serve their own channel.
+  it("never inherits across sales channels", async () => {
+    const admin = makeAdmin("v2.2.x", [
+      { id: "gehc-model", status: "approved", model_data: {}, target_frameworks: ["iso27001"], sales_channel: "B2B_GEHC" },
+    ]);
+    // A Direct request must not inherit from a GEHC baseline.
+    expect(await findBaselineModel(admin, "prev-id", ["iso27001"], "B2B_DIRECT")).toBeNull();
+    // The same channel matches.
+    const same = await findBaselineModel(admin, "prev-id", ["iso27001"], "B2B_GEHC");
+    expect(same?.id).toBe("gehc-model");
+  });
+
+  it("serves channel-less legacy baselines only to channel-less requests", async () => {
+    const admin = makeAdmin("v2.2.x", [
+      { id: "legacy-model", status: "approved", model_data: {}, target_frameworks: ["iso27001"] },
+    ]);
+    expect(await findBaselineModel(admin, "prev-id", ["iso27001"], "B2B_GEHC")).toBeNull();
+    const channelless = await findBaselineModel(admin, "prev-id", ["iso27001"], null);
+    expect(channelless?.id).toBe("legacy-model");
+  });
 });

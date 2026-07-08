@@ -108,6 +108,12 @@ export interface AssessmentResult {
   // Result-quality totals — drive the post-run "what to do now" guidance
   totalEvaluationErrors?: number;
   totalEstimated?: number;
+
+  // Privacy-role applicability (NPR v3 Moment 1): controls declared not
+  // applicable for this sales channel's role — excluded from evaluation and
+  // scoring, reported separately (never as gaps).
+  notApplicableControls?: string[];
+  totalNotApplicable?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -191,11 +197,42 @@ export async function runAssessment(
     }
   }
 
+  // ── Privacy-role applicability (NPR v3 Moment 1, variable 2) ─────────
+  // Ionic's privacy role differs per sales channel (via GEHC ≈ processor;
+  // direct ≈ controller — ISO 27701 Annex A/B). Controls the GRC team
+  // declared not applicable for this channel's role are excluded from
+  // evaluation and scoring and reported separately — a processor is not
+  // "in gap" on controller-only obligations. Fail-closed: while
+  // channel_control_applicability is empty/absent, the FULL control set is
+  // evaluated — ihOS never guesses applicability.
+  let notApplicableControls: string[] = [];
+  if (config.salesChannel) {
+    try {
+      const admin = createAdminClient();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const { data: napRows } = await (admin as any)
+        .from('channel_control_applicability')
+        .select('scf_control_code')
+        .eq('sales_channel', config.salesChannel)
+        .eq('applicable', false);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const excluded = new Set(((napRows ?? []) as any[]).map((r) => r.scf_control_code));
+      if (excluded.size > 0) {
+        notApplicableControls = allControls
+          .map((c) => c.control_id || c.id)
+          .filter((code) => excluded.has(code));
+        allControls = allControls.filter((c) => !excluded.has(c.control_id || c.id));
+      }
+    } catch (err) {
+      console.warn('[Assessment] channel_control_applicability unavailable, evaluating full control set:', err);
+    }
+  }
+
   onProgress?.({
     phase: 'loading_controls',
     current: allControls.length,
     total: allControls.length,
-    message: `Loaded ${allControls.length} relevant SCF controls.`,
+    message: `Loaded ${allControls.length} relevant SCF controls.${notApplicableControls.length > 0 ? ` ${notApplicableControls.length} excluded as not applicable to ${config.salesChannel}'s privacy role.` : ''}`,
   });
 
   // ── Phase 2: Evaluate each control ──────────────────────────────────
@@ -554,6 +591,8 @@ export async function runAssessment(
     totalFreshlyEvaluated,
     totalEvaluationErrors,
     totalEstimated,
+    notApplicableControls,
+    totalNotApplicable: notApplicableControls.length,
   };
 
   onProgress?.({

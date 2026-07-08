@@ -114,6 +114,7 @@ export function GenerateThreatModelModal({
   const { versions, activeVersion } = useVersion();
   const [step, setStep] = useState<WizardStep>(1);
   const [version, setVersion] = useState("");
+  const [salesChannel, setSalesChannel] = useState<string>("");
   const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>(DEFAULT_FRAMEWORKS);
   const [frameworkSearch, setFrameworkSearch] = useState("");
   const [progress, setProgress] = useState(0);
@@ -315,6 +316,7 @@ export function GenerateThreatModelModal({
         body: JSON.stringify({
           product_version: version,
           target_frameworks: selectedFrameworks,
+          sales_channel: salesChannel || null,
           force_reevaluate: forceReevaluate,
         }),
       });
@@ -332,7 +334,7 @@ export function GenerateThreatModelModal({
       setIsGenerating(false);
       setError(err instanceof Error ? err.message : "An unexpected error occurred");
     }
-  }, [version, selectedFrameworks, forceReevaluate]);
+  }, [version, selectedFrameworks, salesChannel, forceReevaluate]);
 
   return (
     <Dialog
@@ -366,6 +368,36 @@ export function GenerateThreatModelModal({
               </select>
               <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted pointer-events-none" />
             </div>
+          </div>
+
+          {/* Sales Channel (NPR v3 — commercial context) */}
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-text-muted">
+              Sales Channel
+            </label>
+            <div className="relative">
+              <select
+                value={salesChannel}
+                onChange={(e) => setSalesChannel(e.target.value)}
+                className="w-full appearance-none rounded-xl border border-border-glass bg-white/5 px-4 py-2.5 pr-10 text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-300 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
+              >
+                <option value="" className="bg-bg-card text-text-primary">
+                  Internal aggregate (no channel)
+                </option>
+                <option value="B2B_GEHC" className="bg-bg-card text-text-primary">
+                  B2B via GEHC (Ionic as processor)
+                </option>
+                <option value="B2B_DIRECT" className="bg-bg-card text-text-primary">
+                  B2B Direct (Ionic as controller)
+                </option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-muted pointer-events-none" />
+            </div>
+            <p className="mt-1 text-[10px] text-text-muted leading-relaxed">
+              Ionic&apos;s privacy role differs per channel — the analysis pulls that
+              channel&apos;s contractual documents and never mixes overlays. Baselines and
+              cached analyses only match within the same channel.
+            </p>
           </div>
 
           {/* Frameworks */}
@@ -523,6 +555,18 @@ export function GenerateThreatModelModal({
               </p>
               <p className="mt-0.5 text-sm font-medium text-text-primary">
                 {version}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-text-muted">
+                Sales Channel
+              </p>
+              <p className="mt-0.5 text-sm font-medium text-text-primary">
+                {salesChannel === "B2B_GEHC"
+                  ? "B2B via GEHC (processor role)"
+                  : salesChannel === "B2B_DIRECT"
+                    ? "B2B Direct (controller role)"
+                    : "Internal aggregate (no channel)"}
               </p>
             </div>
             <div>

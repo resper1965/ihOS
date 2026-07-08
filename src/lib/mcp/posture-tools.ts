@@ -95,13 +95,18 @@ export const MCP_TOOLS = [
   {
     name: 'get_threat_posture',
     description:
-      'Latest threat-model summary for a product version: STRIDE threat counts, empirically observed threats (confirmed by active runtime findings), gaps and review status. Version-scoped only — threat models are channel-agnostic (documented exception to the version×channel rule).',
+      'Latest threat-model summary for a product version: STRIDE threat counts, empirically observed threats (confirmed by active runtime findings), gaps and review status. Threat models are channel-scoped (NPR v3): pass sales_channel to read that channel\'s analysis; omit it to read only channel-less internal aggregate models.',
     inputSchema: {
       type: 'object',
       properties: {
         product_version_code: {
           type: 'string',
           description: 'Product version code (e.g. "v2.5.0").',
+        },
+        sales_channel: {
+          type: 'string',
+          enum: ['B2B_GEHC', 'B2B_DIRECT'],
+          description: 'Commercial context of the analysis. Omit for channel-less internal aggregate models only.',
         },
       },
       required: ['product_version_code'],
@@ -228,23 +233,40 @@ async function getThreatPosture(
   if (typeof versionCode !== 'string' || !versionCode) {
     throw new McpToolError('product_version_code is required');
   }
+  const channel = args.sales_channel;
+  if (channel !== undefined && channel !== 'B2B_GEHC' && channel !== 'B2B_DIRECT') {
+    throw new McpToolError('sales_channel must be "B2B_GEHC" or "B2B_DIRECT" when provided');
+  }
 
+  // select * and filter in JS: sales_channel is a newer column and legacy
+  // rows/databases read as NULL (channel-less), matching only channel-less
+  // requests — GEHC posture is never served from a Direct analysis.
   const { data: rows } = await admin
     .from('threat_models')
-    .select('id, status, created_at, target_frameworks, model_data')
+    .select('*')
     .eq('product_version', versionCode)
     .order('created_at', { ascending: false })
-    .limit(1);
+    .limit(25);
 
-  const row = (rows ?? [])[0] as
-    | { id: string; status: string; created_at: string; target_frameworks?: string[]; model_data?: Record<string, unknown> }
-    | undefined;
+  const wanted = (channel as string | undefined) ?? null;
+  const row = ((rows ?? []) as Array<{
+    id: string; status: string; created_at: string; target_frameworks?: string[];
+    model_data?: Record<string, unknown>; sales_channel?: string | null;
+  }>).find((r) => {
+    const rowChannel = r.sales_channel
+      ?? (r.model_data as { metadata?: { sales_channel?: string | null } } | undefined)?.metadata?.sales_channel
+      ?? null;
+    return rowChannel === wanted;
+  });
 
   if (!row) {
     return {
       product_version_code: versionCode,
+      sales_channel: wanted,
       threat_model: null,
-      note: 'No threat model has been generated for this version yet.',
+      note: wanted
+        ? `No threat model has been generated for this version in channel ${wanted} yet.`
+        : 'No channel-less threat model exists for this version. Pass sales_channel to read a channel-scoped analysis.',
     };
   }
 
@@ -259,6 +281,7 @@ async function getThreatPosture(
 
   return {
     product_version_code: versionCode,
+    sales_channel: wanted,
     threat_model: {
       id: row.id,
       status: String(row.status ?? 'draft').toLowerCase().replace('modelstatus.', ''),
@@ -271,7 +294,6 @@ async function getThreatPosture(
       gap_count: (d?.gaps ?? []).length,
       limitations: d?.limitations ?? [],
     },
-    note: 'Version-scoped by design: threat models are channel-agnostic (documented exception).',
   };
 }
 
