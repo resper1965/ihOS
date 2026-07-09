@@ -121,7 +121,9 @@ export default function DashboardPage() {
     );
   }
 
-  const { stats, activities, msrData } = data;
+  const stats = data.stats || { frameworks: "0", documents: "0", assessments: "0", score: "—" };
+  const activities = data.activities || [];
+  const msrData = data.msrData || null;
 
   const STATS = [
     {
@@ -272,7 +274,7 @@ export default function DashboardPage() {
                 MSR Asset Scope (PPTDF)
               </span>
               <div className="flex flex-wrap gap-1.5">
-                {Object.entries(msrData.stats.pptdf).map(([scope, count]) => (
+                {Object.entries(msrData.stats.pptdf || {}).map(([scope, count]) => (
                   <div
                     key={scope}
                     className="flex items-center gap-1.5 rounded-lg bg-black/[0.03] dark:bg-white/5 px-2.5 py-1.5 text-xs text-text-secondary border border-border-glass"

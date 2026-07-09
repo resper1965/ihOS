@@ -19,6 +19,18 @@ export async function createClient() {
     );
   }
 
+  // Bypass cookies for cron/background jobs (they fail in Lambda if cookies() is called)
+  const isCron = process.env.NEXT_PHASE === 'action' || process.env.IS_CRON === 'true';
+  
+  if (isCron) {
+    return createServerClient<Database>(supabaseUrl, supabaseAnonKey, {
+      cookies: {
+        getAll() { return []; },
+        setAll() {},
+      },
+    });
+  }
+
   const cookieStore = await cookies();
 
   const client = createServerClient<Database>(supabaseUrl, supabaseAnonKey, {

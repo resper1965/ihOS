@@ -176,7 +176,8 @@ export async function runAssessment(
   // Optimize: Filter controls by selected frameworks to avoid timing out on 1,468 items
   if (config.frameworks && config.frameworks.length > 0) {
     try {
-      const supabase = await createClient();
+      const isCron = process.env.IS_CRON === 'true';
+      const supabase = isCron ? createAdminClient() : await createClient();
       const { data: mappings } = await supabase
         .from('scf_framework_mappings')
         .select('scf_control_code')

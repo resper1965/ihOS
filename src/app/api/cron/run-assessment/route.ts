@@ -38,6 +38,9 @@ export async function POST(req: Request) {
     const mode = body.mode ?? 'deep';
     const forceReevaluate = body.forceReevaluate ?? false;
 
+    // Set flag for downstream clients to bypass session-dependent logic (e.g. cookies)
+    process.env.IS_CRON = 'true';
+
     logger.info('Cron assessment triggered', { context: 'cron/run-assessment', meta: { frameworks, mode } });
 
     // ── Run assessment engine ───────────────────────────────────────────────

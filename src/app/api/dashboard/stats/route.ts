@@ -195,7 +195,7 @@ async function getMSRBaselineData(supabase: any, versionId: string | null) {
       else if (c.status === "rejected") rejectedDSR++;
     }
 
-    if (c.status === "accepted" && c.pptdf_scope) {
+    if (c.status === "accepted" && Array.isArray(c.pptdf_scope)) {
       c.pptdf_scope.forEach((scope: string) => {
         if (scope in pptdf) {
           pptdf[scope as keyof typeof pptdf]++;

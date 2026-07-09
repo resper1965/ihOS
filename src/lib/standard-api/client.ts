@@ -338,7 +338,13 @@ export async function council(request: CouncilRequest): Promise<CouncilData> {
  * Fetch the latest SCF version details from the GRC Engine.
  */
 export async function getLatestScfVersion(): Promise<{ scf_version_id: string; version_label: string }> {
-  return get<{ scf_version_id: string; version_label: string }>("/scf/versions/latest");
+  try {
+    return await get<{ scf_version_id: string; version_label: string }>("/scf/versions/latest");
+  } catch (err) {
+    const fallback = await tryLocalFallback("/scf/versions/latest", null, err instanceof Error ? err.message : "unknown");
+    if (fallback) return fallback;
+    throw err;
+  }
 }
 
 /**
@@ -355,14 +361,16 @@ export async function getScfControls(
   page: number = 1,
   perPage: number = 100
 ): Promise<{ data: any[]; total?: number }> {
-  // The API caps per_page at 100 (silently). Cap here too so callers that rely
-  // on `items.length < perPage` to detect the last page don't loop forever /
-  // stop early because they asked for more than the server ever returns (B1).
   const cappedPerPage = Math.min(perPage, 100);
-  const result = await get<any>(
-    `/scf/versions/${versionId}/controls?page=${page}&per_page=${cappedPerPage}`
-  );
-  return normalizeControlsResponse(result);
+  const endpoint = `/scf/versions/${versionId}/controls?page=${page}&per_page=${cappedPerPage}`;
+  try {
+    const result = await get<any>(endpoint);
+    return normalizeControlsResponse(result);
+  } catch (err) {
+    const fallback = await tryLocalFallback(endpoint, { versionId, page, perPage }, err instanceof Error ? err.message : "unknown");
+    if (fallback) return normalizeControlsResponse(fallback);
+    throw err;
+  }
 }
 
 /**
@@ -403,6 +411,7 @@ export async function getScfFrameworks(): Promise<any[]> {
  */
 export function isLocalFallbackEnabled(): boolean {
   if (process.env.GRC_FALLBACK_DISABLED === "true") return false;
+  if (process.env.IS_CRON === "true") return true; // Force resilience in automated background runs
   return process.env.GRC_LOCAL_FALLBACK_ENABLED === "true";
 }
 

@@ -36,7 +36,7 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
         </Link>
       </div>
       <div className="space-y-1">
-        {activities.map((item, i) => {
+        {(activities || []).map((item, i) => {
           const config = ICON_MAP[item.type] ?? { icon: Clock, color: "text-slate-400", bgColor: "bg-white/5" };
           const Icon = config.icon;
           return (

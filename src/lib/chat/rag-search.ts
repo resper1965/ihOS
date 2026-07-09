@@ -1,5 +1,6 @@
 // src/lib/chat/rag-search.ts
 import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { generateEmbedding } from './embeddings';
 import { ihosEngine } from '@/lib/ihos-engine';
 import type { SearchResult } from '@/lib/ihos-engine';
@@ -92,7 +93,8 @@ async function searchDocumentsWithSupabase(
     return [];
   }
 
-  const supabase = await createClient();
+  const isCron = process.env.IS_CRON === 'true';
+  const supabase = isCron ? createAdminClient() : await createClient();
 
   // Try new signature first (with filter_version_id + filter_categories)
   let { data, error } = await supabase.rpc('match_documents_hybrid', {

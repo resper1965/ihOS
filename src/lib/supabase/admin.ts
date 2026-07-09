@@ -27,5 +27,8 @@ export function createAdminClient() {
       autoRefreshToken: false,
       persistSession: false,
     },
+    realtime: {
+      enabled: false,
+    },
   });
 }

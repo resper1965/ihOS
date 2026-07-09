@@ -18,7 +18,7 @@ import { Redis } from "@upstash/redis";
  */
 
 // ── Public paths that do NOT require authentication ─────────────────────────
-const PUBLIC_PATHS = ["/login", "/signup", "/callback"];
+const PUBLIC_PATHS = ["/login", "/signup", "/callback", "/api/cron"];
 
 function isPublicPath(pathname: string): boolean {
   return PUBLIC_PATHS.some(

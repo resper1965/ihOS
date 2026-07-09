@@ -1,7 +1,21 @@
 import 'dotenv/config';
+// Polyfill for WebSocket to avoid Supabase errors in Node 18
+if (!global.WebSocket) {
+  (global as any).WebSocket = class {};
+}
+
 import { createAdminClient } from '../lib/supabase/admin';
 import { chunkComplianceDocument } from '../lib/chat/chunker';
 import { generateEmbeddings } from '../lib/chat/embeddings';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+
+// Polyfill for File to avoid errors in Node 18
+if (!global.File) {
+  const { File } = require('node:buffer');
+  (global as any).File = File;
+}
+
 import { extractText } from '../lib/chat/document-extractor';
 import { deleteControlProvenance } from '../lib/chat/control-provenance';
 import { runPostIngestPipeline } from '../lib/chat/post-ingest-pipeline';
