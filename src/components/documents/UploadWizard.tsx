@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { ShieldCheck, Layers, Calendar, AlertCircle, Upload, Check, Loader2, ArrowLeft, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ClarityReport, ClarityReportData } from "./ClarityReport";
+import { useVendors } from "@/hooks/queries/use-vendors";
 
 export type UploadState = "idle" | "uploading" | "processing" | "done" | "error";
 
@@ -21,6 +22,7 @@ interface UploadWizardProps {
 }
 
 export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersion }: UploadWizardProps) {
+  const { data: vendors = [] } = useVendors();
   const [wizardStep, setWizardStep] = useState(1);
   const [docScope, setDocScope] = useState<"global" | "version">("global");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -275,6 +277,22 @@ export function UploadWizard({ isOpen, onClose, onSuccess, versions, activeVersi
                   Drives which analysis consumes this document. SAD/SRS types are detected by the
                   threat-modeling readiness checklist — no longer guessed from the filename.
                 </p>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-slate-400">Supplier / Third-Party (Optional)</label>
+                <select
+                  name="vendorId"
+                  defaultValue=""
+                  className="w-full rounded-xl border border-white/10 bg-white/5 p-2.5 text-sm text-white outline-none focus:border-primary/50 dark:[color-scheme:dark] [&>option]:bg-bg-card [&>option]:text-text-primary"
+                >
+                  <option value="" className="bg-bg-card text-text-primary">None (Internal Document)</option>
+                  {vendors.map((v) => (
+                    <option key={v.id} value={v.id} className="bg-bg-card text-text-primary">
+                      {v.name} ({v.risk_level} risk)
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="space-y-1.5">

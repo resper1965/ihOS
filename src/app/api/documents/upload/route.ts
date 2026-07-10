@@ -47,6 +47,7 @@ export async function POST(req: Request) {
     const docTypeRaw = (formData.get('docType') as string) || 'UNCLASSIFIED';
     const docType = docTypeRaw in DOCUMENT_TYPES ? docTypeRaw : 'UNCLASSIFIED';
     const productVersionId = formData.get('productVersionId') as string | null;
+    const vendorId = formData.get('vendorId') as string | null;
     const version = (formData.get('version') as string) || '1.0';
     const status = (formData.get('status') as string) || 'published';
     const expiresAt = formData.get('expiresAt') as string | null;
@@ -145,6 +146,7 @@ export async function POST(req: Request) {
         language: 'pt',
         year: new Date().getFullYear(),
         product_version_id: productVersionId || null,
+        vendor_id: vendorId || null,
         version: version,
         status: status as 'draft' | 'published' | 'superseded' | 'expired',
         expires_at: expiresAt || null,

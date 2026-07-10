@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { useToast } from "@/components/ui/toast";
-import { Search, Loader2, FileText, Calendar, Trash2, RefreshCw, AlertTriangle } from "lucide-react";
+import { Search, Loader2, FileText, Calendar, Trash2, RefreshCw, AlertTriangle, Building2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import type { ComplianceDocument } from "@/lib/supabase/types";
+import type { Document } from "@/hooks/queries/use-documents";
 import { DOCUMENT_TYPES } from "@/lib/supabase/types-custom";
+import { useVendors } from "@/hooks/queries/use-vendors";
 
 interface DocumentTableProps {
-  documents: ComplianceDocument[];
+  documents: Document[];
   loading: boolean;
   versions: any[];
   activeVersion: any | null;
@@ -17,6 +18,7 @@ interface DocumentTableProps {
 
 export function DocumentTable({ documents, loading, versions, activeVersion, onDelete, deletingId, onRefresh }: DocumentTableProps) {
   const [search, setSearch] = useState("");
+  const { data: vendors = [] } = useVendors();
   const { success, error: toastError } = useToast();
   const [reindexingId, setReindexingId] = useState<number | null>(null);
   const [updatingVersionId, setUpdatingVersionId] = useState<number | null>(null);
@@ -148,6 +150,7 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
         <div className="divide-y divide-white/5">
           {filtered.map((doc) => {
             const matchedVersion = versions.find((v) => v.id === doc.product_version_id);
+            const matchedVendor = vendors.find((v) => v.id === doc.vendor_id);
             const isExpiredDoc = isExpired(doc.expires_at);
 
             return (
@@ -223,6 +226,13 @@ export function DocumentTable({ documents, loading, versions, activeVersion, onD
                   {doc.category && (
                     <span className="text-xs text-slate-500 font-mono bg-white/5 rounded px-2 py-0.5 border border-white/5">
                       {doc.category}
+                    </span>
+                  )}
+
+                  {matchedVendor && (
+                    <span className="text-xs text-primary font-medium bg-primary/10 border border-primary/20 rounded px-2 py-0.5 flex items-center gap-1">
+                      <Building2 className="h-3.5 w-3.5" />
+                      {matchedVendor.name}
                     </span>
                   )}
 

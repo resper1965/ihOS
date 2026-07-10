@@ -20,6 +20,7 @@ const DocumentSchema = z.object({
   file_size_bytes: z.number().nullable().default(null),
   total_chunks: z.number().nullable().default(null),
   product_version_id: z.string().nullable().default(null),
+  vendor_id: z.string().nullable().default(null),
   version: z.string(),
   status: z.enum(['draft', 'published', 'superseded', 'expired']).catch('draft'),
   expires_at: z.string().nullable().default(null),

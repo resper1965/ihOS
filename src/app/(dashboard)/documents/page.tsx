@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { FileText, Upload, Sparkles, Layers, RefreshCw, Globe, Box, Handshake } from "lucide-react";
+import { FileText, Upload, Sparkles, Layers, RefreshCw, Globe, Box, Handshake, Building2 } from "lucide-react";
 import { useToast } from "@/components/ui/toast";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Card } from "@/components/ui/card";
@@ -10,23 +10,27 @@ import { Button } from "@/components/ui/button";
 import { useVersion } from "@/lib/context/version-context";
 import { useDocuments, useDeleteDocument } from "@/hooks/queries/use-documents";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useVendors } from "@/hooks/queries/use-vendors";
+import { VendorsTab } from "@/components/documents/vendors-tab";
 
 // Extracted Components
 import { UploadWizard } from "@/components/documents/UploadWizard";
 import { DocumentTable } from "@/components/documents/DocumentTable";
 
-type DocTab = "all" | "global" | "product" | "b2b";
+type DocTab = "all" | "global" | "product" | "b2b" | "vendors";
 
 const TABS: { key: DocTab; label: string; icon: React.ReactNode; description: string }[] = [
   { key: "all", label: "All Documents", icon: <FileText className="h-3.5 w-3.5" />, description: "Every document in the system" },
   { key: "global", label: "Global ISMS", icon: <Globe className="h-3.5 w-3.5" />, description: "Organization-wide policies" },
   { key: "product", label: "nCommand Lite", icon: <Box className="h-3.5 w-3.5" />, description: "Product-specific specs" },
   { key: "b2b", label: "Sales Channels", icon: <Handshake className="h-3.5 w-3.5" />, description: "GEHC & Direct" },
+  { key: "vendors", label: "Suppliers & Third-Parties", icon: <Building2 className="h-3.5 w-3.5" />, description: "Manage external suppliers" },
 ];
 
 export default function DocumentsPage() {
   const { versions, activeVersion } = useVersion();
   const { data: documents = [], isLoading: loading, refetch } = useDocuments();
+  const { data: vendors = [] } = useVendors();
   const deleteDocument = useDeleteDocument();
   const [activeTab, setActiveTab] = useState<DocTab>("all");
   
@@ -166,24 +170,32 @@ export default function DocumentsPage() {
             <span className={`ml-1 text-[10px] font-mono px-1 py-0.5 rounded ${
               activeTab === tab.key ? "bg-primary/20 text-primary" : "bg-white/5 text-slate-500"
             }`}>
-              {tab.key === "all" ? versionFilteredDocs.length : tab.key === "global" ? globalCount : tab.key === "product" ? productCount : b2bCount}
+              {tab.key === "all" ? versionFilteredDocs.length 
+                : tab.key === "global" ? globalCount 
+                : tab.key === "product" ? productCount 
+                : tab.key === "b2b" ? b2bCount
+                : vendors.length}
             </span>
           </button>
         ))}
       </div>
 
-      {/* Extracted Document Table Component */}
-      <div id="document-list-table">
-        <DocumentTable 
-          documents={filteredByTab}
-          loading={loading}
-          versions={versions}
-          activeVersion={activeVersion}
-          onDelete={handleDelete}
-          deletingId={deletingId}
-          onRefresh={() => refetch()}
-        />
-      </div>
+      {/* Extracted Document Table / Vendors Component */}
+      {activeTab === "vendors" ? (
+        <VendorsTab />
+      ) : (
+        <div id="document-list-table">
+          <DocumentTable 
+            documents={filteredByTab}
+            loading={loading}
+            versions={versions}
+            activeVersion={activeVersion}
+            onDelete={handleDelete}
+            deletingId={deletingId}
+            onRefresh={() => refetch()}
+          />
+        </div>
+      )}
 
       {/* Extracted Upload Wizard Component */}
       <UploadWizard 
