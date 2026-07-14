@@ -8,7 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 // ---------------------------------------------------------------------------
 export const scrmsKeys = {
   all: ["scrms"] as const,
-  data: () => [...scrmsKeys.all, "data"] as const,
+  data: (vendorId?: string | null) => [...scrmsKeys.all, "data", vendorId ?? "product"] as const,
 };
 
 // ---------------------------------------------------------------------------
@@ -23,6 +23,7 @@ export interface ScrmsBaseline {
   rejected_controls: number;
   pending_controls: number;
   created_at: string;
+  vendor_name?: string | null;
 }
 
 export interface ScrmsControl {
@@ -72,11 +73,12 @@ export interface ScrmsData {
 // ---------------------------------------------------------------------------
 
 /** Fetch all SCRMS data in one query (baseline + controls + stats) */
-export function useScrmsData() {
+export function useScrmsData(vendorId?: string | null) {
   return useQuery<ScrmsData>({
-    queryKey: scrmsKeys.data(),
+    queryKey: scrmsKeys.data(vendorId),
     queryFn: async () => {
-      const res = await fetch("/api/compliance/scrms");
+      const url = vendorId ? `/api/compliance/scrms?vendorId=${vendorId}` : "/api/compliance/scrms";
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Failed to load SCRMS data");
       const data = await res.json();
       if (!data.success) throw new Error(data.error || "Failed to load SCRMS data");
@@ -97,11 +99,15 @@ export function useScrmsData() {
 // ---------------------------------------------------------------------------
 
 /** Recalibrate SCRMS baseline */
-export function useRecalibrate() {
+export function useRecalibrate(vendorId?: string | null) {
   const queryClient = useQueryClient();
   return useMutation<void, Error>({
     mutationFn: async () => {
-      const res = await fetch("/api/compliance/scrms", { method: "POST" });
+      const res = await fetch("/api/compliance/scrms", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vendorId }),
+      });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || "Failed to recalibrate");
     },

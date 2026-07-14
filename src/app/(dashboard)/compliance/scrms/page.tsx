@@ -27,6 +27,7 @@ import {
   useRejectControl,
   scrmsKeys,
 } from "@/hooks/queries/use-scrms";
+import { useVendors } from "@/hooks/queries/use-vendors";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -93,10 +94,14 @@ interface ScrmsBaseline {
 }
 
 export default function ScrmsPage() {
+  const [selectedScope, setSelectedScope] = useState<"product" | string>("product");
+  const vendorId = selectedScope === "product" ? null : selectedScope;
+
   // ── React Query: data layer ──
   const queryClient = useQueryClient();
-  const { data: scrmsData, isLoading: loading } = useScrmsData();
-  const recalibrate = useRecalibrate();
+  const { data: scrmsData, isLoading: loading } = useScrmsData(vendorId);
+  const { data: vendors } = useVendors();
+  const recalibrate = useRecalibrate(vendorId);
   const acceptControl = useAcceptControl();
   const rejectControl = useRejectControl();
 
@@ -177,11 +182,28 @@ export default function ScrmsPage() {
 
   return (
     <div className="w-full space-y-6 text-text-primary">
-      <PageTitleRegistrar
-        title={<>SCRMS <span className="text-emerald-400">Security Baseline</span></>}
-        subtitle={baseline ? `${baseline.name} — nCommand Lite ${baseline.version_code}` : "Consolidating MCRs and DSRs to build your Minimum Security Requirements (MSR)."}
-        icon={<Target className="h-4 w-4 text-primary" />}
-      />
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <PageTitleRegistrar
+          title={<>SCRMS <span className="text-emerald-400">Security Baseline</span></>}
+          subtitle={baseline ? ((baseline as any).vendor_name ? `Supplier: ${(baseline as any).vendor_name}` : `${baseline.name} — nCommand Lite ${baseline.version_code}`) : "Consolidating MCRs and DSRs to build your Minimum Security Requirements (MSR)."}
+          icon={<Target className="h-4 w-4 text-primary" />}
+        />
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-text-muted shrink-0">Evaluation Scope:</span>
+          <select
+            value={selectedScope}
+            onChange={(e) => setSelectedScope(e.target.value)}
+            className="flex h-9 rounded-xl border border-border-glass bg-bg-card px-3 py-1.5 text-xs text-text-primary focus:outline-none focus:ring-1 focus:ring-primary min-w-[220px]"
+          >
+            <option value="product">Internal Product (nCommand Lite)</option>
+            {vendors?.map((v) => (
+              <option key={v.id} value={v.id}>
+                Supplier: {v.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
 
       {loading ? (
         /* ── Loading State ── */

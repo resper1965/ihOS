@@ -1,11 +1,11 @@
 import { logger } from '@/lib/logger';
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { triggerGrcRecalibration } from "@/lib/assessment/grc-trigger";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req?: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -14,7 +14,13 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { data: baseline, error: baselineError } = await supabase
+    let vendorId: string | null = null;
+    if (req) {
+      const { searchParams } = new URL(req.url);
+      vendorId = searchParams.get("vendorId");
+    }
+
+    let query = supabase
       .from("msr_baselines")
       .select(`
         id,
@@ -22,13 +28,25 @@ export async function GET() {
         description,
         status,
         product_version_id,
+        vendor_id,
         parent_baseline_id,
         isms_baseline_id,
         product_versions (
           version_code
+        ),
+        vendors:vendor_id (
+          name
         )
       `)
-      .eq("status", "active")
+      .eq("status", "active");
+
+    if (vendorId) {
+      query = query.eq("vendor_id", vendorId);
+    } else {
+      query = query.is("vendor_id", null);
+    }
+
+    const { data: baseline, error: baselineError } = await query
       .limit(1)
       .maybeSingle();
 
@@ -40,11 +58,17 @@ export async function GET() {
       return NextResponse.json({ success: true, message: "No active MSR baseline found", controls: [], stats: null, deltas: [], ismsStats: null });
     }
 
-    // 2. Fetch version specific deltas
-    const { data: deltas, error: deltasError } = await supabase
-      .from("product_version_deltas")
-      .select("feature_slug, description, affected_components, risk_level")
-      .eq("product_version_id", baseline.product_version_id!);
+    // 2. Fetch version specific deltas if not vendor-scoped
+    let deltas: any[] = [];
+    if (baseline.product_version_id) {
+      const { data: deltasData, error: deltasError } = await supabase
+        .from("product_version_deltas")
+        .select("feature_slug, description, affected_components, risk_level")
+        .eq("product_version_id", baseline.product_version_id);
+      if (!deltasError && deltasData) {
+        deltas = deltasData;
+      }
+    }
 
     // 3. Fetch Core ISMS controls stats
     let ismsStats = { total: 0, implemented: 0 };
@@ -145,13 +169,14 @@ export async function GET() {
         name: baseline.name,
         description: baseline.description,
         status: baseline.status,
-        version_code: baseline.product_versions?.version_code || "v2.2.x",
+        version_code: baseline.product_versions?.version_code || null,
+        vendor_name: (baseline as any).vendors?.name || null,
         parent_baseline_id: baseline.parent_baseline_id,
         isms_baseline_id: baseline.isms_baseline_id
       },
       stats,
       controls: formattedControls,
-      deltas: deltas || [],
+      deltas: deltas,
       ismsStats
     });
 
@@ -161,7 +186,7 @@ export async function GET() {
   }
 }
 
-export async function POST() {
+export async function POST(req?: NextRequest) {
   try {
     const supabase = await createClient();
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -181,11 +206,24 @@ export async function POST() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
+    let vendorId: string | null = null;
+    if (req) {
+      const body = await req.json().catch(() => ({}));
+      vendorId = body.vendorId;
+    }
+
+    if (vendorId) {
+      console.log(`[Manual Recalibration] Triggered by ${user.id} for vendor ${vendorId}`);
+      await triggerGrcRecalibration(null, user.id, vendorId);
+      return NextResponse.json({ success: true, message: "Recalibration completed successfully." });
+    }
+
     // 1. Fetch active baseline to get product_version_id
     const { data: baseline } = await supabase
       .from("msr_baselines")
       .select("product_version_id")
       .eq("status", "active")
+      .is("vendor_id", null)
       .limit(1)
       .maybeSingle();
 

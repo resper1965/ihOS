@@ -16,6 +16,7 @@ function resetMocks() {
   mockSupabaseServer.from.mockReturnThis();
   mockSupabaseServer.select.mockReturnThis();
   mockSupabaseServer.eq.mockReturnThis();
+  mockSupabaseServer.is = vi.fn().mockReturnThis();
   mockSupabaseServer.limit.mockReturnThis();
   mockSupabaseServer.single.mockReturnThis();
   mockSupabaseServer.maybeSingle.mockReturnThis();

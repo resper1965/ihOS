@@ -16,15 +16,23 @@ function hash(input: string): string {
  * (global documents + version-scoped documents). Changes whenever a relevant
  * document is uploaded, reindexed, or updated.
  */
-export async function getCorpusFingerprint(productVersionId?: string | null): Promise<string> {
+export async function getCorpusFingerprint(
+  productVersionId?: string | null,
+  vendorId?: string | null
+): Promise<string> {
   const admin = createAdminClient();
   const { data } = await admin
     .from('compliance_documents')
-    .select('id, product_version_id, updated_at')
+    .select('id, product_version_id, vendor_id, updated_at')
     .eq('status', 'published');
 
-  const rows = ((data ?? []) as { id: number; product_version_id: string | null; updated_at: string }[]).filter(
-    (d) => d.product_version_id === null || d.product_version_id === productVersionId,
+  const rows = ((data ?? []) as { id: number; product_version_id: string | null; vendor_id: string | null; updated_at: string }[]).filter(
+    (d) => {
+      if (vendorId) {
+        return d.vendor_id === vendorId;
+      }
+      return d.product_version_id === null || d.product_version_id === productVersionId;
+    }
   );
 
   if (rows.length === 0) return hash('empty');

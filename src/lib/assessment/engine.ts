@@ -16,6 +16,7 @@ export interface AssessmentConfig {
   mode: 'quick' | 'deep';
   salesChannel?: 'B2B_GEHC' | 'B2B_DIRECT' | null;
   productVersionId?: string | null;
+  vendorId?: string | null;
   confidenceThreshold?: number;  // default 70
   similarityThreshold?: number;  // default 0.65
   forceReevaluate?: boolean; // skip the persisted-evaluation cache and re-query RAG/Standard API for every control
@@ -253,8 +254,10 @@ export async function runAssessment(
   // last evaluation for a control unless the corpus changed since then (or
   // the caller explicitly forces a re-evaluation), so RAG search and the
   // Standard GRC Engine API are only called for what actually needs it.
-  const scopeKey = `${config.productVersionId ?? 'global'}:${config.salesChannel ?? 'all'}`;
-  const corpusFingerprint = await getCorpusFingerprint(config.productVersionId ?? null);
+  const scopeKey = config.vendorId 
+    ? `vendor:${config.vendorId}` 
+    : `${config.productVersionId ?? 'global'}:${config.salesChannel ?? 'all'}`;
+  const corpusFingerprint = await getCorpusFingerprint(config.productVersionId ?? null, config.vendorId ?? null);
   const cacheMap = new Map<string, { corpusFingerprint: string; evaluation: ControlEvaluation; evaluatedAt: string }>();
   if (!config.forceReevaluate) {
     const admin = createAdminClient();
@@ -325,6 +328,7 @@ export async function runAssessment(
       // Step 2a: Search RAG for evidence using all category filters
       const ragResults = await searchDocuments(controlDescription, {
         productVersionId: config.productVersionId || undefined,
+        vendorId: config.vendorId || undefined,
         limit: 3,
         threshold: similarityThreshold,
         categories: categoryFilters,
@@ -389,6 +393,7 @@ export async function runAssessment(
         // Phase 1: ISMS policy search (narrower category)
         const ismsResults = await searchDocuments(controlDescription, {
           productVersionId: config.productVersionId || undefined,
+          vendorId: config.vendorId || undefined,
           limit: 3,
           threshold: similarityThreshold,
           categories: ['ISMS_CORE'],
@@ -404,6 +409,7 @@ export async function runAssessment(
         // Phase 2: Operational evidence search
         const evidenceResults = await searchDocuments(controlDescription, {
           productVersionId: config.productVersionId || undefined,
+          vendorId: config.vendorId || undefined,
           limit: 3,
           threshold: similarityThreshold,
           categories: ['OPERATIONAL', 'ISMS_CORE'],

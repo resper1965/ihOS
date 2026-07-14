@@ -25,6 +25,7 @@ export interface SearchDocumentResult {
 export interface SearchDocumentsOptions {
   framework?: string;
   productVersionId?: string;
+  vendorId?: string;
   categories?: string[];
   limit?: number;
   threshold?: number;
@@ -79,7 +80,7 @@ async function searchDocumentsWithSupabase(
   query: string,
   options: SearchDocumentsOptions = {}
 ): Promise<SearchDocumentResult[]> {
-  const { framework = null, productVersionId = null, categories = null, limit = 5, threshold = 0.7 } = options;
+  const { framework = null, productVersionId = null, categories = null, limit = 5, threshold = 0.7, vendorId = null } = options;
 
   // Generate a real semantic embedding for the search query
   let queryEmbedding: number[];
@@ -96,7 +97,7 @@ async function searchDocumentsWithSupabase(
   const isCron = process.env.IS_CRON === 'true';
   const supabase = isCron ? createAdminClient() : await createClient();
 
-  // Try new signature first (with filter_version_id + filter_categories)
+  // Try new signature first (with filter_version_id + filter_categories + filter_vendor_id)
   let { data, error } = await supabase.rpc('match_documents_hybrid', {
     query_text: query,
     query_embedding: queryEmbedding,
@@ -105,6 +106,7 @@ async function searchDocumentsWithSupabase(
     filter_framework: framework,
     filter_version_id: productVersionId,
     filter_categories: categories,
+    filter_vendor_id: vendorId,
   } as any);
 
   // Fallback: if the new signature doesn't exist yet, retry without filter_version_id/filter_categories

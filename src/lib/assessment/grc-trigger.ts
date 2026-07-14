@@ -11,8 +11,12 @@ const execAsync = promisify(exec);
  * and runs an automated quick scan to refresh scorecard snapshots.
  * Executed asynchronously in the background.
  */
-export async function triggerGrcRecalibration(productVersionId: string, userId: string): Promise<void> {
-  console.log(`[GRC Trigger] Starting recalibration for product version: ${productVersionId}`);
+export async function triggerGrcRecalibration(
+  productVersionId: string | null,
+  userId: string,
+  vendorId?: string | null
+): Promise<void> {
+  console.log(`[GRC Trigger] Starting recalibration for product version: ${productVersionId}, vendor: ${vendorId}`);
   
   try {
     // 1. Run Python Calibration script
@@ -20,15 +24,17 @@ export async function triggerGrcRecalibration(productVersionId: string, userId: 
     let stdout = '';
     let stderr = '';
     
+    const cmdArgs = vendorId ? ` --vendor-id ${vendorId}` : '';
+    
     try {
-      console.log(`[GRC Trigger] Executing: python3 ${pythonScriptPath}`);
-      const res = await execAsync(`python3 ${pythonScriptPath}`);
+      console.log(`[GRC Trigger] Executing: python3 ${pythonScriptPath}${cmdArgs}`);
+      const res = await execAsync(`python3 ${pythonScriptPath}${cmdArgs}`);
       stdout = res.stdout;
       stderr = res.stderr;
     } catch (execErr: any) {
       console.warn(`[GRC Trigger] python3 execution failed, trying wsl:`, execErr.message);
       // Fallback for hybrid Windows dev host environment
-      const res = await execAsync(`wsl python3 ${pythonScriptPath}`);
+      const res = await execAsync(`wsl python3 ${pythonScriptPath}${cmdArgs}`);
       stdout = res.stdout;
       stderr = res.stderr;
     }
@@ -42,19 +48,32 @@ export async function triggerGrcRecalibration(productVersionId: string, userId: 
     console.log('[GRC Trigger] Spawning automated quick assessment scan...');
     
     const adminSupabase = createAdminClient();
-    const { data: version } = await adminSupabase
-      .from('product_versions')
-      .select('version_code')
-      .eq('id', productVersionId)
-      .single();
-      
-    const versionCode = version?.version_code || 'v2.2.x';
-
-    const config = {
+    let name = '';
+    const config: any = {
       frameworks: ['iso27001', 'iso27701'],
       mode: 'quick' as const,
-      productVersionId,
     };
+    
+    if (vendorId) {
+      const { data: vendor } = await adminSupabase
+        .from('vendors' as any)
+        .select('name')
+        .eq('id', vendorId)
+        .single();
+      name = `Auto Scan (${vendor?.name || 'Vendor'}) — ${new Date().toLocaleDateString('en-US')}`;
+      config.vendorId = vendorId;
+    } else if (productVersionId) {
+      const { data: version } = await adminSupabase
+        .from('product_versions')
+        .select('version_code')
+        .eq('id', productVersionId)
+        .single();
+      const versionCode = version?.version_code || 'v2.2.x';
+      name = `Auto Scan (${versionCode}) — ${new Date().toLocaleDateString('en-US')}`;
+      config.productVersionId = productVersionId;
+    } else {
+      name = `Auto Scan — ${new Date().toLocaleDateString('en-US')}`;
+    }
     
     const result = await runAssessment(config);
     
@@ -62,10 +81,11 @@ export async function triggerGrcRecalibration(productVersionId: string, userId: 
     const { data: assessmentRecord, error: insertError } = await adminSupabase
       .from('assessments')
       .insert({
-        name: `Auto Scan (${versionCode}) — ${new Date().toLocaleDateString('en-US')}`,
+        name,
         status: 'completed',
         mode: 'quick',
-        product_version_id: productVersionId,
+        product_version_id: productVersionId || null,
+        vendor_id: vendorId || null,
         frameworks: config.frameworks,
         started_at: result.startedAt,
         completed_at: result.completedAt,
@@ -76,7 +96,7 @@ export async function triggerGrcRecalibration(productVersionId: string, userId: 
         framework_scores: result.frameworkScores as any,
         created_by: userId,
         sales_channel: null,
-      })
+      } as any)
       .select('id')
       .single();
 
