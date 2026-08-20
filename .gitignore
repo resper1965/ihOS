@@ -60,3 +60,6 @@ scripts/test_both_anon_keys.js
 scripts/test_supabase_auth.js
 query_evals.js
 scratch/
+
+# git worktrees (SDD isolated workspaces)
+.worktrees/
