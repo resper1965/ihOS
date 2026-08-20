@@ -35,6 +35,13 @@ and is the only mode present in the database.
 documents and 4082 chunks have no traceable link to any control. The artifact an auditor asks for
 — *"which document, which paragraph, supports this control"* — cannot be produced.
 
+This spec addresses D2 for the posture module only, by creating a *different* table
+(`evidence_provenance`, §4.2), not by migrating `document_control_provenance`. Three existing
+modules — `src/lib/chat/control-provenance.ts`, `src/lib/assessment/corpus-fingerprint.ts`,
+`src/scripts/test-hardened-vectorization.ts` — still read the old, never-migrated table and are
+untouched by this work. D2 is therefore addressed for this module's consumers, not resolved
+platform-wide; the old table and its three consumers are deferred, not fixed. See §5.
+
 **D3 — the two phases are not structurally separable.** Even in the correct engine
 (`local-engine.ts:169-177`, which implements the honest 4-state logic and is reachable only via the
 cron-token endpoint `/api/assessments/audit`), both phases are fields on one object, and Phase 2's
@@ -91,9 +98,19 @@ The missing chain, rebuilt: `document_id`, `chunk_id`, `scf_control_code`, `meth
 `scf_control_code`, `product_version_id`, `chunk_id`, `role` (`policy` | `operational`), `score`.
 Unique on `(scf_control_code, product_version_id, chunk_id, role)`.
 
-**A chunk may hold at most one role.** The role is a function of the document's `doc_type`, so a
-policy document can never be counted as operational evidence. This is D3 fixed structurally rather
-than by convention.
+**A chunk may hold at most one role per control, and this is structural.** `control_evidence.role`
+is constrained to `role IN ('policy', 'operational')`, and two partial unique indexes
+(`control_evidence_one_role_per_chunk_global`, `..._versioned`) enforce at most one row per
+`(scf_control_code, chunk_id[, product_version_id])` — so the schema itself blocks the same chunk
+from being counted in both roles for one control. That part is D3 fixed structurally.
+
+What is *not* structural: the `doc_type → role` mapping in §4.4 lives only in application code
+(`buildEvidenceLinks`), as a write-time convention, not a constraint the database enforces. If a
+document is reclassified — e.g. `TEST_REPORT` to `POLICY` — its existing `control_evidence` rows
+keep whatever `role` they were written with (`operational`, in that example) until the next
+backfill rewrites them. A control can therefore go on reporting `conforming` on stale rows that no
+longer match the document's current `doc_type`. This stale-row hazard is known and deferred, not
+fixed by this spec.
 
 ### 4.4 Role assignment — deliberately strict
 
@@ -136,7 +153,12 @@ with its evidence.
 - **SP-3 — Client assessment answering.** Rebuilt on the inventory, fail-closed.
 - **SP-4 — CTEM loop.** DefectDojo validation and mobilization into goals and POA&M.
 
-**Not touched by this spec:** auth, document ingestion, RAG retrieval, chat, the UI shell.
+**Not touched by this spec:** auth, document ingestion, RAG retrieval, chat, the UI shell. Also not
+touched: `document_control_provenance` (the table D2 names) and its three existing readers
+(`src/lib/chat/control-provenance.ts`, `src/lib/assessment/corpus-fingerprint.ts`,
+`src/scripts/test-hardened-vectorization.ts`). This spec's `evidence_provenance` table is
+authoritative for the posture module only; the old table stays authoritative for those three
+modules until a later sub-project migrates or retires them.
 
 ## 6. Non-goals
 
@@ -144,7 +166,9 @@ with its evidence.
   chunk's relevance when writing provenance, and that classification is recorded with its
   justification.
 - No estimation. A control with no evidence is `gap`, never a guess.
-- No new external dependency. Same stack.
+- One new devDependency: `tsx`, to run `src/scripts/backfill-posture.ts` directly under Node
+  without a build step (`npm run backfill:posture`). No new *runtime* dependency and no new
+  service — the stack it ships against is unchanged.
 
 ## 7. Success criteria
 
