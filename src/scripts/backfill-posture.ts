@@ -121,7 +121,9 @@ async function main() {
   console.log(`\ndistinct verdict states present: ${states}`);
   if (states < 2) {
     console.error('FAIL: expected more than one verdict state (spec success criterion 5).');
+    console.error('Stopping before any write — nothing was persisted, even with --commit.');
     process.exitCode = 1;
+    return;
   }
 
   if (!COMMIT) {
