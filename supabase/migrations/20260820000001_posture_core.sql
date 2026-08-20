@@ -38,7 +38,7 @@ create table if not exists public.evidence_provenance (
 );
 
 comment on table public.evidence_provenance is
-  'The audit trail: document -> chunk -> SCF control, with the method and justification that produced the claim.';
+  'The audit trail: document -> chunk -> SCF control, with the method and justification that produced the claim. Authoritative for the posture module (src/lib/posture/*, src/scripts/backfill-posture.ts) only. The older, never-migrated public.document_control_provenance is untouched by this migration and remains authoritative for its own three readers: src/lib/chat/control-provenance.ts, src/lib/assessment/corpus-fingerprint.ts, src/scripts/test-hardened-vectorization.ts.';
 
 -- ── What counts as evidence, and in which role ──────────────────────────────
 create table if not exists public.control_evidence (
@@ -119,3 +119,21 @@ begin
     $f$, t);
   end loop;
 end $$;
+
+-- ── Grants: table ACL, same reason as 20260704000001 ────────────────────────
+-- `supabase db reset` applies migrations as `supabase_admin`, whose default
+-- privileges do not cover these three brand-new tables, so a local/CI reset
+-- leaves anon/authenticated/service_role with no ACL on them at all —
+-- "permission denied for table control_inventory" before RLS is even
+-- consulted. Hosted `db push` runs as `postgres` and already owns these
+-- grants via its default privileges, so this is a no-op there. RLS policies
+-- above remain the actual access guard; these grants only clear the ACL
+-- check that gates them. Mirrors 20260704000001_reconcile_table_grants.sql.
+grant usage on schema public to anon, authenticated, service_role;
+
+grant all on public.control_inventory   to anon, authenticated, service_role;
+grant all on public.evidence_provenance to anon, authenticated, service_role;
+grant all on public.control_evidence    to anon, authenticated, service_role;
+
+grant all on sequence public.evidence_provenance_id_seq to anon, authenticated, service_role;
+grant all on sequence public.control_evidence_id_seq    to anon, authenticated, service_role;

@@ -28,14 +28,34 @@ async function main() {
   // repo-wide typing gap, not something specific to this script.
   const db = createAdminClient() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
-  // 1. The control set we are reporting on.
-  const { data: controls, error: controlsError } = await db
-    .from('scf_controls')
-    .select('control_code, control_name, description')
-    .order('control_code');
-  if (controlsError) throw new Error(`scf_controls: ${controlsError.message}`);
-  const controlList = (controls ?? []) as ControlRow[];
+  // 1. The control set we are reporting on. Paginated: scf_controls holds
+  // ~1,468 rows (see supabase/migrations/003_core_tables.sql:143) and
+  // PostgREST's default max-rows is 1000, so an unpaginated .select() here
+  // silently drops everything alphabetically past the cut — the exact bug
+  // this branch exists to stop the platform from committing elsewhere.
+  const controlList: ControlRow[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await db
+      .from('scf_controls')
+      .select('control_code, control_name, description')
+      .order('control_code')
+      .range(from, from + 999);
+    if (error) throw new Error(`scf_controls: ${error.message}`);
+    controlList.push(...((data ?? []) as ControlRow[]));
+    if (!data || data.length < 1000) break;
+  }
   console.log(`controls: ${controlList.length}`);
+  // A floor, not the exact known count: catches a future silent truncation
+  // loudly instead of letting it quietly recur.
+  const MIN_EXPECTED_CONTROLS = 1400;
+  if (controlList.length < MIN_EXPECTED_CONTROLS) {
+    throw new Error(
+      `scf_controls returned only ${controlList.length} rows; expected at least ` +
+        `${MIN_EXPECTED_CONTROLS} (catalogue is documented as ~1,468 — see ` +
+        `supabase/migrations/003_core_tables.sql:143). This looks like a silent ` +
+        `pagination truncation, not a real catalogue size.`,
+    );
+  }
 
   // 2. doc_type per document, so evidence roles can be resolved.
   const docTypes = new Map<number, string | null>();
@@ -75,7 +95,13 @@ async function main() {
         match_count: MATCH_COUNT,
         filter_framework: null,
         filter_version_id: null,
-        filter_categories: null,
+        // Restricted to our own document categories. `compliance_documents.category`
+        // also holds tenant-scoped categories (B2B_GEHC, B2B_DIRECT — see
+        // supabase/migrations/003_core_tables.sql:85); with no filter, a customer's
+        // signed CONTRACT (a policy doc_type) would be admitted as evidence that
+        // *Ionic* implements a control, when it is really a statement about the
+        // customer's obligation, not our implementation.
+        filter_categories: ['ISMS_CORE', 'OPERATIONAL'],
       } as never);
       if (error) {
         console.warn(`  ${control.control_code}: retrieval failed — ${error.message}`);
@@ -112,9 +138,48 @@ async function main() {
     links,
   );
   const summary = summarise(postures);
-  console.log('\nverdict distribution:');
+  console.log('\nverdict distribution (full catalogue):');
   for (const [state, count] of Object.entries(summary)) {
     console.log(`  ${state.padEnd(11)}${count}`);
+  }
+
+  // 4b. The direct comparison the spec (§1, §7.5, §8) actually asked for: the
+  // platform's current claim is 131 controls, all `conforming`, held in
+  // control_evaluation_cache — not a claim about the full ~1,468-control
+  // catalogue. A distribution over everything changes the subject; this
+  // restricts to exactly the control codes the old cache evaluated, so the
+  // "old vs. new" comparison is about the same controls on both sides.
+  // The table may be empty (fresh install) or absent (never migrated on this
+  // database) — handle both without failing the run.
+  let cachedCodes: string[] = [];
+  const { data: cachedRows, error: cacheError } = await db
+    .from('control_evaluation_cache')
+    .select('control_code');
+  if (cacheError) {
+    console.warn(
+      `\ncontrol_evaluation_cache unreadable (${cacheError.message}) — treating as absent; ` +
+        'no old-verdict comparison to print.',
+    );
+  } else {
+    const codes: string[] = (cachedRows ?? []).map((r: Record<string, unknown>) =>
+      String(r.control_code),
+    );
+    cachedCodes = [...new Set(codes)];
+  }
+  console.log(`\ncontrol_evaluation_cache distinct control codes: ${cachedCodes.length}`);
+  if (cachedCodes.length > 0) {
+    const cachedSummary = summarise(groupPosture(cachedCodes, links));
+    console.log(
+      '\nverdict distribution — direct comparison against the old cached verdicts ' +
+        '(restricted to exactly the control_evaluation_cache codes):',
+    );
+    for (const [state, count] of Object.entries(cachedSummary)) {
+      console.log(`  ${state.padEnd(11)}${count}`);
+    }
+  } else {
+    console.log(
+      'control_evaluation_cache has no rows on this database — nothing to compare against.',
+    );
   }
 
   const states = Object.values(summary).filter((n) => n > 0).length;

@@ -3,7 +3,7 @@
 // Next's request plumbing.
 
 import { describe, it, expect } from 'vitest';
-import { parsePostureQuery } from '@/app/api/posture/route';
+import { parsePostureQuery } from '@/lib/posture/query';
 
 describe('parsePostureQuery', () => {
   it('splits a comma-separated control list', () => {
