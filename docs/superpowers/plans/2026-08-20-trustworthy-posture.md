@@ -12,7 +12,16 @@
 
 ## Global Constraints
 
-- Node `>=20.9.0`. Package manager: `npm`.
+- **Node MUST be 20.20.2 from nvm.** Prefix every command with
+  `export PATH=/home/resper/.nvm/versions/node/v20.20.2/bin:/usr/bin:/bin`. The system
+  node at `/usr/bin/node` is v18.19.1 and **vitest 4 cannot start on it** — `rolldown`
+  imports `styleText` from `node:util`, which landed in Node 20.12. The symptom is a
+  startup `SyntaxError`, not a test failure, so a run that "produced no failures" on the
+  wrong node produced nothing at all. `.nvmrc` pins 20.20.2. The shell PATH in this
+  environment is also broken, so `/usr/bin:/bin` must stay on it for `git` and friends.
+- Package manager: `npm`. Dependencies are already installed in this worktree.
+- Baseline before this plan: `npm run test:unit` → 34 files, 341 tests, all passing. Any
+  failure you see is yours.
 - Tests: Vitest, `globals: true` (no importing `describe`/`it`/`expect` is required, but existing tests do import them — follow suit). Test files live at `tests/unit/<area>/<name>.test.ts` and open with a `// tests/unit/...` path comment.
 - Path alias: `@/` → `src/`. Use it in all imports.
 - Run a single test file with `npx vitest run <path>`; a single test with `npx vitest run <path> -t "<name>"`.
@@ -751,6 +760,17 @@ describe('posture_core migration', () => {
     expect(matches.length).toBe(3);
   });
 
+  it('enforces one role per chunk in both the null and non-null version cases', () => {
+    // Two partial indexes, because a plain unique index over a nullable column
+    // enforces nothing when that column is null — which is every backfilled row.
+    expect(sql).toMatch(
+      /unique index[\s\S]{0,80}control_evidence_one_role_per_chunk_global[\s\S]{0,120}where\s+product_version_id\s+is\s+null/,
+    );
+    expect(sql).toMatch(
+      /unique index[\s\S]{0,80}control_evidence_one_role_per_chunk_versioned[\s\S]{0,140}where\s+product_version_id\s+is\s+not\s+null/,
+    );
+  });
+
   it('does not declare a verdict column anywhere — the verdict is derived', () => {
     // Matches a column declaration at the start of a line, so the DDL comments
     // are free to use the word.
@@ -830,9 +850,20 @@ comment on table public.control_evidence is
   'Evidence accepted for a control, separated by role. The role is a function of the document type, so a policy can never be counted as operational evidence.';
 
 -- A chunk may serve only one role for a given control and version. The unique
--- constraint above allows both roles; this index forbids the second one.
-create unique index if not exists control_evidence_one_role_per_chunk
-  on public.control_evidence (scf_control_code, product_version_id, chunk_id);
+-- constraint above includes `role`, so on its own it permits both.
+--
+-- Two PARTIAL indexes, not one plain index: Postgres treats NULLs as distinct
+-- in a unique index by default, and product_version_id is NULL for every row
+-- the backfill writes — so a single index over the three columns would enforce
+-- nothing at all in exactly the path that matters. Splitting on the null
+-- predicate covers both cases without depending on PG15's NULLS NOT DISTINCT.
+create unique index if not exists control_evidence_one_role_per_chunk_global
+  on public.control_evidence (scf_control_code, chunk_id)
+  where product_version_id is null;
+
+create unique index if not exists control_evidence_one_role_per_chunk_versioned
+  on public.control_evidence (scf_control_code, product_version_id, chunk_id)
+  where product_version_id is not null;
 
 create index if not exists control_inventory_version_idx
   on public.control_inventory (product_version_id);
@@ -885,7 +916,7 @@ end $$;
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/posture/migration-invariants.test.ts`
-Expected: PASS — 8 tests.
+Expected: PASS — 9 tests.
 
 - [ ] **Step 5: Apply the migration**
 
@@ -923,8 +954,16 @@ git commit -m "feat(posture): add control inventory, provenance and role-separat
   - `toProvenanceRecords(rows: readonly ProvenanceRow[]): Array<Record<string, unknown>>`
   - `toEvidenceRecords(links: readonly EvidenceLink[]): Array<Record<string, unknown>>`
   - `persistProvenance(client: PostgrestLike, rows: readonly ProvenanceRow[]): Promise<number>`
-  - `persistEvidence(client: PostgrestLike, links: readonly EvidenceLink[]): Promise<number>`
-  - `interface PostgrestLike { from(table: string): { upsert(values: unknown[], opts?: { onConflict?: string }): Promise<{ error: { message: string } | null }> } }`
+  - `replaceEvidenceForScope(client: PostgrestLike, productVersionId: string | null, links: readonly EvidenceLink[]): Promise<number>`
+  - `interface PostgrestLike` — see the code below; needs `upsert`, `insert`, and a `delete().eq()/.is()` chain.
+
+**Why evidence is replaced rather than upserted.** Provenance upserts safely: its unique
+key `(chunk_id, scf_control_code)` has no nullable column. Evidence cannot. Every row the
+backfill writes has `product_version_id` NULL, and Postgres treats NULLs as distinct in a
+conflict target, so `ON CONFLICT (scf_control_code, product_version_id, chunk_id, role)`
+would never match an existing row — a second backfill run would insert duplicates rather
+than update. Deleting the scope's rows and inserting fresh is idempotent by construction
+and needs no conflict target at all.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -940,7 +979,7 @@ import {
   toProvenanceRecords,
   toEvidenceRecords,
   persistProvenance,
-  persistEvidence,
+  replaceEvidenceForScope,
   PERSIST_BATCH_SIZE,
 } from '@/lib/posture/persistence';
 import type { EvidenceLink, ProvenanceRow } from '@/lib/posture/types';
@@ -971,7 +1010,12 @@ function link(i: number): EvidenceLink {
 
 function fakeClient() {
   const upsert = vi.fn().mockResolvedValue({ error: null });
-  return { client: { from: vi.fn(() => ({ upsert })) }, upsert };
+  const insert = vi.fn().mockResolvedValue({ error: null });
+  const is = vi.fn().mockResolvedValue({ error: null });
+  const eq = vi.fn().mockResolvedValue({ error: null });
+  const del = vi.fn(() => ({ is, eq }));
+  const client = { from: vi.fn(() => ({ upsert, insert, delete: del })) };
+  return { client, upsert, insert, del, is, eq };
 }
 
 describe('toProvenanceRecords', () => {
@@ -1031,13 +1075,44 @@ describe('persistProvenance', () => {
   });
 });
 
-describe('persistEvidence', () => {
-  it('upserts on the evidence conflict target', async () => {
-    const { client, upsert } = fakeClient();
-    await persistEvidence(client, [link(1)]);
-    expect(upsert).toHaveBeenCalledWith(expect.any(Array), {
-      onConflict: 'scf_control_code,product_version_id,chunk_id,role',
-    });
+describe('replaceEvidenceForScope', () => {
+  it('deletes the null-version scope with .is() before inserting', async () => {
+    const { client, del, is, insert } = fakeClient();
+    await replaceEvidenceForScope(client, null, [link(1)]);
+    expect(del).toHaveBeenCalled();
+    expect(is).toHaveBeenCalledWith('product_version_id', null);
+    expect(insert).toHaveBeenCalled();
+  });
+
+  it('deletes a versioned scope with .eq() before inserting', async () => {
+    const { client, eq, insert } = fakeClient();
+    await replaceEvidenceForScope(client, 'ver-1', [link(1)]);
+    expect(eq).toHaveBeenCalledWith('product_version_id', 'ver-1');
+    expect(insert).toHaveBeenCalled();
+  });
+
+  it('clears the scope even when there is nothing to insert', async () => {
+    const { client, del, insert } = fakeClient();
+    await expect(replaceEvidenceForScope(client, null, [])).resolves.toBe(0);
+    expect(del).toHaveBeenCalled();
+    expect(insert).not.toHaveBeenCalled();
+  });
+
+  it('batches inserts and returns the total written', async () => {
+    const { client, insert } = fakeClient();
+    const links = Array.from({ length: PERSIST_BATCH_SIZE + 3 }, (_, i) => link(i));
+    await expect(replaceEvidenceForScope(client, null, links)).resolves.toBe(
+      PERSIST_BATCH_SIZE + 3,
+    );
+    expect(insert).toHaveBeenCalledTimes(2);
+  });
+
+  it('throws with the database message when the delete fails', async () => {
+    const is = vi.fn().mockResolvedValue({ error: { message: 'delete boom' } });
+    const client = {
+      from: vi.fn(() => ({ delete: vi.fn(() => ({ is, eq: vi.fn() })), insert: vi.fn(), upsert: vi.fn() })),
+    };
+    await expect(replaceEvidenceForScope(client, null, [link(1)])).rejects.toThrow('delete boom');
   });
 });
 ```
@@ -1060,13 +1135,17 @@ import type { EvidenceLink, ProvenanceRow } from './types';
 
 export const PERSIST_BATCH_SIZE = 200;
 
+type WriteResult = Promise<{ error: { message: string } | null }>;
+
 /** The narrow slice of a Supabase client this module needs. */
 export interface PostgrestLike {
   from(table: string): {
-    upsert(
-      values: unknown[],
-      opts?: { onConflict?: string },
-    ): Promise<{ error: { message: string } | null }>;
+    upsert(values: unknown[], opts?: { onConflict?: string }): WriteResult;
+    insert(values: unknown[]): WriteResult;
+    delete(): {
+      eq(column: string, value: string): WriteResult;
+      is(column: string, value: null): WriteResult;
+    };
   };
 }
 
@@ -1126,23 +1205,44 @@ export function persistProvenance(
   );
 }
 
-export function persistEvidence(
+/**
+ * Replaces all evidence for one scope: delete, then insert.
+ *
+ * Not an upsert. Every backfilled row has a NULL product_version_id, and
+ * Postgres treats NULLs as distinct in a conflict target — so ON CONFLICT
+ * would never match an existing row and a re-run would duplicate instead of
+ * update. Delete-then-insert is idempotent without a conflict target, and it
+ * also lets a chunk's role change between runs (which a role-keyed upsert
+ * could not express).
+ */
+export async function replaceEvidenceForScope(
   client: PostgrestLike,
+  productVersionId: string | null,
   links: readonly EvidenceLink[],
 ): Promise<number> {
-  return upsertInBatches(
-    client,
-    'control_evidence',
-    toEvidenceRecords(links),
-    'scf_control_code,product_version_id,chunk_id,role',
-  );
+  const scope = client.from('control_evidence').delete();
+  const { error: deleteError } =
+    productVersionId === null
+      ? await scope.is('product_version_id', null)
+      : await scope.eq('product_version_id', productVersionId);
+  if (deleteError) throw new Error(deleteError.message);
+
+  const records = toEvidenceRecords(links);
+  let written = 0;
+  for (let i = 0; i < records.length; i += PERSIST_BATCH_SIZE) {
+    const batch = records.slice(i, i + PERSIST_BATCH_SIZE);
+    const { error } = await client.from('control_evidence').insert(batch);
+    if (error) throw new Error(error.message);
+    written += batch.length;
+  }
+  return written;
 }
 ```
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run tests/unit/posture/persistence.test.ts`
-Expected: PASS — 7 tests.
+Expected: PASS — 11 tests.
 
 - [ ] **Step 5: Commit**
 
@@ -1351,7 +1451,7 @@ Expected: PASS — 6 tests.
 - [ ] **Step 5: Run the full posture suite**
 
 Run: `npx vitest run tests/unit/posture`
-Expected: PASS — 56 tests across six files.
+Expected: PASS — 61 tests across six files.
 
 - [ ] **Step 6: Commit**
 
@@ -1369,7 +1469,7 @@ git commit -m "feat(posture): group evidence into per-control posture"
 - Modify: `package.json` — add the `backfill:posture` script
 
 **Interfaces:**
-- Consumes: `buildEvidenceLinks` and `normalizeRrf` (Task 3), `persistProvenance` / `persistEvidence` (Task 5), `groupPosture` / `summarise` (Task 6), `createAdminClient`, `generateEmbeddings`.
+- Consumes: `buildEvidenceLinks` and `normalizeRrf` (Task 3), `persistProvenance` / `replaceEvidenceForScope` (Task 5), `groupPosture` / `summarise` (Task 6), `createAdminClient`, `generateEmbeddings`.
 - Produces: a printed verdict distribution. No new exports.
 
 This task has no unit test — it is a one-shot operator script whose logic lives entirely in the
@@ -1407,7 +1507,7 @@ import 'dotenv/config';
 import { createAdminClient } from '../lib/supabase/admin';
 import { generateEmbeddings } from '../lib/chat/embeddings';
 import { buildEvidenceLinks, normalizeRrf } from '../lib/posture/bind-evidence';
-import { persistEvidence, persistProvenance } from '../lib/posture/persistence';
+import { persistProvenance, replaceEvidenceForScope } from '../lib/posture/persistence';
 import { groupPosture, summarise } from '../lib/posture/read';
 import type { ProvenanceRow } from '../lib/posture/types';
 
@@ -1519,7 +1619,8 @@ async function main() {
     return;
   }
   console.log(`\nprovenance written: ${await persistProvenance(db, provenance)}`);
-  console.log(`evidence written:   ${await persistEvidence(db, links)}`);
+  // Replaces the whole null-version scope, so re-runs are idempotent.
+  console.log(`evidence written:   ${await replaceEvidenceForScope(db, null, links)}`);
 }
 
 main().catch((err) => {
@@ -1727,7 +1828,7 @@ Expected: PASS — 6 tests.
 - [ ] **Step 5: Verify the whole suite and types**
 
 Run: `npx vitest run tests/unit/posture && npx tsc --noEmit`
-Expected: 62 posture tests pass. `tsc` reports no **new** errors — this repo has pre-existing ones,
+Expected: 67 posture tests pass. `tsc` reports no **new** errors — this repo has pre-existing ones,
 and `next.config.ts` sets `typescript.ignoreBuildErrors`, so compare against a baseline on `main`
 rather than expecting zero.
 
@@ -1783,7 +1884,17 @@ git commit -m "feat(posture): expose posture with evidence over an internal-gate
    there is no verdict column — the test would have failed on its own documentation. It now matches a
    column declaration at line start instead.
 
-5. Two DDL assumptions were verified against the repository rather than assumed:
+5. **Found by the pre-flight scan, after the plan was first written** (recorded as rulings R1–R3
+   in the SDD ledger). `product_version_id` is NULL on every row the backfill writes, and Postgres
+   treats NULLs as distinct in unique constraints, indexes, and conflict targets alike. Three
+   consequences, all in the path that matters most: the one-role index enforced nothing; the
+   4-column unique constraint enforced nothing; and `ON CONFLICT` could never match an existing
+   row, so a second backfill run would duplicate rather than update. Task 4 now uses two partial
+   unique indexes split on the null predicate, Task 5 replaces the evidence upsert with
+   delete-then-insert per scope, and Task 4's test asserts both indexes — the assertion the earlier
+   self-review claimed existed but did not.
+
+6. Two DDL assumptions were verified against the repository rather than assumed:
    `public.set_updated_at()` exists (`004_compliance_tables.sql:72`), and `user_role` is an enum of
    `admin | ionic_user | client_user` (`002_enums.sql:15`), so the RLS predicate's text literals are
    valid. The RLS loop was also rewritten to one `EXECUTE` per statement, since PL/pgSQL's `EXECUTE`
