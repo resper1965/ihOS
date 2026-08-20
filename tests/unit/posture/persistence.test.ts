@@ -98,7 +98,12 @@ describe('persistProvenance', () => {
 
   it('throws with the database message when a batch fails', async () => {
     const upsert = vi.fn().mockResolvedValue({ error: { message: 'boom' } });
-    const client = { from: vi.fn(() => ({ upsert })) };
+    const insert = vi.fn();
+    const is = vi.fn();
+    const eq = vi.fn();
+    const client = {
+      from: vi.fn(() => ({ upsert, insert, delete: () => ({ is, eq }) })),
+    };
     await expect(persistProvenance(client, [prov(1)])).rejects.toThrow('boom');
   });
 });
