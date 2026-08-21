@@ -1,0 +1,206 @@
+// src/scripts/backfill-posture.ts
+// One-shot: rebuild provenance and evidence for the existing corpus, then
+// print the verdict distribution.
+//
+// Run with:  npm run backfill:posture
+// Add --commit to write; without it the script only reports.
+
+import 'dotenv/config';
+import { createAdminClient } from '../lib/supabase/admin';
+import { generateEmbeddings } from '../lib/chat/embeddings';
+import { buildEvidenceLinks, normalizeRrf } from '../lib/posture/bind-evidence';
+import { persistProvenance, replaceEvidenceForScope } from '../lib/posture/persistence';
+import { groupPosture, summarise } from '../lib/posture/read';
+import type { ProvenanceRow } from '../lib/posture/types';
+
+const COMMIT = process.argv.includes('--commit');
+const MATCH_THRESHOLD = 0.2;
+const MATCH_COUNT = 8;
+
+/** Shape read from `scf_controls`. Named so `.map()` callbacks below infer
+ * properly instead of falling back to implicit `any` under strict mode. */
+type ControlRow = { control_code: string; control_name: string; description: string | null };
+
+async function main() {
+  // Cast: the generated Database type produces SelectQueryError unions on
+  // .from().select() chains across this repo (see bulk-reindex.ts,
+  // corpus-fingerprint.ts, observed-posture/route.ts) — a pre-existing,
+  // repo-wide typing gap, not something specific to this script.
+  const db = createAdminClient() as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+
+  // 1. The control set we are reporting on. Paginated: scf_controls holds
+  // ~1,468 rows (see supabase/migrations/003_core_tables.sql:143) and
+  // PostgREST's default max-rows is 1000, so an unpaginated .select() here
+  // silently drops everything alphabetically past the cut — the exact bug
+  // this branch exists to stop the platform from committing elsewhere.
+  const controlList: ControlRow[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await db
+      .from('scf_controls')
+      .select('control_code, control_name, description')
+      .order('control_code')
+      .range(from, from + 999);
+    if (error) throw new Error(`scf_controls: ${error.message}`);
+    controlList.push(...((data ?? []) as ControlRow[]));
+    if (!data || data.length < 1000) break;
+  }
+  console.log(`controls: ${controlList.length}`);
+  // A floor, not the exact known count: catches a future silent truncation
+  // loudly instead of letting it quietly recur.
+  const MIN_EXPECTED_CONTROLS = 1400;
+  if (controlList.length < MIN_EXPECTED_CONTROLS) {
+    throw new Error(
+      `scf_controls returned only ${controlList.length} rows; expected at least ` +
+        `${MIN_EXPECTED_CONTROLS} (catalogue is documented as ~1,468 — see ` +
+        `supabase/migrations/003_core_tables.sql:143). This looks like a silent ` +
+        `pagination truncation, not a real catalogue size.`,
+    );
+  }
+
+  // 2. doc_type per document, so evidence roles can be resolved.
+  const docTypes = new Map<number, string | null>();
+  let from = 0;
+  for (;;) {
+    const { data, error } = await db
+      .from('compliance_documents')
+      .select('id, doc_type')
+      .range(from, from + 999);
+    if (error) throw new Error(`compliance_documents: ${error.message}`);
+    for (const d of data ?? []) docTypes.set(Number(d.id), d.doc_type ?? null);
+    if (!data || data.length < 1000) break;
+    from += 1000;
+  }
+  console.log(`documents: ${docTypes.size}`);
+
+  const unclassified = [...docTypes.values()].filter(
+    (t) => !t || t.toUpperCase() === 'UNCLASSIFIED',
+  ).length;
+  console.log(`documents that can hold no evidence (UNCLASSIFIED or null): ${unclassified}`);
+
+  // 3. Retrieve per control and record provenance.
+  const provenance: ProvenanceRow[] = [];
+  const BATCH = 20;
+  for (let i = 0; i < controlList.length; i += BATCH) {
+    const batch = controlList.slice(i, i + BATCH);
+    const embeddings = await generateEmbeddings(
+      batch.map((c) => `${c.control_name}. ${c.description ?? ''}`),
+    );
+
+    for (let j = 0; j < batch.length; j++) {
+      const control = batch[j];
+      const { data, error } = await db.rpc('match_documents_hybrid', {
+        query_text: `${control.control_name}. ${control.description ?? ''}`,
+        query_embedding: embeddings[j],
+        match_threshold: MATCH_THRESHOLD,
+        match_count: MATCH_COUNT,
+        filter_framework: null,
+        filter_version_id: null,
+        // Restricted to our own document categories. `compliance_documents.category`
+        // also holds tenant-scoped categories (B2B_GEHC, B2B_DIRECT — see
+        // supabase/migrations/003_core_tables.sql:85); with no filter, a customer's
+        // signed CONTRACT (a policy doc_type) would be admitted as evidence that
+        // *Ionic* implements a control, when it is really a statement about the
+        // customer's obligation, not our implementation.
+        filter_categories: ['ISMS_CORE', 'OPERATIONAL'],
+      } as never);
+      if (error) {
+        console.warn(`  ${control.control_code}: retrieval failed — ${error.message}`);
+        continue;
+      }
+
+      for (const row of (data ?? []) as Array<Record<string, unknown>>) {
+        provenance.push({
+          documentId: Number(row.document_id),
+          chunkId: Number(row.id),
+          scfControlCode: control.control_code,
+          method: 'vector',
+          // The RPC's `similarity` column is the RRF combined_score (~0..0.033),
+          // NOT a cosine. Normalise before it meets any threshold, or every
+          // control lands in `gap`.
+          score: normalizeRrf(Number(row.similarity ?? 0)),
+          snippet: String(row.content ?? '').slice(0, 300),
+          justification: null,
+        });
+      }
+    }
+    console.log(`retrieved ${Math.min(i + BATCH, controlList.length)}/${controlList.length}`);
+  }
+  console.log(`provenance claims: ${provenance.length}`);
+
+  // 4. Bind to evidence, then report.
+  const links = buildEvidenceLinks(provenance, docTypes, { productVersionId: null });
+  console.log(`evidence links: ${links.length}`);
+  console.log(`  policy:      ${links.filter((l) => l.role === 'policy').length}`);
+  console.log(`  operational: ${links.filter((l) => l.role === 'operational').length}`);
+
+  const postures = groupPosture(
+    controlList.map((c) => c.control_code),
+    links,
+  );
+  const summary = summarise(postures);
+  console.log('\nverdict distribution (full catalogue):');
+  for (const [state, count] of Object.entries(summary)) {
+    console.log(`  ${state.padEnd(11)}${count}`);
+  }
+
+  // 4b. The direct comparison the spec (§1, §7.5, §8) actually asked for: the
+  // platform's current claim is 131 controls, all `conforming`, held in
+  // control_evaluation_cache — not a claim about the full ~1,468-control
+  // catalogue. A distribution over everything changes the subject; this
+  // restricts to exactly the control codes the old cache evaluated, so the
+  // "old vs. new" comparison is about the same controls on both sides.
+  // The table may be empty (fresh install) or absent (never migrated on this
+  // database) — handle both without failing the run.
+  let cachedCodes: string[] = [];
+  const { data: cachedRows, error: cacheError } = await db
+    .from('control_evaluation_cache')
+    .select('control_code');
+  if (cacheError) {
+    console.warn(
+      `\ncontrol_evaluation_cache unreadable (${cacheError.message}) — treating as absent; ` +
+        'no old-verdict comparison to print.',
+    );
+  } else {
+    const codes: string[] = (cachedRows ?? []).map((r: Record<string, unknown>) =>
+      String(r.control_code),
+    );
+    cachedCodes = [...new Set(codes)];
+  }
+  console.log(`\ncontrol_evaluation_cache distinct control codes: ${cachedCodes.length}`);
+  if (cachedCodes.length > 0) {
+    const cachedSummary = summarise(groupPosture(cachedCodes, links));
+    console.log(
+      '\nverdict distribution — direct comparison against the old cached verdicts ' +
+        '(restricted to exactly the control_evaluation_cache codes):',
+    );
+    for (const [state, count] of Object.entries(cachedSummary)) {
+      console.log(`  ${state.padEnd(11)}${count}`);
+    }
+  } else {
+    console.log(
+      'control_evaluation_cache has no rows on this database — nothing to compare against.',
+    );
+  }
+
+  const states = Object.values(summary).filter((n) => n > 0).length;
+  console.log(`\ndistinct verdict states present: ${states}`);
+  if (states < 2) {
+    console.error('FAIL: expected more than one verdict state (spec success criterion 5).');
+    console.error('Stopping before any write — nothing was persisted, even with --commit.');
+    process.exitCode = 1;
+    return;
+  }
+
+  if (!COMMIT) {
+    console.log('\nreport only — pass --commit to write.');
+    return;
+  }
+  console.log(`\nprovenance written: ${await persistProvenance(db, provenance)}`);
+  // Replaces the whole null-version scope, so re-runs are idempotent.
+  console.log(`evidence written:   ${await replaceEvidenceForScope(db, null, links)}`);
+}
+
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});
