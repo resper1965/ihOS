@@ -20,6 +20,25 @@ export interface PostgrestLike {
   };
 }
 
+/**
+ * Retrieval and tags can both claim the same (chunk, control) pair, and
+ * `evidence_provenance` is unique on exactly that. Handing both to an
+ * ON CONFLICT DO UPDATE upsert fails the whole batch with SQLSTATE 21000
+ * ("cannot affect row a second time"), so collapse them first — keeping the
+ * higher score, the same rule `buildEvidenceLinks` uses for evidence links.
+ * Deliberately does not prefer one `method` over another; that is a separate
+ * design decision, out of scope here.
+ */
+export function dedupeProvenance(rows: readonly ProvenanceRow[]): ProvenanceRow[] {
+  const bestClaim = new Map<string, ProvenanceRow>();
+  for (const p of rows) {
+    const key = `${p.chunkId}:${p.scfControlCode}`;
+    const prev = bestClaim.get(key);
+    if (!prev || p.score > prev.score) bestClaim.set(key, p);
+  }
+  return [...bestClaim.values()];
+}
+
 export function toProvenanceRecords(
   rows: readonly ProvenanceRow[],
 ): Array<Record<string, unknown>> {

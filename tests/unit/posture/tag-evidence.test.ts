@@ -60,6 +60,26 @@ describe('rowsToTaggedChunks', () => {
       rowsToTaggedChunks([{ id: 1, document_id: 2, scf_controls: ['GOV-01'] }])[0].snippet,
     ).toBe('');
   });
+
+  it('dedupes a repeated control code within one chunk', () => {
+    expect(
+      rowsToTaggedChunks([
+        { id: 1, document_id: 2, content: 'c', scf_controls: ['GOV-01', 'GOV-01', 'IAC-02'] },
+      ])[0].controlCodes,
+    ).toEqual(['GOV-01', 'IAC-02']);
+  });
+
+  it('drops a row with a null document_id instead of coercing it to document 0', () => {
+    expect(
+      rowsToTaggedChunks([{ id: 1, document_id: null, content: 'c', scf_controls: ['GOV-01'] }]),
+    ).toEqual([]);
+  });
+
+  it('drops a row with a missing id', () => {
+    expect(
+      rowsToTaggedChunks([{ document_id: 2, content: 'c', scf_controls: ['GOV-01'] }]),
+    ).toEqual([]);
+  });
 });
 
 describe('indexByControl', () => {

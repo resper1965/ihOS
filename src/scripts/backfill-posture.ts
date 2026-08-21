@@ -22,7 +22,11 @@ import { createAdminClient } from '../lib/supabase/admin';
 import { generateEmbeddings } from '../lib/chat/embeddings';
 import { buildEvidenceLinks, normalizeRrf } from '../lib/posture/bind-evidence';
 import { roleForDocType } from '../lib/posture/evidence-role';
-import { persistProvenance, replaceEvidenceForScope } from '../lib/posture/persistence';
+import {
+  dedupeProvenance,
+  persistProvenance,
+  replaceEvidenceForScope,
+} from '../lib/posture/persistence';
 import { groupPosture, summarise } from '../lib/posture/read';
 import { indexByControl, rowsToTaggedChunks, tagProvenanceFor } from '../lib/posture/tag-evidence';
 import type { ProvenanceRow } from '../lib/posture/types';
@@ -71,20 +75,33 @@ async function main() {
     );
   }
 
-  // 2. doc_type per document, so evidence roles can be resolved.
+  // 2. doc_type per document, so evidence roles can be resolved. Also record
+  // category, so the tag read below can apply the same restriction the
+  // retrieval RPC gets via filter_categories.
   const docTypes = new Map<number, string | null>();
+  // Same restriction the retrieval call applies via filter_categories. The tag
+  // read goes straight to document_chunks with no join, so without this a
+  // customer's contract (category B2B_GEHC, doc_type CONTRACT, which is a
+  // policy role) would become evidence that Ionic implements a control.
+  // NULL category is excluded too, matching the RPC's `= ANY(...)` semantics.
+  const EVIDENCE_CATEGORIES = new Set(['ISMS_CORE', 'OPERATIONAL']);
+  const evidenceEligible = new Set<number>();
   let from = 0;
   for (;;) {
     const { data, error } = await db
       .from('compliance_documents')
-      .select('id, doc_type')
+      .select('id, doc_type, category')
       .range(from, from + 999);
     if (error) throw new Error(`compliance_documents: ${error.message}`);
-    for (const d of data ?? []) docTypes.set(Number(d.id), d.doc_type ?? null);
+    for (const d of data ?? []) {
+      const id = Number(d.id);
+      docTypes.set(id, d.doc_type ?? null);
+      if (EVIDENCE_CATEGORIES.has(d.category)) evidenceEligible.add(id);
+    }
     if (!data || data.length < 1000) break;
     from += 1000;
   }
-  console.log(`documents: ${docTypes.size}`);
+  console.log(`documents: ${docTypes.size} (${evidenceEligible.size} evidence-eligible by category)`);
 
   // Ask the classifier rather than testing for UNCLASSIFIED and null by hand:
   // any doc_type it does not recognise yields no role either, and this corpus
@@ -114,18 +131,27 @@ async function main() {
     taggedRows.push(...((data ?? []) as Array<Record<string, unknown>>));
     if (!data || data.length < 1000) break;
   }
-  const tagIndex = indexByControl(rowsToTaggedChunks(taggedRows));
-  console.log(`tagged chunks: ${taggedRows.length}, covering ${tagIndex.size} controls`);
   // The whole increment rests on this read finding rows. If the filter is wrong
   // the run would otherwise continue and report "the tags added nothing", which
-  // looks like a finding rather than a bug.
-  if (taggedRows.length === 0) {
+  // looks like a finding rather than a bug. This is a floor, not the exact known
+  // count (~1,541) — a PostgREST db-max-rows below 1000 would otherwise silently
+  // truncate this read after one short page, the same failure mode the
+  // scf_controls read above guards against.
+  const MIN_EXPECTED_TAGGED_CHUNKS = 1000;
+  if (taggedRows.length < MIN_EXPECTED_TAGGED_CHUNKS) {
     throw new Error(
-      'no tagged chunks found — expected ~1,541 rows from ' +
-        "document_chunks where scf_controls <> '{}'. The filter is wrong, or the " +
+      `document_chunks (tagged) returned only ${taggedRows.length} rows; expected at ` +
+        `least ${MIN_EXPECTED_TAGGED_CHUNKS} (corpus is documented as ~1,541 tagged chunks). ` +
+        'This looks like a silent pagination truncation, or the filter is wrong, or the ' +
         'tagger has never run. Refusing to continue and report a false negative.',
     );
   }
+  const eligibleTagRows = taggedRows.filter((r) => evidenceEligible.has(Number(r.document_id)));
+  const tagIndex = indexByControl(rowsToTaggedChunks(eligibleTagRows));
+  console.log(
+    `tagged chunks: ${taggedRows.length} total, ${eligibleTagRows.length} from ` +
+      `evidence-eligible documents, covering ${tagIndex.size} controls`,
+  );
 
   // 3. Retrieve per control and record provenance.
   const provenance: ProvenanceRow[] = [];
@@ -180,11 +206,15 @@ async function main() {
     }
     console.log(`retrieved ${Math.min(i + BATCH, controlList.length)}/${controlList.length}`);
   }
-  console.log(`provenance claims: ${provenance.length}`);
+  // Split, not summed: `provenance` now mixes two sources, and printing only
+  // the total would hide which one actually grew.
+  const retrievalOnly = provenance.filter((p) => p.method === 'vector');
+  console.log(
+    `provenance claims: ${retrievalOnly.length} vector + ${provenance.length - retrievalOnly.length} llm_confirmed`,
+  );
 
   // 4. Bind to evidence, then report. Build once from retrieval alone and once
   // from both sources, so the tags' contribution is measured rather than asserted.
-  const retrievalOnly = provenance.filter((p) => p.method === 'vector');
   const linksBefore = buildEvidenceLinks(retrievalOnly, docTypes, { productVersionId: null });
   const links = buildEvidenceLinks(provenance, docTypes, { productVersionId: null });
 
@@ -236,13 +266,16 @@ async function main() {
   }
   console.log(`\ncontrol_evaluation_cache distinct control codes: ${cachedCodes.length}`);
   if (cachedCodes.length > 0) {
+    const cachedSummaryBefore = summarise(groupPosture(cachedCodes, linksBefore));
     const cachedSummary = summarise(groupPosture(cachedCodes, links));
     console.log(
       '\nverdict distribution — direct comparison against the old cached verdicts ' +
-        '(restricted to exactly the control_evaluation_cache codes):',
+        '(restricted to exactly the control_evaluation_cache codes) — retrieval only -> with tags:',
     );
-    for (const [state, count] of Object.entries(cachedSummary)) {
-      console.log(`  ${state.padEnd(11)}${count}`);
+    for (const state of ['conforming', 'partial', 'informal', 'gap'] as const) {
+      console.log(
+        `  ${state.padEnd(11)}${String(cachedSummaryBefore[state]).padStart(5)} -> ${cachedSummary[state]}`,
+      );
     }
   } else {
     console.log(
@@ -263,7 +296,18 @@ async function main() {
     console.log('\nreport only — pass --commit to write.');
     return;
   }
-  console.log(`\nprovenance written: ${await persistProvenance(db, provenance)}`);
+
+  // Retrieval and tags can both claim the same (chunk, control) pair, and
+  // evidence_provenance is unique on exactly that. Handing both to an
+  // ON CONFLICT DO UPDATE upsert fails the whole batch with SQLSTATE 21000
+  // ("cannot affect row a second time"), so collapse them first — keeping the
+  // higher score, the same rule buildEvidenceLinks uses for evidence links.
+  const dedupedProvenance = dedupeProvenance(provenance);
+  console.log(
+    `provenance rows to write: ${dedupedProvenance.length} (${provenance.length - dedupedProvenance.length} duplicate pairs collapsed)`,
+  );
+
+  console.log(`\nprovenance written: ${await persistProvenance(db, dedupedProvenance)}`);
   // Replaces the whole null-version scope, so re-runs are idempotent.
   console.log(`evidence written:   ${await replaceEvidenceForScope(db, null, links)}`);
 }
