@@ -2,7 +2,7 @@
 // Cron endpoint to trigger assessment runs without user auth.
 // Protected by CRON_SECRET header.
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { logger } from '@/lib/logger';
 import { runAssessment, DEFAULT_FRAMEWORKS } from '@/lib/assessment/engine';
 import { syncScorecard } from '@/lib/assessment/assessment-to-scorecard';
@@ -117,4 +117,13 @@ export async function POST(req: Request) {
     logger.error(message, { context: 'cron/run-assessment', error: err });
     return NextResponse.json({ success: false, error: message, stack }, { status: 500 });
   }
+}
+
+/**
+ * Vercel Cron invokes scheduled paths with GET, and vercel.json schedules this
+ * route. Exporting POST alone returned 405 on every run. POST is kept because
+ * this endpoint is also triggered programmatically.
+ */
+export async function GET(req: NextRequest) {
+  return POST(req);
 }

@@ -2,7 +2,7 @@
 // Cron endpoint to trigger SCRMS recalibration (Supply Chain Risk Management).
 // Protected by CRON_SECRET header.
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { logger } from '@/lib/logger';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { triggerGrcRecalibration } from '@/lib/assessment/grc-trigger';
@@ -90,4 +90,13 @@ export async function POST(req: Request) {
     logger.error(message, { context: 'cron/recalibrate-scrms', error: err });
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
+}
+
+/**
+ * Vercel Cron invokes scheduled paths with GET, and vercel.json schedules this
+ * route. Exporting POST alone returned 405 on every run. POST is kept because
+ * this endpoint is also triggered programmatically.
+ */
+export async function GET(req: NextRequest) {
+  return POST(req);
 }

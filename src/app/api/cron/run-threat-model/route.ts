@@ -2,7 +2,7 @@
 // Cron endpoint to trigger automated threat modeling (STRIDE) via ihos-api.
 // Protected by CRON_SECRET header.
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { logger } from '@/lib/logger';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { ihosEngine } from '@/lib/ihos-engine';
@@ -173,4 +173,13 @@ export async function POST(req: Request) {
     logger.error(message, { context: 'cron/run-threat-model', error: err });
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
+}
+
+/**
+ * Vercel Cron invokes scheduled paths with GET, and vercel.json schedules this
+ * route. Exporting POST alone returned 405 on every run. POST is kept because
+ * this endpoint is also triggered programmatically.
+ */
+export async function GET(req: NextRequest) {
+  return POST(req);
 }
