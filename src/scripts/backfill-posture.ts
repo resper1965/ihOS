@@ -24,6 +24,7 @@ import { buildEvidenceLinks, normalizeRrf } from '../lib/posture/bind-evidence';
 import { roleForDocType } from '../lib/posture/evidence-role';
 import { persistProvenance, replaceEvidenceForScope } from '../lib/posture/persistence';
 import { groupPosture, summarise } from '../lib/posture/read';
+import { indexByControl, rowsToTaggedChunks, tagProvenanceFor } from '../lib/posture/tag-evidence';
 import type { ProvenanceRow } from '../lib/posture/types';
 
 const COMMIT = process.argv.includes('--commit');
@@ -98,6 +99,34 @@ async function main() {
     console.log(`  their doc_types: ${rolelessTypes.join(', ')}`);
   }
 
+  // 2b. Every chunk the tagger confirmed as evidencing a control. One paginated
+  // read for the whole corpus (~1,541 rows), inverted in memory — 1,468 per-control
+  // queries would be the same data at 1,468x the round trips.
+  const taggedRows: Array<Record<string, unknown>> = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await db
+      .from('document_chunks')
+      .select('id, document_id, content, scf_controls')
+      .neq('scf_controls', '{}')
+      .order('id')
+      .range(from, from + 999);
+    if (error) throw new Error(`document_chunks (tagged): ${error.message}`);
+    taggedRows.push(...((data ?? []) as Array<Record<string, unknown>>));
+    if (!data || data.length < 1000) break;
+  }
+  const tagIndex = indexByControl(rowsToTaggedChunks(taggedRows));
+  console.log(`tagged chunks: ${taggedRows.length}, covering ${tagIndex.size} controls`);
+  // The whole increment rests on this read finding rows. If the filter is wrong
+  // the run would otherwise continue and report "the tags added nothing", which
+  // looks like a finding rather than a bug.
+  if (taggedRows.length === 0) {
+    throw new Error(
+      'no tagged chunks found — expected ~1,541 rows from ' +
+        "document_chunks where scf_controls <> '{}'. The filter is wrong, or the " +
+        'tagger has never run. Refusing to continue and report a false negative.',
+    );
+  }
+
   // 3. Retrieve per control and record provenance.
   const provenance: ProvenanceRow[] = [];
   const BATCH = 20;
@@ -143,25 +172,43 @@ async function main() {
           justification: null,
         });
       }
+
+      // Tag-derived provenance for the same control. buildEvidenceLinks dedups on
+      // (control, chunk) keeping the higher score, so a chunk found by both paths
+      // collapses to one link and the role still comes from the document's doc_type.
+      provenance.push(...tagProvenanceFor(tagIndex, control.control_code));
     }
     console.log(`retrieved ${Math.min(i + BATCH, controlList.length)}/${controlList.length}`);
   }
   console.log(`provenance claims: ${provenance.length}`);
 
-  // 4. Bind to evidence, then report.
+  // 4. Bind to evidence, then report. Build once from retrieval alone and once
+  // from both sources, so the tags' contribution is measured rather than asserted.
+  const retrievalOnly = provenance.filter((p) => p.method === 'vector');
+  const linksBefore = buildEvidenceLinks(retrievalOnly, docTypes, { productVersionId: null });
   const links = buildEvidenceLinks(provenance, docTypes, { productVersionId: null });
-  console.log(`evidence links: ${links.length}`);
-  console.log(`  policy:      ${links.filter((l) => l.role === 'policy').length}`);
-  console.log(`  operational: ${links.filter((l) => l.role === 'operational').length}`);
 
-  const postures = groupPosture(
-    controlList.map((c) => c.control_code),
-    links,
+  const roleCount = (ls: typeof links, role: 'policy' | 'operational') =>
+    ls.filter((l) => l.role === role).length;
+
+  console.log(`\nevidence links: ${linksBefore.length} -> ${links.length}`);
+  console.log(
+    `  policy:      ${roleCount(linksBefore, 'policy')} -> ${roleCount(links, 'policy')}`,
   );
+  console.log(
+    `  operational: ${roleCount(linksBefore, 'operational')} -> ${roleCount(links, 'operational')}`,
+  );
+
+  const controlCodes = controlList.map((c) => c.control_code);
+  const summaryBefore = summarise(groupPosture(controlCodes, linksBefore));
+  const postures = groupPosture(controlCodes, links);
   const summary = summarise(postures);
-  console.log('\nverdict distribution (full catalogue):');
-  for (const [state, count] of Object.entries(summary)) {
-    console.log(`  ${state.padEnd(11)}${count}`);
+
+  console.log('\nverdict distribution (full catalogue) — retrieval only -> with tags:');
+  for (const state of ['conforming', 'partial', 'informal', 'gap'] as const) {
+    console.log(
+      `  ${state.padEnd(11)}${String(summaryBefore[state]).padStart(5)} -> ${summary[state]}`,
+    );
   }
 
   // 4b. The direct comparison the spec (§1, §7.5, §8) actually asked for: the
