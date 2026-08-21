@@ -6,9 +6,22 @@
 // Add --commit to write; without it the script only reports.
 
 import 'dotenv/config';
+import WebSocketImpl from 'ws';
+
+// Node 20 (what .nvmrc pins) has no global WebSocket — it landed in Node 22.
+// supabase-js constructs a RealtimeClient inside createClient() even though
+// admin.ts passes `realtime: { enabled: false }`, and RealtimeClient's
+// constructor throws when it cannot find a WebSocket implementation. So the
+// client cannot be built at all, and this script died before doing any work.
+// Next's runtime provides WebSocket, which is why the API routes never hit it.
+if (!('WebSocket' in globalThis)) {
+  (globalThis as unknown as { WebSocket: unknown }).WebSocket = WebSocketImpl;
+}
+
 import { createAdminClient } from '../lib/supabase/admin';
 import { generateEmbeddings } from '../lib/chat/embeddings';
 import { buildEvidenceLinks, normalizeRrf } from '../lib/posture/bind-evidence';
+import { roleForDocType } from '../lib/posture/evidence-role';
 import { persistProvenance, replaceEvidenceForScope } from '../lib/posture/persistence';
 import { groupPosture, summarise } from '../lib/posture/read';
 import type { ProvenanceRow } from '../lib/posture/types';
@@ -72,10 +85,18 @@ async function main() {
   }
   console.log(`documents: ${docTypes.size}`);
 
-  const unclassified = [...docTypes.values()].filter(
-    (t) => !t || t.toUpperCase() === 'UNCLASSIFIED',
-  ).length;
-  console.log(`documents that can hold no evidence (UNCLASSIFIED or null): ${unclassified}`);
+  // Ask the classifier rather than testing for UNCLASSIFIED and null by hand:
+  // any doc_type it does not recognise yields no role either, and this corpus
+  // is full of them (`pdf`, `xml`, `other`, `contract_sla`, `risk_assessment`).
+  // The old check reported 0 while ~15 documents genuinely could serve as no
+  // evidence at all — a false reassurance in the one report that exists to be
+  // honest about what the corpus can prove.
+  const roleless = [...docTypes.entries()].filter(([, t]) => roleForDocType(t) === null);
+  const rolelessTypes = [...new Set(roleless.map(([, t]) => t ?? '(null)'))].sort();
+  console.log(`documents that can hold no evidence (no role for their doc_type): ${roleless.length}`);
+  if (roleless.length > 0) {
+    console.log(`  their doc_types: ${rolelessTypes.join(', ')}`);
+  }
 
   // 3. Retrieve per control and record provenance.
   const provenance: ProvenanceRow[] = [];
