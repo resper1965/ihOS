@@ -513,7 +513,69 @@ Then, immediately after the block that builds `docTypes` and reports roleless do
   }
   const tagIndex = indexByControl(rowsToTaggedChunks(taggedRows));
   console.log(`tagged chunks: ${taggedRows.length}, covering ${tagIndex.size} controls`);
+  // The whole increment rests on this read finding rows. If the filter is wrong
+  // the run would otherwise continue and report "the tags added nothing", which
+  // looks like a finding rather than a bug.
+  if (taggedRows.length === 0) {
+    throw new Error(
+      'no tagged chunks found — expected ~1,541 rows from ' +
+        "document_chunks where scf_controls <> '{}'. The filter is wrong, or the " +
+        'tagger has never run. Refusing to continue and report a false negative.',
+    );
+  }
 ```
+
+**Then verify the query actually works before going further.** This step exists because nothing
+else in this plan executes it: Task 3 has no unit test, and running the backfill is forbidden. A
+filter that renders wrong through supabase-js would surface only when the user runs the script —
+either as an error, or worse, as an empty result that reads as "the tags didn't help".
+
+`db` is cast to `any`, so TypeScript cannot check this call. The PostgREST form was verified by
+raw URL (`document_chunks?select=id&scf_controls=neq.{}` → 1,541 rows); what is unverified is that
+`.neq('scf_controls', '{}')` renders to that form.
+
+Create a throwaway file `/tmp/verify-tag-query.ts` (do **not** commit it):
+
+```ts
+import 'dotenv/config';
+import WebSocketImpl from 'ws';
+if (!('WebSocket' in globalThis)) {
+  (globalThis as unknown as { WebSocket: unknown }).WebSocket = WebSocketImpl;
+}
+import { createAdminClient } from './src/lib/supabase/admin';
+import { indexByControl, rowsToTaggedChunks } from './src/lib/posture/tag-evidence';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = createAdminClient() as any;
+const rows: Array<Record<string, unknown>> = [];
+for (let from = 0; ; from += 1000) {
+  const { data, error } = await db
+    .from('document_chunks')
+    .select('id, document_id, content, scf_controls')
+    .neq('scf_controls', '{}')
+    .order('id')
+    .range(from, from + 999);
+  if (error) throw new Error(error.message);
+  rows.push(...((data ?? []) as Array<Record<string, unknown>>));
+  if (!data || data.length < 1000) break;
+}
+const index = indexByControl(rowsToTaggedChunks(rows));
+console.log(`rows: ${rows.length}`);
+console.log(`chunks with usable tags: ${rowsToTaggedChunks(rows).length}`);
+console.log(`controls covered: ${index.size}`);
+```
+
+Copy it into the worktree root as `verify-tag-query.ts`, run it, then delete it:
+
+Run: `npx tsx verify-tag-query.ts`
+Expected: `rows:` around 1,541 (it will drift as the corpus grows — anything in the low
+thousands is right, **0 is the failure**), a similar count of usable tags, and `controls covered`
+in the hundreds.
+
+Then: `rm verify-tag-query.ts`
+
+This is a read-only query and costs no OpenAI budget. **Do not** run the backfill itself, with or
+without `--commit`.
 
 - [ ] **Step 2: Merge tag provenance into the retrieval loop**
 
