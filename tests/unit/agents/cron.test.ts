@@ -106,18 +106,16 @@ describe('GRC Agentic Evolution Cron Triggers Route', () => {
     delete process.env.CRON_SECRET;
   });
 
-  it('runs successfully when CRON_SECRET is not configured', async () => {
+  it('fails closed with a 500 when CRON_SECRET is not configured', async () => {
     const req = new Request('http://localhost:3000/api/cron/agentic-triggers', {
       method: 'GET',
     });
 
     const response = await GET(req);
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(500);
 
     const json = await response.json();
-    expect(json).toHaveProperty('success', true);
-    expect(json).toHaveProperty('timestamp');
-    expect(json).toHaveProperty('alerts_generated');
+    expect(json).toHaveProperty('error');
   });
 
   it('blocks request when CRON_SECRET is configured but wrong header is provided', async () => {
@@ -156,8 +154,13 @@ describe('GRC Agentic Evolution Cron Triggers Route', () => {
   });
 
   it('detects expired documents and alerts admin', async () => {
+    process.env.CRON_SECRET = 'super-secret-key';
+
     const req = new Request('http://localhost:3000/api/cron/agentic-triggers', {
       method: 'GET',
+      headers: {
+        Authorization: 'Bearer super-secret-key',
+      },
     });
 
     const response = await GET(req);
@@ -165,10 +168,12 @@ describe('GRC Agentic Evolution Cron Triggers Route', () => {
 
     const json = await response.json();
     expect(json.success).toBe(true);
-    
+
     // Validate that document_expired alert was generated
     const expiredAlert = json.alerts_generated.find((a: any) => a.type === 'document_expired');
     expect(expiredAlert).toBeDefined();
     expect(expiredAlert.title).toBe('Compliance Document Expired');
+
+    delete process.env.CRON_SECRET;
   });
 });

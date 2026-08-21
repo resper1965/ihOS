@@ -10,16 +10,18 @@ export async function GET(req: Request) {
   try {
     const authHeader = req.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
-    const isProduction = process.env.NODE_ENV === 'production';
 
-    // Risco S1 Hardening: Abort if CRON_SECRET is missing in production environment
-    if (isProduction && !cronSecret) {
-      logger.error("CRON_SECRET is missing in production environment. Aborting sweep.", { context: "cron/agentic-triggers" });
+    // Fail closed: an unset CRON_SECRET must never admit an unauthenticated
+    // request. The previous `isProduction &&` special case left a local dev
+    // server (or any environment where NODE_ENV isn't "production") wide open
+    // whenever the variable was missing.
+    if (!cronSecret) {
+      logger.error("CRON_SECRET is missing. Aborting sweep.", { context: "cron/agentic-triggers" });
       return NextResponse.json({ error: 'Internal configuration error' }, { status: 500 });
     }
 
     // Basic verification of Cron Secret
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    if (authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

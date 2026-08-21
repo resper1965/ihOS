@@ -17,13 +17,16 @@ export async function POST(req: Request) {
     // ── Auth via CRON_SECRET ────────────────────────────────────────────────
     const authHeader = req.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
-    const isProduction = process.env.NODE_ENV === 'production';
 
-    if (isProduction && !cronSecret) {
+    // Fail closed: an unset CRON_SECRET must never admit an unauthenticated
+    // request. The previous `isProduction &&` special case left a local dev
+    // server (or any environment where NODE_ENV isn't "production") wide open
+    // whenever the variable was missing.
+    if (!cronSecret) {
       return NextResponse.json({ error: 'Internal configuration error' }, { status: 500 });
     }
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    if (authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
