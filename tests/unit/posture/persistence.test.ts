@@ -8,6 +8,7 @@ import {
   toEvidenceRecords,
   persistProvenance,
   replaceEvidenceForScope,
+  dedupeProvenance,
   PERSIST_BATCH_SIZE,
 } from '@/lib/posture/persistence';
 import type { EvidenceLink, ProvenanceRow } from '@/lib/posture/types';
@@ -71,6 +72,26 @@ describe('toEvidenceRecords', () => {
       score: 0.9,
       snippet: 's',
     });
+  });
+});
+
+describe('dedupeProvenance', () => {
+  it('collapses a duplicate (chunk, control) pair, keeping the higher-scored row', () => {
+    const lower: ProvenanceRow = { ...prov(1), method: 'vector', score: 0.7 };
+    const higher: ProvenanceRow = { ...prov(1), method: 'llm_confirmed', score: 0.95 };
+    expect(dedupeProvenance([lower, higher])).toEqual([higher]);
+    // Order shouldn't matter for which one wins.
+    expect(dedupeProvenance([higher, lower])).toEqual([higher]);
+  });
+
+  it('leaves distinct (chunk, control) pairs untouched', () => {
+    const a = prov(1);
+    const b = { ...prov(2), scfControlCode: 'IAC-02' };
+    expect(dedupeProvenance([a, b])).toEqual([a, b]);
+  });
+
+  it('returns an empty array for empty input', () => {
+    expect(dedupeProvenance([])).toEqual([]);
   });
 });
 

@@ -2,7 +2,7 @@
 // Cron endpoint to process unindexed or untagged documents in the Knowledge Base.
 // Runs the post-ingest pipeline (SCF tagging + provenance) for documents that missed it.
 
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { logger } from '@/lib/logger';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { runPostIngestPipeline } from '@/lib/chat/post-ingest-pipeline';
@@ -14,13 +14,16 @@ export async function POST(req: Request) {
     // ── Auth via CRON_SECRET ────────────────────────────────────────────────
     const authHeader = req.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
-    const isProduction = process.env.NODE_ENV === 'production';
 
-    if (isProduction && !cronSecret) {
+    // Fail closed: an unset CRON_SECRET must never admit an unauthenticated
+    // request. The previous `isProduction &&` special case left a local dev
+    // server (or any environment where NODE_ENV isn't "production") wide open
+    // whenever the variable was missing.
+    if (!cronSecret) {
       return NextResponse.json({ error: 'Internal configuration error' }, { status: 500 });
     }
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    if (authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -91,4 +94,13 @@ export async function POST(req: Request) {
     logger.error(message, { context: 'cron/sync-knowledge-base', error: err });
     return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
+}
+
+/**
+ * Vercel Cron invokes scheduled paths with GET, and vercel.json schedules this
+ * route. Exporting POST alone returned 405 on every run. POST is kept because
+ * this endpoint is also triggered programmatically.
+ */
+export async function GET(req: NextRequest) {
+  return POST(req);
 }
