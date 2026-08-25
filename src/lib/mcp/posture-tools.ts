@@ -341,6 +341,20 @@ async function getThreatPosture(
   };
 }
 
+// Tenant-scoping tradeoff (known, not accidental): the web app's
+// /api/compliance/vendors route reads `vendors` through the RLS-enforcing
+// client (vendors are per-user owned — `auth.uid() = user_id`). These MCP
+// tools (list_vendors, check_vendor_evidence below) instead use the
+// service-role admin client passed in by the caller, which bypasses that
+// RLS entirely. That means any holder of MCP_SERVICE_TOKEN can read every
+// user's vendor portfolio, not just one user's.
+// This is the same shared-token design already in play for get_posture /
+// list_gaps / get_threat_posture, which read org-global data — but `vendors`
+// is the first table where "org-global" and "per-user" actually diverge, so
+// the tradeoff stops being cosmetic here. Fixing it properly would mean
+// giving the MCP surface a caller identity to scope by, which it does not
+// currently have; until then this is a deliberate, accepted gap, not an
+// oversight.
 async function listVendors(
   admin: SupabaseClient,
   args: Record<string, unknown>,
@@ -412,6 +426,8 @@ async function listVendors(
   };
 }
 
+// Same admin-client tenant-scoping tradeoff as listVendors above — this
+// tool also bypasses per-user RLS on `vendors` via the service-role client.
 async function checkVendorEvidence(
   admin: SupabaseClient,
   args: Record<string, unknown>,

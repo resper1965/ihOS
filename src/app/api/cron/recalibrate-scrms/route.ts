@@ -71,22 +71,26 @@ export async function POST(req: Request) {
     // Set flag for downstream logic
     process.env.IS_CRON = 'true';
 
-    logger.info('Cron SCRMS recalibration triggered', { 
-      context: 'cron/recalibrate-scrms', 
-      meta: { productVersionId } 
-    });
+    try {
+      logger.info('Cron SCRMS recalibration triggered', {
+        context: 'cron/recalibrate-scrms',
+        meta: { productVersionId }
+      });
 
-    // 2. Trigger GRC Recalibration
-    // We pass a system user ID or a reserved UUID for cron actions
-    const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
-    
-    await triggerGrcRecalibration(productVersionId, SYSTEM_USER_ID);
+      // 2. Trigger GRC Recalibration
+      // We pass a system user ID or a reserved UUID for cron actions
+      const SYSTEM_USER_ID = '00000000-0000-0000-0000-000000000000';
 
-    return NextResponse.json({
-      success: true,
-      message: 'SCRMS recalibration and auto-scan completed',
-      productVersionId
-    });
+      await triggerGrcRecalibration(productVersionId, SYSTEM_USER_ID);
+
+      return NextResponse.json({
+        success: true,
+        message: 'SCRMS recalibration and auto-scan completed',
+        productVersionId
+      });
+    } finally {
+      delete process.env.IS_CRON;
+    }
 
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Cron SCRMS recalibration failed';

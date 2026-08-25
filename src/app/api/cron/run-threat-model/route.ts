@@ -69,107 +69,111 @@ export async function POST(req: Request) {
     // Set flag for downstream logic
     process.env.IS_CRON = 'true';
 
-    logger.info('Cron threat modeling triggered', { 
-      context: 'cron/run-threat-model', 
-      meta: { product_version, frameworks } 
-    });
-
-    // 2. Resolve version context & deltas
-    const { productVersionId, previousVersionId } = await resolveVersionContext(admin, product_version);
-    const { fingerprint: deltaFingerprint, deltas } = productVersionId
-      ? await getDeltaFingerprint(productVersionId)
-      : { fingerprint: 'no-product-version-match', deltas: [] as any };
-
-    // 3. Cache check
-    if (!forceReevaluate) {
-      const sortedFrameworks = [...frameworks].sort();
-      const { data: existingRows } = await admin
-        .from('threat_models')
-        .select('*')
-        .eq('product_version', product_version)
-        .order('created_at', { ascending: false })
-        .limit(10);
-
-      const existing = ((existingRows ?? []) as any[]).find((row: any) => {
-        const rowFrameworks = [...(row.target_frameworks ?? [])].sort();
-        const sameFrameworks = JSON.stringify(rowFrameworks) === JSON.stringify(sortedFrameworks);
-        const sameDeltas = row.model_data?.metadata?.delta_fingerprint === deltaFingerprint;
-        return sameFrameworks && sameDeltas;
+    try {
+      logger.info('Cron threat modeling triggered', {
+        context: 'cron/run-threat-model',
+        meta: { product_version, frameworks }
       });
 
-      if (existing) {
-        return NextResponse.json({
-          success: true,
-          cached: true,
-          message: 'Reusing existing model — no deltas found',
-          assessmentId: existing.id
+      // 2. Resolve version context & deltas
+      const { productVersionId, previousVersionId } = await resolveVersionContext(admin, product_version);
+      const { fingerprint: deltaFingerprint, deltas } = productVersionId
+        ? await getDeltaFingerprint(productVersionId)
+        : { fingerprint: 'no-product-version-match', deltas: [] as any };
+
+      // 3. Cache check
+      if (!forceReevaluate) {
+        const sortedFrameworks = [...frameworks].sort();
+        const { data: existingRows } = await admin
+          .from('threat_models')
+          .select('*')
+          .eq('product_version', product_version)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        const existing = ((existingRows ?? []) as any[]).find((row: any) => {
+          const rowFrameworks = [...(row.target_frameworks ?? [])].sort();
+          const sameFrameworks = JSON.stringify(rowFrameworks) === JSON.stringify(sortedFrameworks);
+          const sameDeltas = row.model_data?.metadata?.delta_fingerprint === deltaFingerprint;
+          return sameFrameworks && sameDeltas;
+        });
+
+        if (existing) {
+          return NextResponse.json({
+            success: true,
+            cached: true,
+            message: 'Reusing existing model — no deltas found',
+            assessmentId: existing.id
+          });
+        }
+      }
+
+      // 4. Generate via Engine (Bypassing user JWT via ENGINE_KEY in ihosEngine client)
+      let generatedData: any;
+      try {
+        const result = await ihosEngine.generateThreatModel({
+          product_version,
+          target_frameworks: frameworks,
+          skip_grc_enrichment: false,
+          skip_fmea: true,
+        });
+        generatedData = result;
+      } catch (genErr) {
+        const msg = genErr instanceof Error ? genErr.message : String(genErr);
+        logger.error('Threat generation failed', { context: 'cron/run-threat-model', error: genErr });
+        return NextResponse.json({ success: false, error: 'Generation failed: ' + msg }, { status: 502 });
+      }
+
+      // Stamp fingerprint
+      generatedData = {
+        ...generatedData,
+        metadata: {
+          ...generatedData.metadata,
+          delta_fingerprint: deltaFingerprint,
+          applied_deltas: deltas.map((d: any) => d.feature_slug),
+        },
+      };
+
+      // 5. Annotate inheritance
+      const baseline = await findBaselineModel(admin, previousVersionId, frameworks);
+      const { data: annotatedData, baselineModelId } = annotateInheritance(generatedData, baseline);
+      generatedData = annotatedData;
+
+      // 6. Persist
+      const modelSource = baselineModelId ? 'inherited' : 'generated';
+      const { data: inserted, error: insertError } = await admin
+        .from('threat_models')
+        .insert({
+          product_version,
+          target_frameworks: frameworks,
+          model_data: generatedData,
+          status: 'draft',
+          source: modelSource,
+          baseline_model_id: baselineModelId,
+        })
+        .select('id')
+        .single();
+
+      if (insertError) {
+        logger.error('Failed to save cron threat model', { context: 'cron/run-threat-model', error: insertError });
+        // Fallback for older schema
+        await admin.from('threat_models').insert({
+          product_version,
+          target_frameworks: frameworks,
+          model_data: generatedData,
+          status: 'draft',
         });
       }
-    }
 
-    // 4. Generate via Engine (Bypassing user JWT via ENGINE_KEY in ihosEngine client)
-    let generatedData: any;
-    try {
-      const result = await ihosEngine.generateThreatModel({
+      return NextResponse.json({
+        success: true,
+        modelId: inserted?.id,
         product_version,
-        target_frameworks: frameworks,
-        skip_grc_enrichment: false,
-        skip_fmea: true,
+        frameworks
       });
-      generatedData = result;
-    } catch (genErr) {
-      const msg = genErr instanceof Error ? genErr.message : String(genErr);
-      logger.error('Threat generation failed', { context: 'cron/run-threat-model', error: genErr });
-      return NextResponse.json({ success: false, error: 'Generation failed: ' + msg }, { status: 502 });
+    } finally {
+      delete process.env.IS_CRON;
     }
-
-    // Stamp fingerprint
-    generatedData = {
-      ...generatedData,
-      metadata: {
-        ...generatedData.metadata,
-        delta_fingerprint: deltaFingerprint,
-        applied_deltas: deltas.map((d: any) => d.feature_slug),
-      },
-    };
-
-    // 5. Annotate inheritance
-    const baseline = await findBaselineModel(admin, previousVersionId, frameworks);
-    const { data: annotatedData, baselineModelId } = annotateInheritance(generatedData, baseline);
-    generatedData = annotatedData;
-
-    // 6. Persist
-    const modelSource = baselineModelId ? 'inherited' : 'generated';
-    const { data: inserted, error: insertError } = await admin
-      .from('threat_models')
-      .insert({
-        product_version,
-        target_frameworks: frameworks,
-        model_data: generatedData,
-        status: 'draft',
-        source: modelSource,
-        baseline_model_id: baselineModelId,
-      })
-      .select('id')
-      .single();
-
-    if (insertError) {
-      logger.error('Failed to save cron threat model', { context: 'cron/run-threat-model', error: insertError });
-      // Fallback for older schema
-      await admin.from('threat_models').insert({
-        product_version,
-        target_frameworks: frameworks,
-        model_data: generatedData,
-        status: 'draft',
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      modelId: inserted?.id,
-      product_version,
-      frameworks
-    });
 
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Cron threat modeling failed';

@@ -163,7 +163,7 @@ export async function runAssessment(
       .range(0, 2000);
       
     if (dbControls && dbControls.length > 0) {
-      allControls = dbControls.map(c => ({
+      allControls = dbControls.map((c: any) => ({
         control_id: c.control_code,
         control_name: c.control_name,
         description: c.description,
@@ -591,7 +591,7 @@ export async function runAssessment(
         if (mappings && mappings.length > 0) {
           const mappedControlCodes = new Set(mappings.map((m: any) => m.scf_control_code));
           const frameworkEvaluations = evaluations.filter((e) => mappedControlCodes.has(e.controlId));
-          const totalRequired = frameworkEvaluations.length > 0 ? frameworkEvaluations.length : mappings.length;
+          const totalRequired = mappings.length;
           const implementedCount = frameworkEvaluations.filter((e) => e.isCompliant).length;
           const score = totalRequired > 0 ? Math.round((implementedCount / totalRequired) * 100) : 0;
           const missingControls = evaluations

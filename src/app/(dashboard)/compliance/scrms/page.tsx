@@ -601,9 +601,11 @@ export default function ScrmsPage() {
                                   ? "bg-red-500/10 text-red-400 border-red-500/15"
                                   : v.risk_level === "medium"
                                   ? "bg-amber-500/10 text-amber-400 border-amber-500/15"
-                                  : "bg-emerald-500/10 text-emerald-400 border-emerald-500/15"
+                                  : v.risk_level === "low"
+                                  ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/15"
+                                  : "bg-zinc-500/10 text-zinc-400 border-zinc-500/15"
                               }`}>
-                                {v.risk_level.toUpperCase()}
+                                {(v.risk_level ?? "unassessed").toUpperCase()}
                               </span>
                             </td>
                             <td className="px-6 py-4">

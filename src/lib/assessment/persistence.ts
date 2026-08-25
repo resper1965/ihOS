@@ -65,12 +65,29 @@ export async function persistEvidenceEvaluations(
   if (evaluations.length === 0) return;
 
   const adminSupabase = createAdminClient();
-  
-  // Fetch valid chunk IDs to prevent foreign key violations
-  const { data: chunks } = await adminSupabase.from('document_chunks').select('id');
-  const validChunkIds = new Set(chunks?.map((c: any) => Number(c.id)) || []);
 
   const rawBatch = buildEvidenceBatch(evaluations, assessmentId);
+
+  // Fetch only the chunk IDs this batch actually references, to prevent
+  // foreign key violations. Unbounded `.select('id')` over the whole table
+  // hits PostgREST's default max-rows cap past ~1000 chunks and silently
+  // drops valid IDs (writing null instead of a real FK), which is worse
+  // than slow — it's wrong. Scope the query to just the candidate IDs.
+  const candidateIds = [...new Set(
+    rawBatch
+      .map((item) => (item.chunk_id ? Number(item.chunk_id) : null))
+      .filter((id): id is number => id !== null),
+  )];
+
+  const validChunkIds = new Set<number>();
+  if (candidateIds.length > 0) {
+    const { data: chunks } = await adminSupabase
+      .from('document_chunks')
+      .select('id')
+      .in('id', candidateIds);
+    chunks?.forEach((c: any) => validChunkIds.add(Number(c.id)));
+  }
+
   const batch = rawBatch.map((item) => {
     const cid = item.chunk_id ? Number(item.chunk_id) : null;
     return {
