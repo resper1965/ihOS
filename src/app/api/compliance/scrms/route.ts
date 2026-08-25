@@ -21,7 +21,7 @@ export async function GET(req?: NextRequest) {
     }
 
     let query = supabase
-      .from("msr_baselines")
+      .from("msr_baselines" as any)
       .select(`
         id,
         name,
@@ -46,16 +46,32 @@ export async function GET(req?: NextRequest) {
       query = query.is("vendor_id", null);
     }
 
-    const { data: baseline, error: baselineError } = await query
+    const { data, error: baselineError } = await query
       .limit(1)
       .maybeSingle();
+
+    const baseline = data as any;
 
     if (baselineError) {
       throw baselineError;
     }
 
     if (!baseline) {
-      return NextResponse.json({ success: true, message: "No active MSR baseline found", controls: [], stats: null, deltas: [], ismsStats: null });
+      return NextResponse.json({ success: true, message: "No active MSR baseline found", controls: [], stats: null, deltas: [], ismsStats: null, hasExpiredDocs: false });
+    }
+
+    // Fetch expired documents status for this vendor
+    let hasExpiredDocs = false;
+    if (vendorId) {
+      const { data: expiredDocs, error: expiredError } = await supabase
+        .from("compliance_documents" as any)
+        .select("id")
+        .eq("vendor_id", vendorId)
+        .lt("expires_at", new Date().toISOString());
+      
+      if (!expiredError && expiredDocs && expiredDocs.length > 0) {
+        hasExpiredDocs = true;
+      }
     }
 
     // 2. Fetch version specific deltas if not vendor-scoped
@@ -177,7 +193,8 @@ export async function GET(req?: NextRequest) {
       stats,
       controls: formattedControls,
       deltas: deltas,
-      ismsStats
+      ismsStats,
+      hasExpiredDocs
     });
 
   } catch (err: any) {

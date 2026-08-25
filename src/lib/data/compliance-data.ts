@@ -355,13 +355,32 @@ export async function getFrameworkScores(): Promise<FrameworkScore[]> {
         for (const [code, snap] of latestByFramework) {
           if (code === "all") continue; // skip overall aggregate for main dashboard list
           const data = snap.snapshot_data as Record<string, any> | null;
+          
+          // Defensive check for name (react crashes if it's an object instead of string)
+          let rawName = data?.name ?? code;
+          if (typeof rawName === 'object' && rawName !== null) {
+            rawName = (rawName as any).name ?? (rawName as any).id ?? 'Unnamed Framework';
+          }
+          const name = String(rawName);
+
+          // Defensive check for code (in case it is a JSON string)
+          let cleanCode = code;
+          if (code.startsWith('{')) {
+            try {
+              const parsed = JSON.parse(code);
+              cleanCode = parsed.id ?? code;
+            } catch {
+              // Ignore
+            }
+          }
+
           results.push({
-            code,
-            name: (data?.name as string) ?? code,
+            code: cleanCode,
+            name,
             score: (data?.score as number) ?? null,
             coverage: (data?.coverage as number) ?? null,
             missing: (data?.missing as number) ?? 0,
-            icon: FRAMEWORK_ICONS[code] ?? "📋",
+            icon: FRAMEWORK_ICONS[cleanCode] ?? "📋",
             // 2-Phase addition:
             ismsScore: (data?.isms_score as number) ?? null,
             evidenceScore: (data?.evidence_score as number) ?? null,

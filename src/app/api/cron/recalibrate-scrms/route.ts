@@ -42,8 +42,8 @@ export async function POST(req: Request) {
 
     if (!productVersionId) {
       // Find active baseline first
-      const { data: baseline } = await admin
-        .from('msr_baselines')
+      const { data: baseline } = await (admin
+        .from('msr_baselines' as any) as any)
         .select('product_version_id')
         .eq('status', 'active')
         .limit(1)
@@ -54,12 +54,12 @@ export async function POST(req: Request) {
 
     if (!productVersionId) {
       // Fallback to latest version
-      const { data: latestVersion } = await admin
-        .from('product_versions')
+      const { data: latestVersion } = await (admin
+        .from('product_versions' as any)
         .select('id')
         .order('updated_at', { ascending: false })
         .limit(1)
-        .single();
+        .single() as any);
       
       productVersionId = latestVersion?.id;
     }

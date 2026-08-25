@@ -112,6 +112,38 @@ export const MCP_TOOLS = [
       required: ['product_version_code'],
     },
   },
+  {
+    name: 'list_vendors',
+    description:
+      'List all registered vendors/suppliers, their risk levels, status, latest security assessments, and compliance documents.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: {
+          type: 'integer',
+          minimum: 1,
+          maximum: 50,
+          description: 'Maximum vendors to return (default 20).',
+        },
+      },
+      required: [],
+    },
+  },
+  {
+    name: 'check_vendor_evidence',
+    description:
+      'Check all compliance documents for a specific vendor, auditing if there are any expired evidence documents (ISO 27001 - A.5.22).',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        vendor_id: {
+          type: 'string',
+          description: 'The unique identifier (UUID) of the vendor.',
+        },
+      },
+      required: ['vendor_id'],
+    },
+  },
 ] as const;
 
 export type McpToolName = (typeof MCP_TOOLS)[number]['name'];
@@ -310,6 +342,141 @@ async function getThreatPosture(
   };
 }
 
+async function listVendors(
+  admin: SupabaseClient,
+  args: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const limitRaw = args.limit;
+  const limit =
+    typeof limitRaw === 'number' && Number.isInteger(limitRaw) && limitRaw >= 1 && limitRaw <= 50
+      ? limitRaw
+      : 20;
+
+  const { data: vendors, error } = await admin
+    .from('vendors' as any)
+    .select(`
+      id,
+      name,
+      description,
+      risk_level,
+      status,
+      created_at,
+      assessments:assessments (
+        id,
+        compliant_controls,
+        total_controls,
+        completed_at
+      ),
+      compliance_documents:compliance_documents (
+        id,
+        filename,
+        doc_type,
+        expires_at
+      )
+    `)
+    .limit(limit)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new McpToolError(`Vendor query failed: ${error.message}`, 'QUERY_FAILED');
+  }
+
+  return {
+    vendors: (vendors ?? []).map((v: any) => {
+      const sorted = v.assessments
+        ? [...v.assessments].sort((a: any, b: any) => new Date(b.completed_at).getTime() - new Date(a.completed_at).getTime())
+        : [];
+      const latest = sorted[0];
+
+      let score = null;
+      if (latest && latest.total_controls > 0) {
+        score = `${Math.round((latest.compliant_controls / latest.total_controls) * 100)}%`;
+      }
+
+      const hasExpired = v.compliance_documents?.some((doc: any) => {
+        if (!doc.expires_at) return false;
+        return new Date(doc.expires_at).getTime() < new Date().getTime();
+      }) ?? false;
+
+      return {
+        id: v.id,
+        name: v.name,
+        description: v.description,
+        risk_level: v.risk_level,
+        status: v.status,
+        created_at: v.created_at,
+        latest_assessment_score: score,
+        has_expired_evidences: hasExpired,
+        document_count: v.compliance_documents?.length ?? 0,
+      };
+    }),
+  };
+}
+
+async function checkVendorEvidence(
+  admin: SupabaseClient,
+  args: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const vendorId = args.vendor_id;
+  if (typeof vendorId !== 'string' || !vendorId) {
+    throw new McpToolError('vendor_id is required');
+  }
+
+  const { data: vendor, error } = await admin
+    .from('vendors' as any)
+    .select(`
+      id,
+      name,
+      compliance_documents:compliance_documents (
+        id,
+        filename,
+        doc_type,
+        expires_at
+      )
+    `)
+    .eq('id', vendorId)
+    .maybeSingle();
+
+  if (error) {
+    throw new McpToolError(`Vendor lookup failed: ${error.message}`, 'QUERY_FAILED');
+  }
+
+  if (!vendor) {
+    throw new McpToolError(`Vendor not found for id: ${vendorId}`, 'VENDOR_NOT_FOUND');
+  }
+
+  const docs = (vendor as any).compliance_documents ?? [];
+  const now = new Date();
+
+  const expiredDocs = docs.filter((doc: any) => {
+    if (!doc.expires_at) return false;
+    return new Date(doc.expires_at).getTime() < now.getTime();
+  });
+
+  const activeDocs = docs.filter((doc: any) => {
+    if (!doc.expires_at) return true;
+    return new Date(doc.expires_at).getTime() >= now.getTime();
+  });
+
+  return {
+    vendor_id: vendorId,
+    vendor_name: (vendor as any).name,
+    has_expired_documents: expiredDocs.length > 0,
+    expired_documents: expiredDocs.map((doc: any) => ({
+      id: doc.id,
+      filename: doc.filename,
+      doc_type: doc.doc_type,
+      expires_at: doc.expires_at,
+    })),
+    active_documents: activeDocs.map((doc: any) => ({
+      id: doc.id,
+      filename: doc.filename,
+      doc_type: doc.doc_type,
+      expires_at: doc.expires_at,
+    })),
+  };
+}
+
 /** Dispatch a tools/call to its handler. */
 export async function callMcpTool(
   admin: SupabaseClient,
@@ -323,6 +490,10 @@ export async function callMcpTool(
       return listGaps(admin, args);
     case 'get_threat_posture':
       return getThreatPosture(admin, args);
+    case 'list_vendors':
+      return listVendors(admin, args);
+    case 'check_vendor_evidence':
+      return checkVendorEvidence(admin, args);
     default:
       throw new McpToolError(`Unknown tool: ${name}`, 'UNKNOWN_TOOL');
   }

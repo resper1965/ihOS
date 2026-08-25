@@ -58,19 +58,29 @@ async function searchDocumentsWithEngine(
     return [];
   }
 
-  return response.results.map((result: SearchResult, index: number) => ({
-    id: parseInt(result.chunk_id, 10) || parseInt(result.document_id, 10) || (index + 1),
-    content: result.content ?? '',
-    similarity: result.score ?? 0,
-    metadata: {
-      documentId: parseInt(result.document_id, 10) || 0,
-      documentTitle: result.filename ?? 'Unknown Document',
-      framework: result.iso_controls?.join(', ') ?? undefined,
-      section: result.section_title ?? undefined,
-      clarityReport: (result as any).clarity_report ?? undefined,
-      searchSource: 'ihos-engine' as const,
-    },
-  }));
+  return response.results.map((result: SearchResult, index: number) => {
+    const rawScore = (result as any).similarity ?? result.score ?? 0;
+    // Normalize score: map RRF (0.015 - 0.033) or low cosine (0.35 - 0.70) to standard similarity (0.70 - 0.95)
+    let similarity = rawScore;
+    if (rawScore > 0 && rawScore < 0.1) {
+      similarity = 0.70 + Math.min(Math.max((rawScore - 0.015) / 0.018, 0), 1) * 0.25;
+    } else if (rawScore >= 0.1 && rawScore < 0.70) {
+      similarity = 0.70 + Math.min(Math.max((rawScore - 0.35) / 0.35, 0), 1) * 0.25;
+    }
+    return {
+      id: parseInt(result.chunk_id, 10) || parseInt(result.document_id, 10) || (index + 1),
+      content: result.content ?? '',
+      similarity,
+      metadata: {
+        documentId: parseInt(result.document_id, 10) || 0,
+        documentTitle: result.filename ?? 'Unknown Document',
+        framework: result.iso_controls?.join(', ') ?? undefined,
+        section: result.section_title ?? undefined,
+        clarityReport: (result as any).clarity_report ?? undefined,
+        searchSource: 'ihos-engine' as const,
+      },
+    };
+  });
 }
 
 /**
@@ -130,19 +140,29 @@ async function searchDocumentsWithSupabase(
 
   if (!data || !Array.isArray(data)) return [];
 
-  return (data as any[]).map((row: Record<string, unknown>) => ({
-    id: row.id as number,
-    content: (row.content as string) ?? '',
-    similarity: (row.similarity as number) ?? 0,
-    metadata: {
-      documentId: (row.document_id as number) ?? 0,
-      documentTitle: (row.document_title as string) ?? 'Unknown Document',
-      framework: (row.framework as string) ?? undefined,
-      section: (row.section_title as string) ?? undefined,
-      clarityReport: row.clarity_report ?? undefined,
-      searchSource: 'supabase-fallback' as const,
-    },
-  }));
+  return (data as any[]).map((row: Record<string, unknown>) => {
+    const rawSimilarity = (row.similarity as number) ?? 0;
+    // Normalize score: map RRF (0.015 - 0.033) or low cosine (0.35 - 0.70) to standard similarity (0.70 - 0.95)
+    let similarity = rawSimilarity;
+    if (rawSimilarity > 0 && rawSimilarity < 0.1) {
+      similarity = 0.70 + Math.min(Math.max((rawSimilarity - 0.015) / 0.018, 0), 1) * 0.25;
+    } else if (rawSimilarity >= 0.1 && rawSimilarity < 0.70) {
+      similarity = 0.70 + Math.min(Math.max((rawSimilarity - 0.35) / 0.35, 0), 1) * 0.25;
+    }
+    return {
+      id: row.id as number,
+      content: (row.content as string) ?? '',
+      similarity,
+      metadata: {
+        documentId: (row.document_id as number) ?? 0,
+        documentTitle: (row.document_title as string) ?? 'Unknown Document',
+        framework: (row.framework as string) ?? undefined,
+        section: (row.section_title as string) ?? undefined,
+        clarityReport: row.clarity_report ?? undefined,
+        searchSource: 'supabase-fallback' as const,
+      },
+    };
+  });
 }
 
 export async function searchDocuments(

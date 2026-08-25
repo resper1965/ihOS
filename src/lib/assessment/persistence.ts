@@ -65,7 +65,19 @@ export async function persistEvidenceEvaluations(
   if (evaluations.length === 0) return;
 
   const adminSupabase = createAdminClient();
-  const batch = buildEvidenceBatch(evaluations, assessmentId);
+  
+  // Fetch valid chunk IDs to prevent foreign key violations
+  const { data: chunks } = await adminSupabase.from('document_chunks').select('id');
+  const validChunkIds = new Set(chunks?.map((c: any) => Number(c.id)) || []);
+
+  const rawBatch = buildEvidenceBatch(evaluations, assessmentId);
+  const batch = rawBatch.map((item) => {
+    const cid = item.chunk_id ? Number(item.chunk_id) : null;
+    return {
+      ...item,
+      chunk_id: cid && validChunkIds.has(cid) ? cid : null,
+    };
+  });
 
   const { error } = await adminSupabase
     .from('evidence_evaluations')

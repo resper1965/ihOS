@@ -153,25 +153,48 @@ export async function runAssessment(
     message: 'Loading SCF control catalog...',
   });
 
-  const scfVersion = await standardApi.getLatestScfVersion();
   let allControls: any[] = [];
-  let page = 1;
-  // The API caps per_page at 100. Requesting more than the server returns would
-  // make the `items.length < perPage` termination fire on page 1 and silently
-  // load only the first 100 controls. Use 100 so pagination actually advances.
-  const perPage = 100;
-
-  const MAX_PAGES = 20; // 20 × 100 = 2,000 ≥ the full 1,468-control catalog
-  while (page <= MAX_PAGES) {
-    const batch = await standardApi.getScfControls(scfVersion.scf_version_id, page, perPage);
-    const items = batch.data || [];
-    allControls.push(...items);
-    if (items.length < perPage) break;
-    page++;
+  try {
+    const isCron = process.env.IS_CRON === 'true';
+    const supabase = isCron ? createAdminClient() : await createClient();
+    const { data: dbControls } = await supabase
+      .from('scf_controls')
+      .select('control_code, domain_code, control_name, description')
+      .range(0, 2000);
+      
+    if (dbControls && dbControls.length > 0) {
+      allControls = dbControls.map(c => ({
+        control_id: c.control_code,
+        control_name: c.control_name,
+        description: c.description,
+        domain: c.domain_code,
+      }));
+      console.log(`[Assessment] Loaded ${allControls.length} controls directly from db table 'scf_controls'`);
+    }
+  } catch (err) {
+    console.warn('[Assessment] Failed to load controls from scf_controls table:', err);
   }
 
-  if (page > MAX_PAGES) {
-    console.warn(`[Assessment] Reached max page limit (${MAX_PAGES}), loaded ${allControls.length} controls`);
+  if (allControls.length === 0) {
+    const scfVersion = await standardApi.getLatestScfVersion();
+    let page = 1;
+    // The API caps per_page at 100. Requesting more than the server returns would
+    // make the `items.length < perPage` termination fire on page 1 and silently
+    // load only the first 100 controls. Use 100 so pagination actually advances.
+    const perPage = 100;
+
+    const MAX_PAGES = 20; // 20 × 100 = 2,000 ≥ the full 1,468-control catalog
+    while (page <= MAX_PAGES) {
+      const batch = await standardApi.getScfControls(scfVersion.scf_version_id, page, perPage);
+      const items = batch.data || [];
+      allControls.push(...items);
+      if (items.length < perPage) break;
+      page++;
+    }
+    
+    if (page > MAX_PAGES) {
+      console.warn(`[Assessment] Reached max page limit (${MAX_PAGES}), loaded ${allControls.length} controls`);
+    }
   }
 
   // Optimize: Filter controls by selected frameworks to avoid timing out on 1,468 items
@@ -352,14 +375,14 @@ export async function runAssessment(
       // Combine all retrieved chunks to give LLM full context
       const combinedEvidence = ragResults.map(r => r.content).join('\n\n---\n\n');
 
-      // Quick mode: skip LLM and rely on RAG similarity threshold
+            // Quick mode: skip LLM and rely on RAG similarity threshold
       if (config.mode === 'quick') {
         // We know ragResults > 0 and the first result met the semantic threshold
         // Map similarity (0-1) to confidence score (0-100)
         const mappedConfidence = Math.round(ragResults[0].similarity * 100);
         const isCompliant = mappedConfidence >= confidenceThreshold;
         
-        // Derive dual-phase status from RAG results
+        // Derive documental status from RAG results
         const ismsPhase = {
           found: ragResults[0].similarity >= similarityThreshold,
           score: ragResults[0].similarity,
@@ -367,10 +390,16 @@ export async function runAssessment(
           snippet: ragResults[0].content?.slice(0, 200),
           chunkId: ragResults[0].id,
         };
-        // Quick mode: evidence phase = same as ISMS (no separate check)
-        const evidencePhase = { found: false, score: 0 };
+        // Purely documental: evidence phase mirrors ISMS phase
+        const evidencePhase = {
+          found: ismsPhase.found,
+          score: ismsPhase.score,
+          docTitle: ismsPhase.docTitle,
+          snippet: ismsPhase.snippet,
+          chunkId: ismsPhase.chunkId,
+        };
         const combinedStatus: 'conforming' | 'partial' | 'informal' | 'gap' =
-          ismsPhase.found ? 'partial' : 'gap';
+          ismsPhase.found ? 'conforming' : 'gap';
 
         return {
           controlId,
@@ -388,46 +417,23 @@ export async function runAssessment(
       }
 
       // Deep mode: Validate via Standard API evaluate-evidence with full context and retries
-      // Also run dual-phase: separate ISMS policy check and operational evidence check
       try {
-        // Phase 1: ISMS policy search (narrower category)
-        const ismsResults = await searchDocuments(controlDescription, {
-          productVersionId: config.productVersionId || undefined,
-          vendorId: config.vendorId || undefined,
-          limit: 3,
-          threshold: similarityThreshold,
-          categories: ['ISMS_CORE'],
-        });
         const ismsPhase = {
-          found: ismsResults.length > 0 && ismsResults[0].similarity >= similarityThreshold,
-          score: ismsResults[0]?.similarity ?? 0,
-          docTitle: ismsResults[0]?.metadata?.documentTitle,
-          snippet: ismsResults[0]?.content?.slice(0, 200),
-          chunkId: ismsResults[0]?.id ?? null,
+          found: ragResults.length > 0 && ragResults[0].similarity >= similarityThreshold,
+          score: ragResults[0]?.similarity ?? 0,
+          docTitle: ragResults[0]?.metadata?.documentTitle,
+          snippet: ragResults[0]?.content?.slice(0, 200),
+          chunkId: ragResults[0]?.id ?? null,
         };
 
-        // Phase 2: Operational evidence search
-        const evidenceResults = await searchDocuments(controlDescription, {
-          productVersionId: config.productVersionId || undefined,
-          vendorId: config.vendorId || undefined,
-          limit: 3,
-          threshold: similarityThreshold,
-          categories: ['OPERATIONAL', 'ISMS_CORE'],
-        });
+        // Purely documental: evidence phase mirrors ISMS phase
         const evidencePhase = {
-          found: evidenceResults.length > 0 && evidenceResults[0].similarity >= similarityThreshold,
-          score: evidenceResults[0]?.similarity ?? 0,
-          docTitle: evidenceResults[0]?.metadata?.documentTitle,
-          snippet: evidenceResults[0]?.content?.slice(0, 200),
-          chunkId: evidenceResults[0]?.id ?? null,
+          found: ismsPhase.found,
+          score: ismsPhase.score,
+          docTitle: ismsPhase.docTitle,
+          snippet: ismsPhase.snippet,
+          chunkId: ismsPhase.chunkId,
         };
-
-        // Determine combined status
-        const combinedStatus: 'conforming' | 'partial' | 'informal' | 'gap' =
-          ismsPhase.found && evidencePhase.found ? 'conforming'
-          : ismsPhase.found ? 'partial'
-          : evidencePhase.found ? 'informal'
-          : 'gap';
 
         const evalResult = await retryApiCall(() => standardApi.evaluateEvidence({
           controlRequirement: controlDescription,
@@ -436,6 +442,12 @@ export async function runAssessment(
 
         const confidence = (evalResult as any).confidence_score ?? 0;
         const isCompliant = (evalResult as any).is_compliant === true && confidence >= confidenceThreshold;
+        
+        // Determine combined status based purely on documental compliance
+        const combinedStatus: 'conforming' | 'partial' | 'informal' | 'gap' =
+          isCompliant ? 'conforming'
+          : ismsPhase.found ? 'partial'
+          : 'gap';
         const isEstimated = (evalResult as any).is_estimated === true;
         const baseNotes = (evalResult as any).auditor_notes ?? '';
 
@@ -549,14 +561,53 @@ export async function runAssessment(
         message: scoreResult.message,
       });
     } catch (err) {
-      frameworkScores.push({
-        frameworkId,
-        score: 0,
-        implementedCount: 0,
-        totalRequired: 0,
-        missingControls: [],
-        message: `Score calculation failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      });
+      console.warn(`[Assessment] complianceScore API failed for ${frameworkId}, falling back to local database mappings:`, err);
+      try {
+        const admin = createAdminClient();
+        const { data: mappings } = await admin
+          .from('scf_framework_mappings')
+          .select('scf_control_code')
+          .eq('framework_code', frameworkId);
+
+        if (mappings && mappings.length > 0) {
+          const mappedControlCodes = new Set(mappings.map((m: any) => m.scf_control_code));
+          const frameworkEvaluations = evaluations.filter((e) => mappedControlCodes.has(e.controlId));
+          const totalRequired = frameworkEvaluations.length > 0 ? frameworkEvaluations.length : mappings.length;
+          const implementedCount = frameworkEvaluations.filter((e) => e.isCompliant).length;
+          const score = totalRequired > 0 ? Math.round((implementedCount / totalRequired) * 100) : 0;
+          const missingControls = evaluations
+            .filter((e) => mappedControlCodes.has(e.controlId) && !e.isCompliant)
+            .map((e) => e.controlId);
+
+          frameworkScores.push({
+            frameworkId,
+            score,
+            implementedCount,
+            totalRequired,
+            missingControls,
+            message: `Score calculated locally from db mappings (API fallback).`,
+          });
+        } else {
+          // If no mappings in database, default to 0
+          frameworkScores.push({
+            frameworkId,
+            score: 0,
+            implementedCount: 0,
+            totalRequired: 0,
+            missingControls: [],
+            message: `Score calculation failed and no local mappings found for ${frameworkId}.`,
+          });
+        }
+      } catch (fallbackErr) {
+        frameworkScores.push({
+          frameworkId,
+          score: 0,
+          implementedCount: 0,
+          totalRequired: 0,
+          missingControls: [],
+          message: `Score calculation failed (API + Local fallback error: ${fallbackErr instanceof Error ? fallbackErr.message : 'Unknown'})`,
+        });
+      }
     }
   }
 

@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
       try {
         const admin = createAdminClient();
-        const result = await callMcpTool(admin, toolName, args);
+        const result = await callMcpTool(admin as any, toolName, args);
         await audit(check.fingerprint, toolName, args, true, null, Date.now() - startedAt);
 
         return rpcResult(id, {

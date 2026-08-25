@@ -45,11 +45,13 @@ describe('verifyServiceToken (T602)', () => {
 });
 
 describe('tool catalog', () => {
-  it('exposes exactly the F6-lite read-only trio', () => {
+  it('exposes the read-only tools including vendors', () => {
     expect(MCP_TOOLS.map((t) => t.name)).toEqual([
       'get_posture',
       'list_gaps',
       'get_threat_posture',
+      'list_vendors',
+      'check_vendor_evidence',
     ]);
   });
 
@@ -99,5 +101,116 @@ describe('callMcpTool guardrails', () => {
         sales_channel: 'B2B_GEHC',
       }),
     ).rejects.toMatchObject({ code: 'UNKNOWN_VERSION' });
+  });
+});
+
+describe('list_vendors & check_vendor_evidence handlers', () => {
+  it('enforces vendor_id on check_vendor_evidence', async () => {
+    const admin = {} as SupabaseClient;
+    await expect(callMcpTool(admin, 'check_vendor_evidence', {})).rejects.toBeInstanceOf(McpToolError);
+  });
+
+  it('handles list_vendors with database mock and calculates scores and expired documents', async () => {
+    const mockVendors = [
+      {
+        id: 'v1',
+        name: 'AWS',
+        description: 'Cloud provider',
+        risk_level: 'high',
+        status: 'active',
+        created_at: '2026-07-24T12:00:00Z',
+        assessments: [
+          {
+            id: 'a1',
+            compliant_controls: 8,
+            total_controls: 10,
+            completed_at: '2026-07-24T12:00:00Z',
+          }
+        ],
+        compliance_documents: [
+          {
+            id: 'd1',
+            filename: 'soc2.pdf',
+            doc_type: 'SOC 2 Report',
+            expires_at: '2025-01-01T00:00:00Z', // expired
+          }
+        ]
+      }
+    ];
+
+    const mockAdmin = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          limit: vi.fn(() => ({
+            order: vi.fn(async () => ({ data: mockVendors, error: null })),
+          })),
+        })),
+      })),
+    } as unknown as SupabaseClient;
+
+    const result = await callMcpTool(mockAdmin, 'list_vendors', {});
+    expect(result.vendors).toBeDefined();
+    expect((result.vendors as any)[0]).toMatchObject({
+      id: 'v1',
+      name: 'AWS',
+      latest_assessment_score: '80%',
+      has_expired_evidences: true,
+      document_count: 1,
+    });
+  });
+
+  it('handles check_vendor_evidence sorting active vs expired documents', async () => {
+    const mockVendor = {
+      id: 'v1',
+      name: 'AWS',
+      compliance_documents: [
+        {
+          id: 'd1',
+          filename: 'soc2_expired.pdf',
+          doc_type: 'SOC 2',
+          expires_at: '2025-01-01T00:00:00Z',
+        },
+        {
+          id: 'd2',
+          filename: 'iso27001_active.pdf',
+          doc_type: 'ISO 27001 Certificate',
+          expires_at: '2028-01-01T00:00:00Z',
+        }
+      ]
+    };
+
+    const mockAdmin = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(async () => ({ data: mockVendor, error: null })),
+          })),
+        })),
+      })),
+    } as unknown as SupabaseClient;
+
+    const result = await callMcpTool(mockAdmin, 'check_vendor_evidence', { vendor_id: 'v1' });
+    expect(result.vendor_name).toBe('AWS');
+    expect(result.has_expired_documents).toBe(true);
+    expect((result.expired_documents as any).length).toBe(1);
+    expect((result.expired_documents as any)[0].filename).toBe('soc2_expired.pdf');
+    expect((result.active_documents as any).length).toBe(1);
+    expect((result.active_documents as any)[0].filename).toBe('iso27001_active.pdf');
+  });
+
+  it('throws typed error if vendor not found on check_vendor_evidence', async () => {
+    const mockAdmin = {
+      from: vi.fn(() => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(async () => ({ data: null, error: null })),
+          })),
+        })),
+      })),
+    } as unknown as SupabaseClient;
+
+    await expect(
+      callMcpTool(mockAdmin, 'check_vendor_evidence', { vendor_id: 'nonexistent-uuid' })
+    ).rejects.toMatchObject({ code: 'VENDOR_NOT_FOUND' });
   });
 });

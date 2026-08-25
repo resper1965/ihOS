@@ -1,4 +1,4 @@
-﻿import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const vendorKeys = {
   all: ["vendors"] as const,
@@ -14,6 +14,16 @@ export interface Vendor {
   created_at: string;
   updated_at: string;
   user_id: string;
+  assessments?: Array<{
+    id: string;
+    compliant_controls: number;
+    total_controls: number;
+    completed_at: string;
+  }>;
+  compliance_documents?: Array<{
+    id: string;
+    expires_at: string | null;
+  }>;
 }
 
 export function useVendors() {

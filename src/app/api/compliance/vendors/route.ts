@@ -15,7 +15,19 @@ export async function GET() {
 
     const { data: vendors, error } = await supabase
       .from('vendors' as any)
-      .select('*')
+      .select(`
+        *,
+        assessments:assessments (
+          id,
+          compliant_controls,
+          total_controls,
+          completed_at
+        ),
+        compliance_documents:compliance_documents (
+          id,
+          expires_at
+        )
+      `)
       .order('created_at', { ascending: false });
 
     if (error) {

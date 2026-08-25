@@ -66,6 +66,7 @@ export interface ScrmsData {
   stats: ScrmsStats | null;
   deltas: ProductDelta[];
   ismsStats: IsmsStats | null;
+  hasExpiredDocs?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -88,6 +89,7 @@ export function useScrmsData(vendorId?: string | null) {
         stats: data.stats ?? null,
         deltas: data.deltas ?? [],
         ismsStats: data.ismsStats ?? null,
+        hasExpiredDocs: data.hasExpiredDocs ?? false,
       };
     },
     staleTime: 30_000,
