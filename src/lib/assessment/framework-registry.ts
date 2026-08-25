@@ -64,3 +64,28 @@ export const DEFAULT_FRAMEWORKS = [
   { id: 'iso27001', name: 'ISO/IEC 27001:2022' },
   { id: 'iso27701', name: 'ISO/IEC 27701:2019' },
 ];
+
+// Canonical-code lookup, built from every id and alias the registry knows
+// (offered and quarantined alike), keyed case-insensitively.
+const _canonicalMap = new Map<string, string>();
+for (const fw of [...FRAMEWORK_REGISTRY, ...QUARANTINED_FRAMEWORKS]) {
+  _canonicalMap.set(fw.id.toLowerCase(), fw.id);
+  if (fw.aliases) {
+    for (const alias of fw.aliases) _canonicalMap.set(alias.toLowerCase(), fw.id);
+  }
+}
+
+/**
+ * Canonicalizes a framework code from external input (CSV upload, API body)
+ * onto the exact code the registry uses.
+ *
+ * The upload route previously did `.toUpperCase()`, which would have written
+ * "ISO27001" beside the real "iso27001" and split one framework's mappings
+ * across two codes with nothing flagging it. Unknown codes are passed through
+ * with whitespace collapsed rather than case-mangled, so a genuinely new
+ * framework keeps whatever casing the crosswalk uses.
+ */
+export function normalizeFrameworkCode(raw: string): string {
+  const trimmed = raw.trim().replace(/\s+/g, '-');
+  return _canonicalMap.get(trimmed.toLowerCase()) ?? trimmed;
+}

@@ -2,6 +2,7 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizeFrameworkCode } from "@/lib/assessment/framework-registry";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +75,10 @@ export async function POST(request: NextRequest) {
 
     // Prepare rows
     const rows = mappings.map(m => ({
-      framework_code: m.framework_code.toUpperCase().replace(/\s+/g, '-'),
+      // Canonicalize onto the registry's own code. Uppercasing here would
+      // create e.g. "ISO27001" beside the real "iso27001" and split one
+      // framework's mappings across two codes.
+      framework_code: normalizeFrameworkCode(m.framework_code),
       target_control_id: m.target_control_id.trim(),
       scf_control_code: m.scf_control_code.trim().toUpperCase(),
       synced_at: new Date().toISOString(),

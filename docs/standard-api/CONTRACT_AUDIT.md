@@ -130,3 +130,30 @@ Per B6, tenant is header-only; removed the body injection.
 - [ ] `STANDARD_GRC_TENANT_ID` = `org_xxxxx` is set in prod.
 - [ ] `STANDARD_GRC_API_KEY` uses the `standard_live_` prefix.
 - [ ] `GRC_LOCAL_FALLBACK_ENABLED` is unset/false in prod (fail-closed).
+
+---
+
+## D. Loading a real framework crosswalk (added 2026-08-25)
+
+Five framework mappings were fabricated and quarantined (migration
+`20260825000002`); `iso27001` and `iso27701` are the only real ones. To restore
+a framework:
+
+1. Obtain its real crosswalk (SCF's official mapping workbook, or the Standard
+   API's per-framework mapping data — it covers 231 frameworks).
+2. Convert to CSV with the header `framework_code,target_control_id,scf_control_code`.
+3. `POST /api/compliance/mappings/upload` (admin/ionic_user). The route
+   canonicalizes `framework_code` via `normalizeFrameworkCode`, so casing in
+   the CSV does not create a duplicate framework.
+4. **Acceptance gate — run `npm run check:mappings`. It must exit 0.** A
+   non-zero exit means the loaded mapping shares a byte-identical SCF control
+   set with another framework, which is the signature of a cloned/fabricated
+   crosswalk rather than a real one. Do not re-add the framework to
+   `FRAMEWORK_REGISTRY` until this passes.
+5. Sanity-check the target ids against the real standard: SOC 2 criteria look
+   like `CC6.1`, NIST 800-53 like `AC-1`, HIPAA like `164.308(a)(1)(i)`, GDPR
+   like `Art.32`. Ids that look like ISO clause numbers (`5.1.1`) with a prefix
+   are the fabrication pattern this gate exists to catch.
+6. Add the framework back to `FRAMEWORK_REGISTRY` (moving it out of
+   `QUARANTINED_FRAMEWORKS`) and remove it from the `FABRICATED` list in
+   `tests/unit/assessment/framework-registry.test.ts`.
