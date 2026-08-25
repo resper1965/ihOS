@@ -1337,6 +1337,188 @@ its range ceiling, or the catalog is below any plausible SCF size."
 
 ---
 
+### Task 8: Stop offering frameworks nothing backs (added mid-execution)
+
+**Context:** Task 4's review found that Task 4 does not achieve its own stated goal, and that the plan's file list was wrong. Withdrawing the five fabricated frameworks from `FRAMEWORK_REGISTRY` does **not** withdraw them from the Run Assessment picker, because the picker's list does not come from the registry:
+
+- `src/app/api/compliance/frameworks/route.ts:56-57` builds `baseCodes = Object.keys(fallbackNames)` from a hardcoded object and merges it unconditionally: `combinedCodes = [...new Set([...apiCodes, ...baseCodes, ...uniqueCodes])]`. That hardcoded object asserts the existence of 13 frameworks — including the fabricated `soc2`, `hipaa`, `nist_800_53`, `BR-LGPD`, `EU-GDPR`, **and** five more with no mapping rows at all (`nist_csf`, `PCI-DSS`, `saudi_sama`, `saudi_nca`, `cis_v8`). Only `iso27001` and `iso27701` have real crosswalks. The list is offered regardless of what `scf_framework_mappings` contains, so applying Task 4's migration does not remove them.
+- `src/components/assessments/run-assessment-modal.tsx:48-55` (and again at `:72-79`) hardcodes its own default selection `["iso27001","soc2","hipaa","nist_800_53","iso27701","fedramp"]`, disconnected from `DEFAULT_FRAMEWORKS`. A user who opens the modal and clicks Run without touching the selector submits `soc2`, `hipaa` and `nist_800_53`.
+
+The fix is to make the offered list derive from what is actually backed, and to make the modal's default agree with the registry. `fallbackNames` stays, but demoted to what its name says — a display-name lookup — instead of doubling as an existence claim.
+
+**Files:**
+- Modify: `src/app/api/compliance/frameworks/route.ts:54-66`
+- Modify: `src/components/assessments/run-assessment-modal.tsx:48-55` and `:72-79`
+- Test: `tests/api/frameworks.test.ts` (create)
+
+**Interfaces:**
+- Consumes: `DEFAULT_FRAMEWORKS` from `src/lib/assessment/framework-registry.ts` (Task 4 reduced it to `iso27001` + `iso27701`).
+- Produces: nothing later tasks depend on.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `tests/api/frameworks.test.ts`:
+
+```typescript
+// tests/api/frameworks.test.ts
+// The frameworks endpoint feeds the Run Assessment picker. It must offer only
+// frameworks something actually backs — the Standard API's own catalog, or a
+// real crosswalk in scf_framework_mappings. It previously merged in a
+// hardcoded list of 13 codes regardless of backing, which is how five
+// fabricated frameworks (and five with no mappings at all) stayed selectable.
+
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { mockSupabaseServer } from '../setup';
+
+vi.mock('@/lib/standard-api/client', () => ({
+  getScfFrameworks: vi.fn(async () => []),
+}));
+
+function resetMocks() {
+  mockSupabaseServer.auth.getUser.mockResolvedValue({
+    data: { user: { id: 'test-user-id', email: 'test@example.com' } },
+    error: null,
+  });
+  mockSupabaseServer.from.mockReturnThis();
+  mockSupabaseServer.select.mockResolvedValue({
+    data: [{ framework_code: 'iso27001' }, { framework_code: 'iso27701' }],
+    error: null,
+  });
+}
+
+describe('GET /api/compliance/frameworks', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resetMocks();
+  });
+
+  it('returns 401 when unauthenticated', async () => {
+    const { GET } = await import('@/app/api/compliance/frameworks/route');
+    mockSupabaseServer.auth.getUser.mockResolvedValue({
+      data: { user: null },
+      error: new Error('Session not found'),
+    });
+
+    const res = await GET();
+    expect(res.status).toBe(401);
+  });
+
+  it('offers only frameworks that have real mappings when the Standard API returns none', async () => {
+    const { GET } = await import('@/app/api/compliance/frameworks/route');
+
+    const res = await GET();
+    const body = await res.json();
+    const codes = body.data.map((f: { framework_code: string }) => f.framework_code);
+
+    expect(codes.sort()).toEqual(['iso27001', 'iso27701']);
+  });
+
+  it('never offers a fabricated or unbacked framework from a hardcoded list', async () => {
+    const { GET } = await import('@/app/api/compliance/frameworks/route');
+
+    const res = await GET();
+    const body = await res.json();
+    const codes = body.data.map((f: { framework_code: string }) => f.framework_code);
+
+    for (const unbacked of ['soc2', 'hipaa', 'nist_800_53', 'BR-LGPD', 'EU-GDPR', 'nist_csf', 'PCI-DSS', 'saudi_sama', 'saudi_nca', 'cis_v8']) {
+      expect(codes).not.toContain(unbacked);
+    }
+  });
+
+  it('still resolves a display name for a code it does offer', async () => {
+    const { GET } = await import('@/app/api/compliance/frameworks/route');
+
+    const res = await GET();
+    const body = await res.json();
+    const iso = body.data.find((f: { framework_code: string }) => f.framework_code === 'iso27001');
+
+    expect(iso.framework_name).toBe('ISO/IEC 27001:2022');
+  });
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+```bash
+(cd /c/ && wsl.exe -d Ubuntu -- bash -lc "cd /home/resper/ihOS && npx vitest run tests/api/frameworks.test.ts")
+```
+
+Expected: the two middle tests FAIL — the route currently returns all 13 hardcoded codes plus the 2 mapped ones.
+
+- [ ] **Step 3: Stop the hardcoded list from asserting existence**
+
+In `src/app/api/compliance/frameworks/route.ts`, replace:
+
+```typescript
+    // Merge API frameworks with local mappings and fallback names
+    const apiCodes = apiFrameworks.map(f => f.framework_code);
+    const baseCodes = Object.keys(fallbackNames);
+    const combinedCodes = [...new Set([...apiCodes, ...baseCodes, ...uniqueCodes])];
+```
+
+with:
+
+```typescript
+    // Offer only what something actually backs: the Standard API's own catalog,
+    // or a real crosswalk in scf_framework_mappings. `fallbackNames` below is a
+    // DISPLAY-NAME lookup only — it must never contribute codes to this list.
+    // It used to (`baseCodes = Object.keys(fallbackNames)`), which meant the
+    // picker asserted 13 frameworks existed when only two had real crosswalks:
+    // five were fabricated (quarantined in migration 20260825000002) and five
+    // more had no mapping rows at all. A framework offered here with nothing
+    // behind it produces an assessment over zero controls, reported as a score.
+    const apiCodes = apiFrameworks.map(f => f.framework_code);
+    const combinedCodes = [...new Set([...apiCodes, ...uniqueCodes])];
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+```bash
+(cd /c/ && wsl.exe -d Ubuntu -- bash -lc "cd /home/resper/ihOS && npx vitest run tests/api/frameworks.test.ts")
+```
+
+Expected: PASS, 4 tests.
+
+- [ ] **Step 5: Make the modal's default selection agree with the registry**
+
+In `src/components/assessments/run-assessment-modal.tsx`, add to the imports:
+
+```typescript
+import { DEFAULT_FRAMEWORKS } from "@/lib/assessment/framework-registry";
+```
+
+Then replace the hardcoded `useState` initializer at lines 48-55 and the identical hardcoded array in the reset path at lines 72-79 with `DEFAULT_FRAMEWORKS.map((f) => f.id)`. Both sites must use it — the reset path re-introduced the fabricated codes on its own otherwise. Read the surrounding code before editing so the replacement matches each site's exact shape (one is a `useState` initializer, the other a reassignment).
+
+- [ ] **Step 6: Run the full suite and typecheck**
+
+```bash
+(cd /c/ && wsl.exe -d Ubuntu -- bash -lc "cd /home/resper/ihOS && npx vitest run 2>&1 | tail -6 && npx tsc --noEmit 2>&1 | grep -c 'error TS'")
+```
+
+Expected: 456 tests passing (452 after Task 4 + 4 new), `202` tsc errors. If another test fails because it asserted on the old 13-framework list, report it — that assertion was pinning the defect.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add src/app/api/compliance/frameworks/route.ts src/components/assessments/run-assessment-modal.tsx tests/api/frameworks.test.ts
+git commit -m "fix(frameworks): offer only frameworks something actually backs
+
+Task 4 withdrew five fabricated frameworks from FRAMEWORK_REGISTRY, but the
+Run Assessment picker never read that registry. Its list came from
+/api/compliance/frameworks, which merged a hardcoded 13-entry object into the
+offered codes regardless of what scf_framework_mappings held — so the five
+fabricated frameworks stayed selectable, along with five more that have no
+mapping rows at all. The modal also hardcoded its own default selection
+including soc2/hipaa/nist_800_53, so clicking Run without touching the
+selector submitted them.
+
+fallbackNames is now what its name says: a display-name lookup that
+contributes no codes. The offered list derives from the Standard API catalog
+plus real crosswalks, and the modal defaults to DEFAULT_FRAMEWORKS."
+```
+
+---
+
 ### Task 7: Ops verification — the checks no code change can make
 
 **Context:** Four items from `docs/standard-api/CONTRACT_AUDIT.md` section C, plus the two fallback flags, can only be confirmed against the live Vercel project. `vercel whoami` currently reports no credentials in this environment, so an agent cannot do these — they need an authenticated operator. They are grouped here so the plan does not silently end with them unverified.
