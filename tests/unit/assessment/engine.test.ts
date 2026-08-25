@@ -200,9 +200,13 @@ describe('engine exported types', () => {
 // ---------------------------------------------------------------------------
 
 describe('engine re-exports', () => {
-  it('DEFAULT_FRAMEWORKS is re-exported and has 6 entries', () => {
+  // Count changed 6 -> 2 with the 2026-08-25 quarantine of fabricated
+  // framework mappings (soc2/nist_800_53/HI-2013/EU-GDPR/BR-LGPD). This test
+  // only checks the re-export is wired up; the real guard against offering
+  // an unbacked framework lives in tests/unit/assessment/framework-registry.test.ts.
+  it('DEFAULT_FRAMEWORKS is re-exported and has 2 entries', () => {
     expect(DEFAULT_FRAMEWORKS).toBeDefined();
-    expect(DEFAULT_FRAMEWORKS).toHaveLength(6);
+    expect(DEFAULT_FRAMEWORKS).toHaveLength(2);
   });
 });
 
