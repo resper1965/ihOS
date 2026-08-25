@@ -27,7 +27,7 @@ export async function runPostIngestPipeline(
   chunks: IngestChunk[],
 ): Promise<{ tagged: number; provenance: number }> {
   // 1. Fetch real chunk IDs from the database
-  const { data: dbChunks, error: fetchError } = await (admin as any)
+  const { data: dbChunks, error: fetchError } = await admin
     .from('document_chunks')
     .select('id, chunk_index')
     .eq('document_id', documentId)
@@ -74,7 +74,7 @@ export async function runPostIngestPipeline(
   let tagged = 0;
   for (const tc of taggedChunks) {
     if (tc.scf_controls.length > 0) {
-      const { error: updateError } = await (admin as any)
+      const { error: updateError } = await admin
         .from('document_chunks')
         .update({ scf_controls: tc.scf_controls })
         .eq('id', tc.chunk_id);

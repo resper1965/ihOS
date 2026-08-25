@@ -86,6 +86,7 @@ async function runTest() {
   console.log(`Provenance Records Created: ${result.provenance}`);
 
   // 6. Verify Provenance Table
+  // document_control_provenance isn't in the generated Supabase types.
   const { data: prov, error: provError } = await (admin as any)
     .from('document_control_provenance')
     .select('scf_control_code, llm_status, similarity, llm_justification')

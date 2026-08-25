@@ -31,10 +31,15 @@ export async function resolveVersionContext(
   admin: AdminClient,
   productVersionCode: string,
 ): Promise<VersionContext> {
-  // previous_version_id is a newer column not yet in the generated types and
-  // may be absent on databases where the lineage migration hasn't been applied
-  // yet. Try to read it, but degrade gracefully to just the id so version
-  // resolution (and therefore delta caching) keeps working either way.
+  // previous_version_id may still be absent on databases where the lineage
+  // migration hasn't been applied yet. Try to read it, but degrade gracefully
+  // to just the id so version resolution (and therefore delta caching) keeps
+  // working either way.
+  // The strict postgrest query-builder typing collapses this .select().eq()
+  // chain into a SelectQueryError type and rejects 'version_code' as an .eq()
+  // key even though it's a real product_versions column (a known
+  // chained-query-typing quirk); cast until that's resolved.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withLineage = await (admin as any)
     .from('product_versions')
     .select('id, previous_version_id')

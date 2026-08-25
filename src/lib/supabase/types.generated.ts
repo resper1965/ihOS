@@ -12,31 +12,6 @@ export type Database = {
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       agent_autonomy_boundaries: {
@@ -103,7 +78,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "agent_goals_source_assessment_id_fkey"
+            columns: ["source_assessment_id"]
+            isOneToOne: false
+            referencedRelation: "assessments"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       agent_learning_corrections: {
         Row: {
@@ -276,6 +259,7 @@ export type Database = {
           status: string
           total_controls: number | null
           updated_at: string | null
+          vendor_id: string | null
         }
         Insert: {
           completed_at?: string | null
@@ -295,6 +279,7 @@ export type Database = {
           status?: string
           total_controls?: number | null
           updated_at?: string | null
+          vendor_id?: string | null
         }
         Update: {
           completed_at?: string | null
@@ -314,6 +299,7 @@ export type Database = {
           status?: string
           total_controls?: number | null
           updated_at?: string | null
+          vendor_id?: string | null
         }
         Relationships: [
           {
@@ -321,6 +307,13 @@ export type Database = {
             columns: ["product_version_id"]
             isOneToOne: false
             referencedRelation: "product_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assessments_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -372,6 +365,7 @@ export type Database = {
       compliance_documents: {
         Row: {
           category: string | null
+          clarity_report: Json | null
           created_at: string | null
           doc_type: string
           expires_at: string | null
@@ -387,11 +381,13 @@ export type Database = {
           title: string | null
           total_chunks: number | null
           updated_at: string | null
+          vendor_id: string | null
           version: string
           year: number | null
         }
         Insert: {
           category?: string | null
+          clarity_report?: Json | null
           created_at?: string | null
           doc_type: string
           expires_at?: string | null
@@ -407,11 +403,13 @@ export type Database = {
           title?: string | null
           total_chunks?: number | null
           updated_at?: string | null
+          vendor_id?: string | null
           version?: string
           year?: number | null
         }
         Update: {
           category?: string | null
+          clarity_report?: Json | null
           created_at?: string | null
           doc_type?: string
           expires_at?: string | null
@@ -427,12 +425,169 @@ export type Database = {
           title?: string | null
           total_chunks?: number | null
           updated_at?: string | null
+          vendor_id?: string | null
           version?: string
           year?: number | null
         }
         Relationships: [
           {
             foreignKeyName: "compliance_documents_product_version_id_fkey"
+            columns: ["product_version_id"]
+            isOneToOne: false
+            referencedRelation: "product_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "compliance_documents_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      control_evaluation_cache: {
+        Row: {
+          control_code: string
+          corpus_fingerprint: string
+          created_at: string
+          evaluated_at: string
+          evaluation: Json
+          id: string
+          mode: string
+          product_version_id: string | null
+          sales_channel: string | null
+          scope_key: string
+          updated_at: string
+        }
+        Insert: {
+          control_code: string
+          corpus_fingerprint: string
+          created_at?: string
+          evaluated_at?: string
+          evaluation: Json
+          id?: string
+          mode: string
+          product_version_id?: string | null
+          sales_channel?: string | null
+          scope_key: string
+          updated_at?: string
+        }
+        Update: {
+          control_code?: string
+          corpus_fingerprint?: string
+          created_at?: string
+          evaluated_at?: string
+          evaluation?: Json
+          id?: string
+          mode?: string
+          product_version_id?: string | null
+          sales_channel?: string | null
+          scope_key?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "control_evaluation_cache_product_version_id_fkey"
+            columns: ["product_version_id"]
+            isOneToOne: false
+            referencedRelation: "product_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      control_evidence: {
+        Row: {
+          chunk_id: number
+          created_at: string
+          document_id: number
+          id: number
+          product_version_id: string | null
+          role: string
+          scf_control_code: string
+          score: number
+          snippet: string
+        }
+        Insert: {
+          chunk_id: number
+          created_at?: string
+          document_id: number
+          id?: number
+          product_version_id?: string | null
+          role: string
+          scf_control_code: string
+          score: number
+          snippet: string
+        }
+        Update: {
+          chunk_id?: number
+          created_at?: string
+          document_id?: number
+          id?: number
+          product_version_id?: string | null
+          role?: string
+          scf_control_code?: string
+          score?: number
+          snippet?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "control_evidence_chunk_id_fkey"
+            columns: ["chunk_id"]
+            isOneToOne: false
+            referencedRelation: "document_chunks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "control_evidence_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "control_evidence_product_version_id_fkey"
+            columns: ["product_version_id"]
+            isOneToOne: false
+            referencedRelation: "product_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      control_inventory: {
+        Row: {
+          created_at: string
+          id: string
+          implementation_state: string
+          owner: string | null
+          product_version_id: string | null
+          scf_control_code: string
+          statement: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          implementation_state?: string
+          owner?: string | null
+          product_version_id?: string | null
+          scf_control_code: string
+          statement?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          implementation_state?: string
+          owner?: string | null
+          product_version_id?: string | null
+          scf_control_code?: string
+          statement?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "control_inventory_product_version_id_fkey"
             columns: ["product_version_id"]
             isOneToOne: false
             referencedRelation: "product_versions"
@@ -658,6 +813,57 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "scf_controls"
             referencedColumns: ["control_code"]
+          },
+        ]
+      }
+      evidence_provenance: {
+        Row: {
+          chunk_id: number
+          created_at: string
+          document_id: number
+          id: number
+          justification: string | null
+          method: string
+          scf_control_code: string
+          score: number
+          snippet: string
+        }
+        Insert: {
+          chunk_id: number
+          created_at?: string
+          document_id: number
+          id?: number
+          justification?: string | null
+          method: string
+          scf_control_code: string
+          score: number
+          snippet: string
+        }
+        Update: {
+          chunk_id?: number
+          created_at?: string
+          document_id?: number
+          id?: number
+          justification?: string | null
+          method?: string
+          scf_control_code?: string
+          score?: number
+          snippet?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_provenance_chunk_id_fkey"
+            columns: ["chunk_id"]
+            isOneToOne: false
+            referencedRelation: "document_chunks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_provenance_document_id_fkey"
+            columns: ["document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -904,6 +1110,7 @@ export type Database = {
           product_version_id: string | null
           status: string
           updated_at: string
+          vendor_id: string | null
         }
         Insert: {
           created_at?: string
@@ -915,6 +1122,7 @@ export type Database = {
           product_version_id?: string | null
           status?: string
           updated_at?: string
+          vendor_id?: string | null
         }
         Update: {
           created_at?: string
@@ -926,6 +1134,7 @@ export type Database = {
           product_version_id?: string | null
           status?: string
           updated_at?: string
+          vendor_id?: string | null
         }
         Relationships: [
           {
@@ -947,6 +1156,13 @@ export type Database = {
             columns: ["product_version_id"]
             isOneToOne: false
             referencedRelation: "product_versions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "msr_baselines_vendor_id_fkey"
+            columns: ["vendor_id"]
+            isOneToOne: false
+            referencedRelation: "vendors"
             referencedColumns: ["id"]
           },
         ]
@@ -1130,30 +1346,39 @@ export type Database = {
           affected_components: string[]
           created_at: string
           description: string
+          extraction_confidence: number | null
           feature_slug: string
           id: string
+          needs_review: boolean
           product_version_id: string
           risk_level: string
+          source_document_id: number | null
           updated_at: string
         }
         Insert: {
           affected_components?: string[]
           created_at?: string
           description: string
+          extraction_confidence?: number | null
           feature_slug: string
           id?: string
+          needs_review?: boolean
           product_version_id: string
           risk_level: string
+          source_document_id?: number | null
           updated_at?: string
         }
         Update: {
           affected_components?: string[]
           created_at?: string
           description?: string
+          extraction_confidence?: number | null
           feature_slug?: string
           id?: string
+          needs_review?: boolean
           product_version_id?: string
           risk_level?: string
+          source_document_id?: number | null
           updated_at?: string
         }
         Relationships: [
@@ -1164,6 +1389,13 @@ export type Database = {
             referencedRelation: "product_versions"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "product_version_deltas_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "compliance_documents"
+            referencedColumns: ["id"]
+          },
         ]
       }
       product_versions: {
@@ -1171,6 +1403,7 @@ export type Database = {
           created_at: string
           id: string
           is_default: boolean | null
+          previous_version_id: string | null
           product_name: string
           status: string
           technical_specs: Json | null
@@ -1181,6 +1414,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_default?: boolean | null
+          previous_version_id?: string | null
           product_name?: string
           status?: string
           technical_specs?: Json | null
@@ -1191,13 +1425,22 @@ export type Database = {
           created_at?: string
           id?: string
           is_default?: boolean | null
+          previous_version_id?: string | null
           product_name?: string
           status?: string
           technical_specs?: Json | null
           updated_at?: string
           version_code?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "product_versions_previous_version_id_fkey"
+            columns: ["previous_version_id"]
+            isOneToOne: false
+            referencedRelation: "product_versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -1326,31 +1569,78 @@ export type Database = {
       }
       threat_models: {
         Row: {
+          baseline_model_id: string | null
           created_at: string | null
           id: string
           model_data: Json
           product_version: string
           reviewed_at: string | null
+          source: string
           status: string | null
           target_frameworks: string[] | null
         }
         Insert: {
+          baseline_model_id?: string | null
           created_at?: string | null
           id: string
           model_data: Json
           product_version: string
           reviewed_at?: string | null
+          source?: string
           status?: string | null
           target_frameworks?: string[] | null
         }
         Update: {
+          baseline_model_id?: string | null
           created_at?: string | null
           id?: string
           model_data?: Json
           product_version?: string
           reviewed_at?: string | null
+          source?: string
           status?: string | null
           target_frameworks?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "threat_models_baseline_model_id_fkey"
+            columns: ["baseline_model_id"]
+            isOneToOne: false
+            referencedRelation: "threat_models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      vendors: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          risk_level: string | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          risk_level?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          risk_level?: string | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -1397,6 +1687,7 @@ export type Database = {
         Args: {
           filter_categories?: string[]
           filter_framework?: string
+          filter_vendor_id?: string
           filter_version_id?: string
           match_count?: number
           match_threshold?: number
@@ -1405,6 +1696,7 @@ export type Database = {
         }
         Returns: {
           chunk_index: number
+          clarity_report: Json
           content: string
           content_en: string
           doc_category: string
@@ -1605,9 +1897,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       user_role: ["admin", "ionic_user", "client_user"],

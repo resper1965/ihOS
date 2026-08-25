@@ -178,9 +178,7 @@ export async function getPersistedVerdicts(
   try {
     const currentFingerprint = await getCorpusFingerprint(scope.productVersionId ?? null);
 
-    // control_evaluation_cache is not yet in the generated Supabase types.
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data, error } = await (admin as any)
+    const { data, error } = await admin
       .from('control_evaluation_cache')
       .select('control_code, mode, scope_key, corpus_fingerprint, evaluation, evaluated_at')
       .in('control_code', controlCodes);

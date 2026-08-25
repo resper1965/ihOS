@@ -63,6 +63,11 @@ export async function PATCH(
   }
 
   const admin = createAdminClient();
+  // The strict postgrest Update/RejectExcessProperties typing rejects this
+  // dynamically-built `update` object (built from a partial payload) even
+  // though every key is a real compliance_documents column; cast until the
+  // Supabase client's generated-type inference handles dynamic payloads.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (admin as any)
     .from("compliance_documents")
     .update(update)

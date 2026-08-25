@@ -44,6 +44,7 @@ export async function persistControlProvenance(
   const BATCH_SIZE = 50;
   for (let i = 0; i < rows.length; i += BATCH_SIZE) {
     const batch = rows.slice(i, i + BATCH_SIZE);
+    // document_control_provenance isn't in the generated Supabase types.
     const { error } = await (admin as any)
       .from('document_control_provenance')
       .upsert(batch, { onConflict: 'chunk_id,scf_control_code' });
@@ -75,6 +76,7 @@ export async function deleteControlProvenance(
   admin: SupabaseClient,
   documentId: number,
 ): Promise<void> {
+  // document_control_provenance isn't in the generated Supabase types.
   const { error } = await (admin as any)
     .from('document_control_provenance')
     .delete()
