@@ -15,6 +15,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Check if user is admin or ionic_user
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.role !== "admin" && profile?.role !== "ionic_user") {
+      return NextResponse.json({ error: "Forbidden: Admin or Ionic User required" }, { status: 403 });
+    }
+
     const adminSupabase = createAdminClient();
 
     const contentType = request.headers.get("content-type") || "";

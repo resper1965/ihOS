@@ -11,11 +11,13 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
     from: () => ({
-      select: () => ({
-        in: async () => {
-          throw new Error("relation \"scf_framework_mappings\" does not exist");
-        },
-      }),
+      // Throwing here (rather than only on a chained .in()) fails every
+      // caller's query the same way, regardless of how many methods it
+      // chains after .select() — covers both localCrossCoverage's
+      // .select().in() and localComplianceScore's bare .select().
+      select: () => {
+        throw new Error("relation \"scf_framework_mappings\" does not exist");
+      },
     }),
   })),
 }));
@@ -25,6 +27,13 @@ async function realCrossCoverage() {
     "@/lib/standard-api/client",
   );
   return actual.crossCoverage;
+}
+
+async function realComplianceScore() {
+  const actual = await vi.importActual<typeof import("@/lib/standard-api/client")>(
+    "@/lib/standard-api/client",
+  );
+  return actual.complianceScore;
 }
 
 describe("localCrossCoverage — never fabricates an overlap", () => {
@@ -59,6 +68,39 @@ describe("localCrossCoverage — never fabricates an overlap", () => {
       source_framework: "iso27001",
       target_framework: "soc2",
     }).catch(() => null);
+    expect(result).toBeNull();
+  });
+});
+
+describe("localComplianceScore — never fabricates a compliance score", () => {
+  const saved = { ...process.env };
+
+  beforeEach(() => {
+    process.env.GRC_LOCAL_FALLBACK_ENABLED = "true";
+    delete process.env.GRC_FALLBACK_DISABLED;
+    // Stub fetch to reject so the fallback is triggered deterministically,
+    // not via DNS resolution which is environment-dependent
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+  });
+
+  afterEach(() => {
+    process.env = { ...saved };
+    vi.restoreAllMocks();
+  });
+
+  it("throws instead of returning a made-up score: 75 when the evidence/mapping query fails", async () => {
+    const complianceScore = await realComplianceScore();
+    await expect(
+      complianceScore({ framework_code: "iso27001" }),
+    ).rejects.toThrow();
+  });
+
+  it("never resolves to the hardcoded 75/75 fallback shape", async () => {
+    const complianceScore = await realComplianceScore();
+    const result = await complianceScore({ framework_code: "iso27001" }).catch(() => null);
     expect(result).toBeNull();
   });
 });

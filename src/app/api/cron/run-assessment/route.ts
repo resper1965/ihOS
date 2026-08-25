@@ -37,7 +37,7 @@ export async function POST(req: Request) {
       body = {};
     }
 
-    const frameworks = body.frameworks ?? DEFAULT_FRAMEWORKS;
+    const frameworks = body.frameworks ?? DEFAULT_FRAMEWORKS.map(f => f.id);
     const mode = body.mode ?? 'deep';
     const forceReevaluate = body.forceReevaluate ?? false;
 

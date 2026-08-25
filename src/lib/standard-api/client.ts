@@ -623,12 +623,13 @@ async function localComplianceScore(
       message: "Computed locally via active evidence evaluations",
     };
   } catch (err) {
+    // No grounded answer exists when the evaluation/mapping read fails, and a
+    // compliance score is exactly the kind of claim that must never be invented
+    // (Constitution Principle VIII — same reason createMockThreatModel was
+    // deleted in specs/001 T030). Throw so the caller reports a gap; the
+    // agent tool at src/lib/agents/tools/index.ts already handles this.
     console.error("[GRC Fallback] Local compliance score failed:", err);
-    return {
-      score: 75,
-      overall_score: 75,
-      message: `Local calculation fallback due to error: ${err instanceof Error ? err.message : String(err)}`,
-    };
+    throw err;
   }
 }
 
