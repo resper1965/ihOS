@@ -35,7 +35,11 @@ async function main() {
 
   const findings = detectClonedMappings(rows);
   if (findings.length === 0) {
-    console.log("[check:mappings] OK — no two frameworks share an identical SCF control set");
+    console.log(
+      "[check:mappings] OK — no two frameworks share a byte-identical SCF control set. " +
+        "This checks EXACT duplication only; a near-clone differing by a handful of rows " +
+        "would not be caught and is not ruled out by this result.",
+    );
     return;
   }
 
