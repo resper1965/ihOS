@@ -671,15 +671,15 @@ async function localCrossCoverage(
       }))
     };
   } catch (err) {
+    // No grounded answer exists when the mapping read fails, and a coverage
+    // analysis is exactly the kind of claim that must never be invented
+    // (Constitution Principle VIII — same reason createMockThreatModel was
+    // deleted in specs/001 T030). Throw so the caller reports a gap; the
+    // agent tool at src/lib/agents/tools/index.ts already handles this.
     console.error("[GRC Fallback] Local cross coverage failed:", err);
-    return {
-      source_framework: request.source_framework,
-      target_framework: request.target_framework,
-      overlap_percentage: 50,
-      coverage_percentage: 50,
-      mapped_controls: [],
-      gaps: []
-    };
+    throw err instanceof Error
+      ? err
+      : new Error("Local cross-coverage failed and no grounded result is available");
   }
 }
 
