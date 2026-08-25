@@ -406,12 +406,22 @@ export async function getScfFrameworks(): Promise<any[]> {
  * OPT-IN (fail-closed by default). Per Constitution Principle VIII, we do NOT
  * silently estimate/fabricate compliance evaluations. Set
  * `GRC_LOCAL_FALLBACK_ENABLED=true` to explicitly accept degraded/estimated
- * results (each is flagged `is_estimated: true`). The legacy
- * `GRC_FALLBACK_DISABLED=true` kill switch is still honored as a hard-off.
+ * results (each is flagged `is_estimated: true`). `GRC_CRON_FALLBACK_ENABLED=true`
+ * is the equivalent opt-in for automated (IS_CRON) runs — being a cron is not by
+ * itself consent to estimate. The legacy `GRC_FALLBACK_DISABLED=true` kill switch
+ * is still honored as a hard-off over both.
  */
 export function isLocalFallbackEnabled(): boolean {
   if (process.env.GRC_FALLBACK_DISABLED === "true") return false;
-  if (process.env.IS_CRON === "true") return true; // Force resilience in automated background runs
+  // Automated runs may prefer degraded-but-flagged results over an empty
+  // sweep, but that is a deliberate posture, not a side effect of being a
+  // cron. IS_CRON alone must NOT enable estimation: it is set for unrelated
+  // reasons (RLS client selection, cookie handling) and until commit 4a4d6f8
+  // was never unset, so piggybacking on it silently disabled the fail-closed
+  // default for ordinary requests in warm instances too.
+  if (process.env.IS_CRON === "true") {
+    return process.env.GRC_CRON_FALLBACK_ENABLED === "true";
+  }
   return process.env.GRC_LOCAL_FALLBACK_ENABLED === "true";
 }
 

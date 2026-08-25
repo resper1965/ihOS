@@ -23,6 +23,8 @@ describe("isLocalFallbackEnabled — fail-closed default", () => {
   beforeEach(() => {
     delete process.env.GRC_FALLBACK_DISABLED;
     delete process.env.GRC_LOCAL_FALLBACK_ENABLED;
+    delete process.env.GRC_CRON_FALLBACK_ENABLED;
+    delete process.env.IS_CRON;
   });
   afterEach(() => {
     process.env = { ...saved };
@@ -41,6 +43,33 @@ describe("isLocalFallbackEnabled — fail-closed default", () => {
 
   it("legacy GRC_FALLBACK_DISABLED=true forces OFF even if opt-in is set", async () => {
     process.env.GRC_LOCAL_FALLBACK_ENABLED = "true";
+    process.env.GRC_FALLBACK_DISABLED = "true";
+    const isEnabled = await realIsLocalFallbackEnabled();
+    expect(isEnabled()).toBe(false);
+  });
+
+  it("IS_CRON alone does NOT enable estimation — cron resilience is its own opt-in", async () => {
+    process.env.IS_CRON = "true";
+    const isEnabled = await realIsLocalFallbackEnabled();
+    expect(isEnabled()).toBe(false);
+  });
+
+  it("enables estimation on cron runs only when GRC_CRON_FALLBACK_ENABLED=true", async () => {
+    process.env.IS_CRON = "true";
+    process.env.GRC_CRON_FALLBACK_ENABLED = "true";
+    const isEnabled = await realIsLocalFallbackEnabled();
+    expect(isEnabled()).toBe(true);
+  });
+
+  it("GRC_CRON_FALLBACK_ENABLED does nothing outside a cron run", async () => {
+    process.env.GRC_CRON_FALLBACK_ENABLED = "true";
+    const isEnabled = await realIsLocalFallbackEnabled();
+    expect(isEnabled()).toBe(false);
+  });
+
+  it("the legacy kill switch still overrides cron estimation", async () => {
+    process.env.IS_CRON = "true";
+    process.env.GRC_CRON_FALLBACK_ENABLED = "true";
     process.env.GRC_FALLBACK_DISABLED = "true";
     const isEnabled = await realIsLocalFallbackEnabled();
     expect(isEnabled()).toBe(false);

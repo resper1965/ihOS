@@ -104,6 +104,13 @@ STANDARD_GRC_TENANT_ID=org_your-org-id                # REQUIRED (x-standard-ten
 # (each flagged is_estimated=true and marked needs_review). Keep unset in prod.
 GRC_LOCAL_FALLBACK_ENABLED=false
 
+# Automated (cron) runs are NOT implicitly allowed to estimate. Being a cron is
+# not consent: set this to "true" only if you want scheduled sweeps to produce
+# degraded, non-authoritative results (each flagged is_estimated=true and shown
+# with an "estimated verdicts — needs review" badge on the dashboard) rather
+# than reporting a gap. Keep unset in prod unless that tradeoff is deliberate.
+GRC_CRON_FALLBACK_ENABLED=false
+
 # Vercel AI
 VERCEL_AI_GATEWAY_URL=https://gateway.ai.vercel.com/v1
 
