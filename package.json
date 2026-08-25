@@ -17,7 +17,8 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
-    "backfill:posture": "tsx src/scripts/backfill-posture.ts"
+    "backfill:posture": "tsx src/scripts/backfill-posture.ts",
+    "check:mappings": "tsx src/scripts/check-mapping-integrity.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.67",
