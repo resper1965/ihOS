@@ -15,6 +15,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { useRunAssessment } from "@/hooks/queries/use-assessments";
 import { useVersion } from "@/lib/context/version-context";
+import { DEFAULT_FRAMEWORKS } from "@/lib/assessment/framework-registry";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -45,14 +46,9 @@ export function RunAssessmentModal({
   const [forceReevaluate, setForceReevaluate] = useState(false);
   const [frameworkSearch, setFrameworkSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>([
-    "iso27001",
-    "soc2",
-    "hipaa",
-    "nist_800_53",
-    "iso27701",
-    "fedramp",
-  ]);
+  const [selectedFrameworks, setSelectedFrameworks] = useState<string[]>(
+    DEFAULT_FRAMEWORKS.map((f) => f.id)
+  );
   const [progress, setProgress] = useState("");
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
@@ -69,14 +65,7 @@ export function RunAssessmentModal({
       setForceReevaluate(false);
       setFrameworkSearch("");
       setDebouncedSearch("");
-      setSelectedFrameworks([
-        "iso27001",
-        "soc2",
-        "hipaa",
-        "nist_800_53",
-        "iso27701",
-        "fedramp",
-      ]);
+      setSelectedFrameworks(DEFAULT_FRAMEWORKS.map((f) => f.id));
       setProgress("");
       setResult(null);
       setError(null);

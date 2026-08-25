@@ -51,10 +51,16 @@ export async function GET() {
       logger.warn("Failed to fetch frameworks from Standard API, falling back to local/DB only", { error: apiError });
     }
 
-    // Merge API frameworks with local mappings and fallback names
+    // Offer only what something actually backs: the Standard API's own catalog,
+    // or a real crosswalk in scf_framework_mappings. `fallbackNames` below is a
+    // DISPLAY-NAME lookup only — it must never contribute codes to this list.
+    // It used to (`baseCodes = Object.keys(fallbackNames)`), which meant the
+    // picker asserted 13 frameworks existed when only two had real crosswalks:
+    // five were fabricated (quarantined in migration 20260825000002) and five
+    // more had no mapping rows at all. A framework offered here with nothing
+    // behind it produces an assessment over zero controls, reported as a score.
     const apiCodes = apiFrameworks.map(f => f.framework_code);
-    const baseCodes = Object.keys(fallbackNames);
-    const combinedCodes = [...new Set([...apiCodes, ...baseCodes, ...uniqueCodes])];
+    const combinedCodes = [...new Set([...apiCodes, ...uniqueCodes])];
 
     const frameworks = combinedCodes.map(code => {
       // Prefer API name, then fallback name, then code
