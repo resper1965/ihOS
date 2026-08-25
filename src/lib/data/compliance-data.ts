@@ -35,6 +35,12 @@ export interface FrameworkScore {
   partialCount?: number | null;
   informalCount?: number | null;
   gapCount?: number | null;
+  // Result quality of the assessment run this score came from. > 0 means part
+  // of the score rests on estimated (non-authoritative) verdicts produced while
+  // the GRC API was unavailable — the score must not be presented as fully
+  // verified. Null/absent for locally-computed scores, which never estimate.
+  runEstimatedCount?: number | null;
+  runEvaluationErrorCount?: number | null;
 }
 
 export interface EvaluationSummary {
@@ -369,6 +375,8 @@ export async function getFrameworkScores(): Promise<FrameworkScore[]> {
             partialCount: (data?.partial_count as number) ?? null,
             informalCount: (data?.informal_count as number) ?? null,
             gapCount: (data?.gap_count as number) ?? null,
+            runEstimatedCount: (data?.run_estimated_count as number) ?? null,
+            runEvaluationErrorCount: (data?.run_evaluation_error_count as number) ?? null,
           });
         }
         
