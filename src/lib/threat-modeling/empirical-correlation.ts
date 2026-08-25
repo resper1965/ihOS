@@ -87,6 +87,9 @@ export async function loadActiveFindingsForVersion(
 ): Promise<EmpiricalFinding[]> {
   // Any failure here (table absent, client unavailable) degrades to "no
   // empirical annotations" — a coverage note, never a generation failure.
+  // mapped_scf_controls and product_version_id aren't columns the generated
+  // types know about for defectdojo_findings (it has mapped_iso/nist/soc
+  // instead) — cast until that table's schema is reconciled.
   try {
     let query = (admin as any)
       .from('defectdojo_findings')

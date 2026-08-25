@@ -186,6 +186,9 @@ export async function POST(
   };
 
   // Insert report
+  // The strict RejectExcessProperties insert typing rejects 'threat_model_id'
+  // even though it's a real threat_model_reports column (a known quirk of
+  // the generated types' insert-overload narrowing); cast until resolved.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: inserted, error: insertError } = await (admin as any)
     .from('threat_model_reports')

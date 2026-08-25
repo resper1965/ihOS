@@ -60,6 +60,12 @@ async function runBulkReindexInternal() {
       // 4. Limpeza (Proveniência Antiga + Cache)
       await deleteControlProvenance(admin, doc.id);
       if (doc.product_version_id) {
+        // The strict postgrest query-builder typing collapses this
+        // .delete().eq() chain into a SelectQueryError type and rejects
+        // 'product_version_id' as an .eq() key even though it's a real
+        // control_evaluation_cache column (a known chained-query-typing
+        // quirk); cast until that's resolved.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (admin as any).from('control_evaluation_cache').delete().eq('product_version_id', doc.product_version_id);
       }
       await admin.from('document_chunks').delete().eq('document_id', doc.id);

@@ -196,8 +196,7 @@ async function getPosture(
   const versionId = await resolveVersionId(admin, versionCode);
 
   // Documental axis: latest persisted scorecard snapshot.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data: snapshot } = await (admin as any)
+  const { data: snapshot } = await admin
     .from('intelligence_snapshots')
     .select('snapshot_data, created_at')
     .eq('snapshot_type', 'scorecard')

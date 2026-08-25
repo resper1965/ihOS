@@ -118,6 +118,10 @@ export async function PATCH(
     reviewed_at: new Date().toISOString(),
   };
 
+  // The strict RejectExcessProperties update typing rejects this object and
+  // cascades into downstream SelectQueryError narrowing failures on `updated`
+  // even though model_data/status/updated_at are real columns; cast until
+  // that's resolved.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: updated, error: updateError } = await (admin as any)
     .from('threat_models')

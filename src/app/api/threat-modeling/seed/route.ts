@@ -92,6 +92,10 @@ export async function POST(request: NextRequest) {
     target_frameworks,
     status,
   };
+  // The strict RejectExcessProperties insert typing rejects this object even
+  // though 'source'/'baseline_model_id' are real threat_models columns
+  // (a known quirk of the generated types' insert-overload narrowing); cast
+  // until that's resolved.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admins = admin as any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

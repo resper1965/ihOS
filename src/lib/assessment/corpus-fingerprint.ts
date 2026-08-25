@@ -45,6 +45,7 @@ export async function getCorpusFingerprint(
   // Include control provenance count so that re-tagging (without document
   // changes) also invalidates cached evaluations.
   const docIds = rows.map((r) => r.id);
+  // document_control_provenance isn't in the generated Supabase types.
   const { count: provCount } = await (admin as any)
     .from('document_control_provenance')
     .select('id', { count: 'exact', head: true })
@@ -80,8 +81,11 @@ export async function getDeltaFingerprint(
   // Tolerate older schemas where needs_review/extraction_confidence don't
   // exist yet: request them, but fall back to the base columns on error.
   let rows: ProductVersionDelta[] = [];
-  // needs_review/extraction_confidence are newer columns not yet in the
-  // generated types; cast and gracefully fall back on older schemas.
+  // The strict postgrest query-builder typing collapses this .select().eq()
+  // chain into a SelectQueryError type and rejects 'product_version_id' as an
+  // .eq() key even though it's a real product_version_deltas column (the
+  // same known chained-query-typing quirk hits the uncast fallback below);
+  // cast until that's resolved.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const withReview = await (admin as any)
     .from('product_version_deltas')

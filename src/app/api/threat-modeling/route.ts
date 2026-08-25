@@ -303,6 +303,10 @@ export async function POST(request: NextRequest) {
     target_frameworks: target_frameworks,
     status: 'draft',
   };
+  // sales_channel isn't a threat_models column, and the strict
+  // RejectExcessProperties insert typing rejects the whole object for it
+  // (also flags baseline_model_id, a real column, as a false positive); cast
+  // until the sales_channel migration lands and types are regenerated again.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const admins = admin as any;
   let inserted: any;

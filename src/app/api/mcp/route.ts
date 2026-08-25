@@ -123,6 +123,10 @@ export async function POST(request: NextRequest) {
 
       try {
         const admin = createAdminClient();
+        // createAdminClient()'s typed SupabaseClient<Database, ...> generic
+        // instantiation doesn't structurally match callMcpTool's plain
+        // SupabaseClient parameter under the stricter postgrest generics;
+        // cast until that helper is retyped to accept the typed client.
         const result = await callMcpTool(admin as any, toolName, args);
         await audit(check.fingerprint, toolName, args, true, null, Date.now() - startedAt);
 

@@ -234,6 +234,7 @@ export async function runAssessment(
   if (config.salesChannel) {
     try {
       const admin = createAdminClient();
+      // channel_control_applicability isn't in the generated Supabase types.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data: napRows } = await (admin as any)
         .from('channel_control_applicability')
@@ -284,8 +285,11 @@ export async function runAssessment(
   const cacheMap = new Map<string, { corpusFingerprint: string; evaluation: ControlEvaluation; evaluatedAt: string }>();
   if (!config.forceReevaluate) {
     const admin = createAdminClient();
-    // control_evaluation_cache is not yet in the generated Supabase types
-    // (see plan.md Stream A1 — types need regeneration); cast until then.
+    // The strict postgrest query-builder typing collapses this
+    // .select().eq().eq() chain into a SelectQueryError type and then
+    // rejects 'mode'/'scope_key' as .eq() keys even though they're real
+    // control_evaluation_cache columns (a known chained-query-typing quirk);
+    // cast until that's resolved.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: cacheRows } = await (admin as any)
       .from('control_evaluation_cache')
@@ -516,6 +520,10 @@ export async function runAssessment(
         evaluation: r,
         evaluated_at: evaluatedAt,
       }));
+      // The strict RejectExcessProperties upsert typing rejects this batch
+      // even though every key is a real control_evaluation_cache column
+      // (a known quirk of the generated types' insert-overload narrowing);
+      // cast until that's resolved.
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error: cacheError } = await (admin as any)
         .from('control_evaluation_cache')
