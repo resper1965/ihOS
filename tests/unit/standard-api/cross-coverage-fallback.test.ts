@@ -6,7 +6,7 @@
 // tests/setup.ts mocks the whole standard-api client module, so the real
 // implementation is pulled via importActual — same pattern as fallback.test.ts.
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(async () => ({
@@ -28,9 +28,22 @@ async function realCrossCoverage() {
 }
 
 describe("localCrossCoverage — never fabricates an overlap", () => {
+  const saved = { ...process.env };
+
   beforeEach(() => {
     process.env.GRC_LOCAL_FALLBACK_ENABLED = "true";
     delete process.env.GRC_FALLBACK_DISABLED;
+    // Stub fetch to reject so the fallback is triggered deterministically,
+    // not via DNS resolution which is environment-dependent
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockRejectedValue(new TypeError('Failed to fetch'))
+    );
+  });
+
+  afterEach(() => {
+    process.env = { ...saved };
+    vi.restoreAllMocks();
   });
 
   it("throws instead of returning a made-up 50% when the mapping query fails", async () => {
