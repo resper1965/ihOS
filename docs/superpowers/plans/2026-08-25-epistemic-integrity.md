@@ -1519,6 +1519,252 @@ plus real crosswalks, and the modal defaults to DEFAULT_FRAMEWORKS."
 
 ---
 
+### Task 9: Stop the agentic-triggers cron inventing compliance scores (added mid-execution)
+
+**Context:** Found by Task 8's literal-code grep. `src/app/api/cron/agentic-triggers/route.ts` computes a compliance score for each framework and, when it has no real one, **invents it from the character count of the framework's name**:
+
+```typescript
+let currentScore = 73.5;
+if (computed && computed.score !== null) {
+  currentScore = computed.score;
+} else {
+  // Fallback for untracked/unseeded frameworks
+  currentScore = 60 + (framework.length * 3) % 40;
+}
+cachedScores.set(framework, currentScore);
+```
+
+That value is not confined to a local variable. At `:460` it is read back as `cachedScores.get(framework) ?? 73.5`, then (`:468-479`) any delta against the previously stored value **generates a user-facing notification** — `"WARNING: The compliance score for the framework X decreased from 78.0% to 72.0%"` — and (`:481-484`) is **persisted per user** in `org_state` under `framework_score_<framework>`. So users receive compliance-score-change alerts whose numbers derive from a string length, and those numbers become the baseline the next run compares against.
+
+The snapshot write to `intelligence_snapshots` is correctly guarded (`if (computed && computed.score !== null)`), so the invented score does not reach the dashboard scorecard. The notification and `org_state` paths have no such guard.
+
+`mainFrameworks` at `:238` also hardcodes `BR-LGPD`, `HI-2013`, `EU-GDPR` — three of the five whose mappings migration `20260825000002` quarantines as fabricated — forcing them through this loop even when nothing backs them.
+
+The fix is the same fail-closed rule the rest of this plan applies: when there is no real score, there is no score. Skip the framework rather than invent one.
+
+**Files:**
+- Modify: `src/app/api/cron/agentic-triggers/route.ts:238` and `:242-250` and `:460`
+- Modify: `src/lib/agents/profiles.ts:98`
+- Test: `tests/api/agentic-triggers-score.test.ts` (create)
+
+**Interfaces:**
+- Consumes: nothing from other tasks.
+- Produces: nothing later tasks depend on.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `tests/api/agentic-triggers-score.test.ts`:
+
+```typescript
+// tests/api/agentic-triggers-score.test.ts
+// The agentic-triggers cron used to invent a compliance score from the
+// character count of the framework's name (60 + (name.length * 3) % 40) when
+// it had no real one, then notify users about "changes" in that number and
+// persist it as the baseline for the next comparison. A score with nothing
+// behind it must produce no score, no alert, and no stored state.
+//
+// This tests the scoring decision in isolation rather than the whole route,
+// because the route's body is a long batched pipeline whose other branches
+// need extensive unrelated mocking.
+
+import { describe, it, expect } from 'vitest';
+import { resolveFrameworkScore } from '@/app/api/cron/agentic-triggers/score';
+
+describe('resolveFrameworkScore', () => {
+  it('returns the computed score when one really exists', () => {
+    expect(resolveFrameworkScore({ code: 'iso27001', score: 82 })).toBe(82);
+  });
+
+  it('returns null — not an invented number — when there is no computed score', () => {
+    expect(resolveFrameworkScore(undefined)).toBeNull();
+    expect(resolveFrameworkScore({ code: 'soc2', score: null })).toBeNull();
+  });
+
+  it('never derives a score from the framework code itself', () => {
+    // The old formula was 60 + (code.length * 3) % 40, so a 4-char and a
+    // 12-char code produced different "scores" from the same absence of data.
+    expect(resolveFrameworkScore({ code: 'soc2', score: null })).toBe(
+      resolveFrameworkScore({ code: 'nist_800_53', score: null }),
+    );
+  });
+
+  it('preserves a legitimate zero rather than treating it as missing', () => {
+    expect(resolveFrameworkScore({ code: 'iso27001', score: 0 })).toBe(0);
+  });
+});
+```
+
+- [ ] **Step 2: Run the test to verify it fails**
+
+```bash
+(cd /c/ && wsl.exe -d Ubuntu -- bash -lc "cd /home/resper/ihOS && npx vitest run tests/api/agentic-triggers-score.test.ts")
+```
+
+Expected: FAIL — `Cannot find module '@/app/api/cron/agentic-triggers/score'`.
+
+- [ ] **Step 3: Extract the scoring decision into a testable module**
+
+Create `src/app/api/cron/agentic-triggers/score.ts`:
+
+```typescript
+// src/app/api/cron/agentic-triggers/score.ts
+// Extracted from route.ts so the scoring decision is testable without mocking
+// the cron's whole batched pipeline. Next's route type-checker rejects exports
+// outside the HTTP-method allowlist in a route.ts, so this cannot live there.
+
+export interface ComputedScore {
+  code: string;
+  score: number | null;
+}
+
+/**
+ * The score for a framework, or null when there genuinely isn't one.
+ *
+ * This used to fall back to `60 + (framework.length * 3) % 40` — a number
+ * derived from the framework code's character count — and before that to a
+ * flat 73.5. Both fed user-facing "your compliance score changed" alerts and
+ * were persisted as the baseline for the next run's comparison, so a framework
+ * with no data produced a plausible-looking score and a stream of alerts about
+ * its movement. Absence of a score is now reported as absence (Constitution
+ * Principle VIII).
+ */
+export function resolveFrameworkScore(computed: ComputedScore | undefined): number | null {
+  if (!computed || computed.score === null || computed.score === undefined) {
+    return null;
+  }
+  return computed.score;
+}
+```
+
+- [ ] **Step 4: Run the test to verify it passes**
+
+```bash
+(cd /c/ && wsl.exe -d Ubuntu -- bash -lc "cd /home/resper/ihOS && npx vitest run tests/api/agentic-triggers-score.test.ts")
+```
+
+Expected: PASS, 4 tests.
+
+- [ ] **Step 5: Use it in the cron, and skip frameworks with no score**
+
+In `src/app/api/cron/agentic-triggers/route.ts`, add to the imports:
+
+```typescript
+import { resolveFrameworkScore } from './score';
+```
+
+Replace the invented-score block (around `:242-250`):
+
+```typescript
+      const computed = localScoreMap.get(framework);
+      let currentScore = 73.5;
+      if (computed && computed.score !== null) {
+        currentScore = computed.score;
+      } else {
+        // Fallback for untracked/unseeded frameworks
+        currentScore = 60 + (framework.length * 3) % 40;
+      }
+      cachedScores.set(framework, currentScore);
+```
+
+with:
+
+```typescript
+      const computed = localScoreMap.get(framework);
+      const resolvedScore = resolveFrameworkScore(computed);
+      // No real score means no entry: downstream reads cachedScores to decide
+      // whether to alert the user and what baseline to persist, and an invented
+      // number there produces alerts about the movement of a fiction.
+      if (resolvedScore !== null) {
+        cachedScores.set(framework, resolvedScore);
+      }
+```
+
+Then at `:460`, replace:
+
+```typescript
+        const currentScore = cachedScores.get(framework) ?? 73.5;
+```
+
+with:
+
+```typescript
+        const currentScore = cachedScores.get(framework);
+        // Absent means we had no real score for this framework this run —
+        // no alert, no persisted baseline. Skip rather than substitute.
+        if (currentScore === undefined) continue;
+```
+
+Read the surrounding loop before editing to confirm `continue` lands in the right scope (it must skip this one framework, not abandon the user's whole list).
+
+Finally, at `:238`, replace the hardcoded list:
+
+```typescript
+    const mainFrameworks = ["iso27001", "iso27701", "BR-LGPD", "HI-2013", "EU-GDPR"];
+```
+
+with:
+
+```typescript
+    // Only frameworks a real crosswalk backs. BR-LGPD / HI-2013 / EU-GDPR were
+    // here until migration 20260825000002 quarantined their mappings as
+    // fabricated; forcing them through this loop is what surfaced the invented
+    // score above. Frameworks with real data still arrive via
+    // allUniqueFrameworks below.
+    const mainFrameworks = DEFAULT_FRAMEWORKS.map((f) => f.id);
+```
+
+and add to the imports:
+
+```typescript
+import { DEFAULT_FRAMEWORKS } from '@/lib/assessment/framework-registry';
+```
+
+- [ ] **Step 6: Stop the SOC agent asserting a framework it has no data for**
+
+In `src/lib/agents/profiles.ts:98`, replace:
+
+```
+- Assess SOC 2 compliance status using the complianceScore tool (framework: "soc2").
+```
+
+with:
+
+```
+- Do NOT assert a SOC 2 compliance score: no real SCF crosswalk backs "soc2" in
+  this deployment (its mappings were quarantined as fabricated — see migration
+  20260825000002). Answer SOC 2 questions from documented evidence and named
+  gaps, and say plainly that a scored SOC 2 posture is unavailable.
+```
+
+- [ ] **Step 7: Run the full suite and typecheck**
+
+```bash
+(cd /c/ && wsl.exe -d Ubuntu -- bash -lc "cd /home/resper/ihOS && npx vitest run 2>&1 | tail -6 && npx tsc --noEmit 2>&1 | grep -c 'error TS'")
+```
+
+Expected: 460 tests passing (456 after Task 8 + 4 new), `202` tsc errors.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add src/app/api/cron/agentic-triggers/route.ts src/app/api/cron/agentic-triggers/score.ts src/lib/agents/profiles.ts tests/api/agentic-triggers-score.test.ts
+git commit -m "fix(cron): stop inventing compliance scores from framework name length
+
+agentic-triggers computed a score of 60 + (framework.length * 3) % 40 when it
+had no real one — a number derived from the character count of the framework
+code — then used it to generate user-facing 'your compliance score changed'
+notifications and persisted it per user in org_state as the baseline for the
+next run's comparison. The dashboard snapshot write was guarded; these two
+paths were not. A flat 73.5 served the same purpose before it.
+
+No real score now means no score: the framework is skipped, with no alert and
+no stored baseline. Also drops the three quarantined frameworks from the
+hardcoded mainFrameworks list, and stops the SOC agent profile instructing the
+chat agent to assert a soc2 score nothing backs."
+```
+
+---
+
 ### Task 7: Ops verification — the checks no code change can make
 
 **Context:** Four items from `docs/standard-api/CONTRACT_AUDIT.md` section C, plus the two fallback flags, can only be confirmed against the live Vercel project. `vercel whoami` currently reports no credentials in this environment, so an agent cannot do these — they need an authenticated operator. They are grouped here so the plan does not silently end with them unverified.
