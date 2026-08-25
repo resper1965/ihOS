@@ -5,6 +5,8 @@ import { createAdminClient } from '@/lib/supabase/admin';
 import * as standardApi from '@/lib/standard-api/client';
 import { routeNotification, type NotificationSeverity } from '@/lib/integrations/notification-router';
 import { calculateFrameworkScoresLocally } from '@/lib/data/compliance-data';
+import { resolveFrameworkScore } from './score';
+import { DEFAULT_FRAMEWORKS } from '@/lib/assessment/framework-registry';
 
 export async function GET(req: Request) {
   try {
@@ -235,19 +237,23 @@ export async function GET(req: Request) {
     // Index local scores by framework code
     const localScoreMap = new Map(localScores.map(s => [s.code, s]));
 
-    const mainFrameworks = ["iso27001", "iso27701", "BR-LGPD", "HI-2013", "EU-GDPR"];
+    // Only frameworks a real crosswalk backs. BR-LGPD / HI-2013 / EU-GDPR were
+    // here until migration 20260825000002 quarantined their mappings as
+    // fabricated; forcing them through this loop is what surfaced the invented
+    // score above. Frameworks with real data still arrive via
+    // allUniqueFrameworks below.
+    const mainFrameworks = DEFAULT_FRAMEWORKS.map((f) => f.id);
     const frameworksToProcess = new Set([...mainFrameworks, ...allUniqueFrameworks]);
 
     for (const framework of frameworksToProcess) {
       const computed = localScoreMap.get(framework);
-      let currentScore = 73.5;
-      if (computed && computed.score !== null) {
-        currentScore = computed.score;
-      } else {
-        // Fallback for untracked/unseeded frameworks
-        currentScore = 60 + (framework.length * 3) % 40;
+      const resolvedScore = resolveFrameworkScore(computed);
+      // No real score means no entry: downstream reads cachedScores to decide
+      // whether to alert the user and what baseline to persist, and an invented
+      // number there produces alerts about the movement of a fiction.
+      if (resolvedScore !== null) {
+        cachedScores.set(framework, resolvedScore);
       }
-      cachedScores.set(framework, currentScore);
 
       // Save/Upsert this calculated score as a fresh snapshot in intelligence_snapshots
       // GUARD: Never overwrite authoritative scores (rag_verified, derived, cross_mapped,
@@ -457,7 +463,10 @@ export async function GET(req: Request) {
 
     for (const [userId, frameworks] of userActiveFrameworks.entries()) {
       for (const framework of frameworks) {
-        const currentScore = cachedScores.get(framework) ?? 73.5;
+        const currentScore = cachedScores.get(framework);
+        // Absent means we had no real score for this framework this run —
+        // no alert, no persisted baseline. Skip rather than substitute.
+        if (currentScore === undefined) continue;
         const stateKey = `framework_score_${framework}`;
 
         // Look up old score from batch-fetched index
