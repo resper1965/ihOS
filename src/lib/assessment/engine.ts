@@ -379,14 +379,14 @@ export async function runAssessment(
       // Combine all retrieved chunks to give LLM full context
       const combinedEvidence = ragResults.map(r => r.content).join('\n\n---\n\n');
 
-            // Quick mode: skip LLM and rely on RAG similarity threshold
+      // Quick mode: skip LLM and rely on RAG similarity threshold
       if (config.mode === 'quick') {
         // We know ragResults > 0 and the first result met the semantic threshold
         // Map similarity (0-1) to confidence score (0-100)
         const mappedConfidence = Math.round(ragResults[0].similarity * 100);
         const isCompliant = mappedConfidence >= confidenceThreshold;
-        
-        // Derive documental status from RAG results
+
+        // Derive dual-phase status from RAG results
         const ismsPhase = {
           found: ragResults[0].similarity >= similarityThreshold,
           score: ragResults[0].similarity,
@@ -394,16 +394,10 @@ export async function runAssessment(
           snippet: ragResults[0].content?.slice(0, 200),
           chunkId: ragResults[0].id,
         };
-        // Purely documental: evidence phase mirrors ISMS phase
-        const evidencePhase = {
-          found: ismsPhase.found,
-          score: ismsPhase.score,
-          docTitle: ismsPhase.docTitle,
-          snippet: ismsPhase.snippet,
-          chunkId: ismsPhase.chunkId,
-        };
+        // Quick mode: evidence phase = same as ISMS (no separate check)
+        const evidencePhase = { found: false, score: 0 };
         const combinedStatus: 'conforming' | 'partial' | 'informal' | 'gap' =
-          ismsPhase.found ? 'conforming' : 'gap';
+          ismsPhase.found ? 'partial' : 'gap';
 
         return {
           controlId,
@@ -421,23 +415,46 @@ export async function runAssessment(
       }
 
       // Deep mode: Validate via Standard API evaluate-evidence with full context and retries
+      // Also run dual-phase: separate ISMS policy check and operational evidence check
       try {
+        // Phase 1: ISMS policy search (narrower category)
+        const ismsResults = await searchDocuments(controlDescription, {
+          productVersionId: config.productVersionId || undefined,
+          vendorId: config.vendorId || undefined,
+          limit: 3,
+          threshold: similarityThreshold,
+          categories: ['ISMS_CORE'],
+        });
         const ismsPhase = {
-          found: ragResults.length > 0 && ragResults[0].similarity >= similarityThreshold,
-          score: ragResults[0]?.similarity ?? 0,
-          docTitle: ragResults[0]?.metadata?.documentTitle,
-          snippet: ragResults[0]?.content?.slice(0, 200),
-          chunkId: ragResults[0]?.id ?? null,
+          found: ismsResults.length > 0 && ismsResults[0].similarity >= similarityThreshold,
+          score: ismsResults[0]?.similarity ?? 0,
+          docTitle: ismsResults[0]?.metadata?.documentTitle,
+          snippet: ismsResults[0]?.content?.slice(0, 200),
+          chunkId: ismsResults[0]?.id ?? null,
         };
 
-        // Purely documental: evidence phase mirrors ISMS phase
+        // Phase 2: Operational evidence search
+        const evidenceResults = await searchDocuments(controlDescription, {
+          productVersionId: config.productVersionId || undefined,
+          vendorId: config.vendorId || undefined,
+          limit: 3,
+          threshold: similarityThreshold,
+          categories: ['OPERATIONAL', 'ISMS_CORE'],
+        });
         const evidencePhase = {
-          found: ismsPhase.found,
-          score: ismsPhase.score,
-          docTitle: ismsPhase.docTitle,
-          snippet: ismsPhase.snippet,
-          chunkId: ismsPhase.chunkId,
+          found: evidenceResults.length > 0 && evidenceResults[0].similarity >= similarityThreshold,
+          score: evidenceResults[0]?.similarity ?? 0,
+          docTitle: evidenceResults[0]?.metadata?.documentTitle,
+          snippet: evidenceResults[0]?.content?.slice(0, 200),
+          chunkId: evidenceResults[0]?.id ?? null,
         };
+
+        // Determine combined status
+        const combinedStatus: 'conforming' | 'partial' | 'informal' | 'gap' =
+          ismsPhase.found && evidencePhase.found ? 'conforming'
+          : ismsPhase.found ? 'partial'
+          : evidencePhase.found ? 'informal'
+          : 'gap';
 
         const evalResult = await retryApiCall(() => standardApi.evaluateEvidence({
           controlRequirement: controlDescription,
@@ -446,12 +463,6 @@ export async function runAssessment(
 
         const confidence = (evalResult as any).confidence_score ?? 0;
         const isCompliant = (evalResult as any).is_compliant === true && confidence >= confidenceThreshold;
-        
-        // Determine combined status based purely on documental compliance
-        const combinedStatus: 'conforming' | 'partial' | 'informal' | 'gap' =
-          isCompliant ? 'conforming'
-          : ismsPhase.found ? 'partial'
-          : 'gap';
         const isEstimated = (evalResult as any).is_estimated === true;
         const baseNotes = (evalResult as any).auditor_notes ?? '';
 
