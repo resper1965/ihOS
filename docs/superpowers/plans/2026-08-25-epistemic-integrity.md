@@ -1861,3 +1861,93 @@ git commit -m "docs(standard-api): record production env verification for contra
 **One thing a reviewer should push back on.** Task 6's `MIN_PLAUSIBLE_CATALOG_SIZE = 1000` is a magic number, and I argued earlier in the session against exactly that. The distinction: it is not an *expected* catalog size (which would be brittle across SCF versions) but a floor below which no real SCF version has ever been — 1,468 today, and the framework has only grown. It still encodes an assumption that will need revisiting if SCF is ever split into smaller profiles, and a reviewer may reasonably prefer the truncation check alone (which needs no constant) with the small-catalog check dropped.
 
 **Deliberately not planned.** Task 4 removes five frameworks from the product's picker, which is a visible product change; the plan implements the human's stated decision to quarantine, but a reviewer should confirm that intent still holds before Task 4 Step 5 touches production data. And the fabricated rows' `DELETE` runs against the live database via the SQL Editor — the only genuinely irreversible-feeling step in the plan, which is why it is an INSERT-then-DELETE in one transaction with a documented rollback block.
+
+---
+
+## Operator handoff — what is left, in the order it must happen
+
+Everything in this plan that could be done in code is done and reviewed. What
+remains needs credentials or a live database, and the ordering between the
+pieces only became clear once execution finished — Task 4's Step 6 and Task 7
+were written as separate tasks but interlock.
+
+Run these in order. Steps 1-3 are one unit: do not stop between them, because
+step 1 leaves the database in a state step 2 is what proves correct.
+
+### 1. Apply the quarantine migration
+
+`supabase db push` does **not** work against this project (pre-existing
+migration-history ledger mismatch, dozens of unregistered IDs — out of scope
+here). Apply manually: open the Supabase SQL Editor and run
+`supabase/migrations/20260825000002_quarantine_fabricated_mappings.sql`.
+
+It is idempotent, wrapped in a single transaction, and moves ~25,589 rows to
+`scf_framework_mappings_quarantine` rather than deleting them. The file carries
+a commented rollback block at the bottom if you need to undo it.
+
+### 2. Prove the quarantine worked
+
+```bash
+(cd /c/ && wsl.exe -d Ubuntu -- bash -lc "cd /home/resper/ihOS && npm run check:mappings")
+```
+
+Before the migration this exits **1** with 9 findings. After it must exit **0**.
+That flip is the evidence — the same command, a different answer, not a claim.
+
+Read its success message rather than just its exit code: it says it checks
+exact duplication only. A near-clone differing by a few rows would not be
+caught, so "exit 0" means "no byte-identical duplicate remains", not "no
+fabrication of any kind".
+
+Then confirm the rows moved rather than vanished:
+
+```sql
+select framework_code, count(*) from scf_framework_mappings_quarantine group by 1 order by 1;
+```
+
+Expected: five rows totalling 25,589 (`5441 × 3` security + `4633 × 2` privacy).
+
+### 3. Verify the production environment (Task 7)
+
+The Vercel CLI is not authenticated in this environment, so this could not be
+done from the session. In the Claude Code terminal:
+
+```
+! npx vercel login
+```
+
+then check `npx vercel env ls production` for the following, **without printing
+secret values**:
+
+- `STANDARD_GRC_API_URL` ends in `/api/v1` — a missing segment 404s every call
+- `STANDARD_GRC_TENANT_ID` is present and non-empty
+- `STANDARD_GRC_API_KEY` uses the `standard_live_` prefix
+- `GRC_LOCAL_FALLBACK_ENABLED` is **unset** (absent, not `"false"`)
+- `GRC_CRON_FALLBACK_ENABLED` is **unset** — new in this plan's Task 2. If it
+  is set to `true`, scheduled sweeps may produce estimated verdicts; that is
+  now a deliberate choice rather than an accident, so confirm it is intended.
+
+Record the outcome in `docs/standard-api/CONTRACT_AUDIT.md` section C, checking
+each box or annotating what you actually found.
+
+### Decisions this plan deliberately did not make for you
+
+- **Whether estimated verdicts should count toward compliance scores at all.**
+  Commit `3aebd11` (on branch `scorecard-estimated-transparency`, separate)
+  makes estimated runs *visible* on the dashboard, which is the prerequisite
+  for deciding. Excluding them from `implementedCount`, or refusing to sync a
+  scorecard when any exist, both change reported numbers and are yours.
+- **Loading real crosswalks for the five quarantined frameworks.** The upload
+  path is now correct (Task 5) and `CONTRACT_AUDIT.md` section D documents the
+  procedure with `check:mappings` as its acceptance gate. The data itself has
+  to come from SCF's official mapping workbook or the Standard API.
+- **A tool-level guard on `complianceScore`.** Two agent profiles
+  (`src/lib/agents/profiles.ts:22` and `:141`) still point at it generically
+  for "any supported framework", so a chat agent could still assert a score for
+  a framework with no crosswalk. Task 9 fixed the one profile that named
+  `soc2` explicitly, but finding these one profile at a time suggests the real
+  fix is refusing at the tool when a framework has no mapping rows — a design
+  decision, not another prompt patch.
+- **Task 6's catalog-completeness guard**, re-targeted to the
+  `posture-release-readiness` branch, where the code it guards actually lives.
+  Required before that branch merges.
