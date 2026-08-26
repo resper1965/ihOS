@@ -137,6 +137,31 @@ export type ProgressCallback = (progress: {
 // Engine
 // ---------------------------------------------------------------------------
 
+/**
+ * The control's identity for every join ihOS performs.
+ *
+ * The Standard API returns both `control_id` (a UUID) and `control_code`
+ * (`AAT-01`). Everything we persist or join on keys on the CODE:
+ * scf_framework_mappings.scf_control_code, control_evaluation_cache.control_code,
+ * evidence_evaluations.control_code. Reading control_id first meant every one of
+ * those comparisons was a UUID against a code — never true — so framework
+ * filtering silently matched nothing, applicability exclusion was inert, and the
+ * evaluation cache never hit (see CONTRACT_AUDIT.md A9).
+ *
+ * control_id stays as the second choice because the local fallback fabricates
+ * controls as `{ control_id: "A.5.1" }`, which IS code-shaped.
+ */
+export function controlIdentity(
+  control: Record<string, unknown>,
+  fallbackIndex?: number,
+): string {
+  const candidates = [control.control_code, control.code, control.control_id, control.id];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.length > 0) return c;
+  }
+  return `CTRL-${fallbackIndex ?? 0}`;
+}
+
 export async function runAssessment(
   config: AssessmentConfig,
   onProgress?: ProgressCallback,
@@ -186,7 +211,7 @@ export async function runAssessment(
         
       if (mappings && mappings.length > 0) {
         const relevantControlIds = new Set(mappings.map((m: any) => m.scf_control_code));
-        allControls = allControls.filter(c => relevantControlIds.has(c.control_id || c.id));
+        allControls = allControls.filter(c => relevantControlIds.has(controlIdentity(c)));
       } else {
         // If no mappings exist for the selected frameworks, do NOT evaluate all 1,468 controls!
         // This avoids the 5-minute Vercel timeout.
@@ -222,9 +247,9 @@ export async function runAssessment(
       const excluded = new Set(((napRows ?? []) as any[]).map((r) => r.scf_control_code));
       if (excluded.size > 0) {
         notApplicableControls = allControls
-          .map((c) => c.control_id || c.id)
+          .map((c) => controlIdentity(c))
           .filter((code) => excluded.has(code));
-        allControls = allControls.filter((c) => !excluded.has(c.control_id || c.id));
+        allControls = allControls.filter((c) => !excluded.has(controlIdentity(c)));
       }
     } catch (err) {
       console.warn('[Assessment] channel_control_applicability unavailable, evaluating full control set:', err);
@@ -304,7 +329,7 @@ export async function runAssessment(
     
     const batchPromises = batch.map(async (control, batchIndex): Promise<ControlEvaluation> => {
       const globalIndex = i + batchIndex;
-      const controlId = control.control_id || control.id || `CTRL-${globalIndex}`;
+      const controlId = controlIdentity(control, globalIndex);
       const controlName = control.control_name || control.name || controlId;
       const controlDomain = control.domain || controlId.split('-')[0] || 'UNKNOWN';
       const controlDescription = control.control_description || control.description || controlName;
