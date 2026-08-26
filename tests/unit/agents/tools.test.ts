@@ -61,7 +61,9 @@ describe('complianceScore execute', () => {
     )) as any;
     expect(result).toHaveProperty('framework', 'soc2');
     expect(result).toHaveProperty('overallScore');
-    expect(typeof result.overallScore).toBe('number');
+    // No snapshot is mocked here, so this hits the unavailable path — the
+    // absence must surface as null, not a fabricated number.
+    expect(result.overallScore).toBeNull();
     expect(result).toHaveProperty('controlsTotal');
     expect(result).toHaveProperty('controlsMet');
     expect(result).toHaveProperty('controlsPartial');
