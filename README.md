@@ -95,7 +95,14 @@ OPENAI_API_KEY=sk-your-openai-key
 # paths without it, so a missing segment 404s every call.
 STANDARD_GRC_API_URL=https://standard-api.bekaa.eu/api/v1
 STANDARD_GRC_API_KEY=standard_live_your-grc-api-key   # prefix: standard_live_ (or standard_test_)
-STANDARD_GRC_TENANT_ID=org_your-org-id                # REQUIRED (x-standard-tenant-id) for data-scoped endpoints
+# STANDARD_GRC_TENANT_ID — LEAVE UNSET. Corrected 2026-08-26 by the Standard
+# team: there is no `org_`-prefixed identifier in that API (organization ids are
+# UUIDs), and the x-standard-tenant-id header is only for callers acting ACROSS
+# organizations — which an API key never is. A key is bound to its own
+# organization, so sending the header makes otherwise-successful requests fail
+# with 403 "This API key can only access its own organization." Setting this
+# variable is what broke our assessment runs on 2026-08-26.
+# STANDARD_GRC_TENANT_ID=
 
 # Standard GRC Engine — local resiliency fallback (OPT-IN, default OFF).
 # When the authoritative GRC API is unreachable/denies scope, ihOS by default
