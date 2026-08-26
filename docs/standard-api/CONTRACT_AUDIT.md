@@ -157,3 +157,86 @@ a framework:
 6. Add the framework back to `FRAMEWORK_REGISTRY` (moving it out of
    `QUARANTINED_FRAMEWORKS`) and remove it from the `FABRICATED` list in
    `tests/unit/assessment/framework-registry.test.ts`.
+
+---
+
+## E. Blocker found 2026-08-26: the SCF control catalog is unreachable
+
+Probed the live API directly (new `standard_live_` key, issued 2026-08-26).
+**The control catalog endpoint the assessment engine depends on is denied to
+every API key, and this is a server-side configuration state, not a
+credential problem.**
+
+```
+GET /api/v1/scf/versions/latest                        -> 200
+GET /api/v1/scf/frameworks                             -> 200
+GET /api/v1/scf/versions/{id}/controls?page=1           -> 403
+```
+
+The 403 body is explicit:
+
+```json
+{"title":"INSUFFICIENT SCOPE","status":403,
+ "detail":"This route is protected but has no API key scopes configured.
+           Access denied for machine-to-machine actors.",
+ "instance":"/api/v1/scf/versions/.../controls"}
+```
+
+"No API key scopes configured" means the route declares protection but nothing
+defines which scopes satisfy it, so no `standard_live_` key can ever pass. A
+newly-issued key does not help; we tried one.
+
+**Not the tenant header.** An earlier hypothesis here (that
+`STANDARD_GRC_TENANT_ID` was malformed — it is a 36-char UUID where README
+line 98 asks for an `org_`-prefixed id) was **wrong**: the request returns an
+identical 403 with the header and without it. The tenant format may still be
+worth correcting on its own merits, but it is not this blocker.
+
+### Spec-vs-deployment drift, found while diagnosing
+
+`https://standard-api.bekaa.eu/docs/openapi.json` documents 51 paths. The two
+sets disagree in both directions:
+
+- **In the spec, 404 in production:** `/api/v1/organizations`, `/api/v1/tenants`,
+  `/api/v1/me/account`.
+- **Not in the spec, 200 in production:** `/scf/versions/latest`,
+  `/scf/frameworks`. No `/scf/*` path appears in the spec at all — nor any
+  `/gap/*`, despite §0 of this document verifying `POST /gap/evaluate-evidence`
+  against the docs on 2026-07-02.
+
+So the published spec cannot currently be used to reason about what the
+deployment offers, in either direction.
+
+### What this blocks
+
+`runAssessment` loads the SCF catalog from this endpoint (on `main`). With it
+denied, an assessment cannot run at all — confirmed end to end:
+
+```
+[WARN] (standard-api) Standard GRC API unavailable and local fallback is
+DISABLED — surfacing error instead of estimating/serving stale truth
+[ERROR] (cron/run-assessment) runAssessment threw: Forbidden
+```
+
+That is the fail-closed behaviour working exactly as intended (Constitution
+Principle VIII): it refused to estimate rather than fabricate a score. Before
+the 2026-08-25/26 work it would have returned an estimated result or a
+hardcoded number.
+
+### Action required — vendor side, not ours
+
+Whoever administers the Standard GRC subscription needs scopes configured for
+`/scf/versions/{id}/controls` (the securityScheme description says keys are
+"issued from the Standard dashboard", so that is the likely place). Quote the
+error `detail` verbatim and a `trace_id` from a failing call — the API returns
+one per request.
+
+### Workaround that exists but is not on `main`
+
+`scf_controls` already holds the full 1,468-row catalog locally (verified
+2026-08-25). Branch `posture-release-readiness` carries a DB-first catalog read
+that would make the engine independent of this endpoint. It is not on `main`,
+and it needs the completeness guard described as Task 6 in
+`docs/superpowers/plans/2026-08-25-epistemic-integrity.md` before it should be
+relied on — without that guard a partially-seeded table yields confident scores
+over a truncated control set.
