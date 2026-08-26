@@ -250,3 +250,21 @@ on drift, and `/scf/*` and `/gap/*` carry full response schemas. That removes
 the reason our client normalizes "any shape" in `getScfControls` (§A1) and
 hand-maintains response types. Generating types from the spec is now viable and
 would have caught A9 (`control_id` vs `control_code`) at compile time.
+
+### F7 — PENDING: the current API key is being rotated
+
+Requested from the Standard team on 2026-08-26 because the full key had been
+transmitted in clear text (they asked to be told if that had happened, and it
+had). The key currently in `.env.local` / `.env` — prefix `236a84400ffe` — is
+therefore **live but scheduled for revocation**, and will stop working without
+further warning on our side.
+
+Deliberately NOT rotated locally yet: reissue takes time on their side, and the
+current key is what lets us keep probing whether the ten scope fixes have
+deployed. When the replacement arrives, update `STANDARD_GRC_API_KEY` in BOTH
+`.env.local` and `.env` — Next.js falls back to `.env` when `.env.local` omits a
+key, so changing one file only leaves the old value live (this exact trap cost a
+debugging cycle on 2026-08-26 with `STANDARD_GRC_TENANT_ID`).
+
+Also update it in the Vercel project's environment variables, which this session
+could never verify (`vercel whoami` reports no credentials here) — see §C.
