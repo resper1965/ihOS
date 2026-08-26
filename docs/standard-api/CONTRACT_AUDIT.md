@@ -240,3 +240,69 @@ and it needs the completeness guard described as Task 6 in
 `docs/superpowers/plans/2026-08-25-epistemic-integrity.md` before it should be
 relied on — without that guard a partially-seeded table yields confident scores
 over a truncated control set.
+
+### A9 — control identity mismatch: the engine filters UUIDs against codes (NOT FIXED)
+
+Found 2026-08-26 while running the first assessment after the vendor configured
+the catalog scope. The assessment returned `totalControls: 0` with a working
+catalog and 5,441 iso27001 mapping rows present. Cause, verified against both
+sides:
+
+```
+scf_framework_mappings.scf_control_code   ->  "AST-22", "AST-01.4", "END-14"
+Standard API control.control_id           ->  "653a70ef-16fd-4d53-a637-ff61cd998729"
+Standard API control.control_code         ->  "AAT-01"
+```
+
+`src/lib/assessment/engine.ts` builds `relevantControlIds` from
+`scf_control_code`, then filters:
+
+```ts
+allControls = allControls.filter(c => relevantControlIds.has(c.control_id || c.id));
+```
+
+`c.control_id` is a UUID; the set holds human codes. The predicate is never
+true, so `allControls` becomes `[]` and every framework-filtered assessment
+evaluates zero controls. The same mismatch then propagates: `controlId` is
+derived from `control.control_id || control.id`, so even with filtering fixed
+the per-control identity would be a UUID while `control_evaluation_cache`,
+`evidence_evaluations` and `scf_framework_mappings` all key on the code.
+
+The fix is to treat `control_code` as the identity throughout this path, not
+`control_id`. Note the DB-first catalog read on branch
+`posture-release-readiness` already maps `control_id: c.control_code`, so that
+branch does not have this bug — a third reason to land it.
+
+Impact observed: the `assessments` table shows `total_controls = 0` for the
+2026-08-24, -25 and -26 cron runs, and the run performed on 2026-08-26 deleted
+the previous scorecard rows and wrote `score: 0.0` for iso27001/iso27701 from
+zero evaluated controls. A 0% derived from measuring nothing is as much a
+fabricated claim as a 100% was.
+
+### A10 — /intelligence/compliance-score also denied (NOT FIXED)
+
+Same run: both framework scores came back
+`"message": "Score calculation failed: Forbidden"`. So after the catalog scope
+was granted, `POST /api/v1/intelligence/compliance-score` still 403s. Per §B2 of
+this document that endpoint is `tenantRequired:false`, so this is likely another
+route needing API-key scopes configured — worth raising with the vendor in the
+same thread as the catalog one.
+
+### Tenant header status, corrected again
+
+With the catalog scope now granted, the tenant question resolved differently
+than §E first recorded. Retested 2026-08-26:
+
+```
+GET /scf/versions/{id}/controls  WITHOUT x-standard-tenant-id  -> 200
+GET /scf/versions/{id}/controls  WITH    x-standard-tenant-id  -> 403
+   {"title":"FORBIDDEN","detail":"This API key can only access its own organization."}
+```
+
+So the configured `STANDARD_GRC_TENANT_ID` (a 36-char UUID beginning `000000`)
+is genuinely not this key's organization, and sending it now actively breaks
+requests that would otherwise succeed. It is disabled (commented out) in BOTH
+`.env.local` and `.env` — Next.js falls back to `.env` when `.env.local` omits a
+key, so commenting it in one file only left it live. The correct `org_`-prefixed
+id is still unknown and IS required for `/gap/evaluate-evidence` (deep mode) and
+`/intelligence/council`.
