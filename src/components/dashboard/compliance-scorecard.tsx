@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { FrameworkScore } from "@/lib/data/compliance-data";
-import { Lock, Shield, ShieldCheck, Heart, Globe } from "lucide-react";
+import { Lock, Shield, ShieldCheck, Heart, Globe, AlertTriangle } from "lucide-react";
 
 function getFrameworkIcon(code: string) {
   const normalized = code.toLowerCase();
@@ -103,6 +103,25 @@ export function ComplianceScorecard({ frameworks }: ComplianceScorecardProps) {
               )}
               <span className="ml-2 text-xs text-text-muted">Overall Compliance ({getComplianceLabel(effectiveScore)})</span>
             </div>
+
+            {/* Result quality: a score partly built on estimated verdicts must
+                not read as fully verified (Constitution Principle VIII). */}
+            {(fw.runEstimatedCount ?? 0) > 0 && (
+              <div className="mt-2 flex items-start gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/5 px-2 py-1.5">
+                <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-amber-600 dark:text-amber-400 stroke-[1.5]" />
+                <span className="text-[11px] leading-snug text-amber-700 dark:text-amber-300">
+                  {fw.runEstimatedCount} estimated {fw.runEstimatedCount === 1 ? "verdict" : "verdicts"} in this run — needs review, not fully verified
+                </span>
+              </div>
+            )}
+            {(fw.runEvaluationErrorCount ?? 0) > 0 && (
+              <div className="mt-2 flex items-start gap-1.5 rounded-md border border-red-500/20 bg-red-500/5 px-2 py-1.5">
+                <AlertTriangle className="mt-px h-3.5 w-3.5 shrink-0 text-red-600 dark:text-red-400 stroke-[1.5]" />
+                <span className="text-[11px] leading-snug text-red-700 dark:text-red-300">
+                  {fw.runEvaluationErrorCount} {fw.runEvaluationErrorCount === 1 ? "control" : "controls"} failed to evaluate in this run
+                </span>
+              </div>
+            )}
 
             {/* Dual Phase Progress Bars */}
             <div className="mt-4 space-y-3">

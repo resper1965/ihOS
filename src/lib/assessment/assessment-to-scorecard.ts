@@ -23,6 +23,24 @@ export async function syncScorecard(
 ): Promise<void> {
   const adminSupabase = createAdminClient();
 
+  // Run-scoped result quality. These are properties of the ASSESSMENT RUN, not
+  // of any one framework: a control's verdict is estimated because the
+  // authoritative GRC API was unavailable during that run (see
+  // isLocalFallbackEnabled — note it returns true whenever IS_CRON is set, so
+  // automated runs estimate even when GRC_LOCAL_FALLBACK_ENABLED is unset), and
+  // that condition applies to every framework scored in the same run.
+  //
+  // They are recorded on each framework row (not only the 'all' aggregate)
+  // because the dashboard's framework list deliberately skips the aggregate
+  // (`if (code === "all") continue` in compliance-data.ts) — a warning that
+  // lives only on the aggregate would never reach the cards a user actually
+  // reads. Estimated verdicts are already excluded from control_evaluation_cache
+  // (engine.ts) and prefixed [ESTIMATED] in their auditor notes; without these
+  // fields that distinction was lost at the dashboard, which showed a plain
+  // green "Compliant" score with no indication part of it was estimated.
+  const runEstimatedCount = result.totalEstimated ?? 0;
+  const runEvaluationErrorCount = result.totalEvaluationErrors ?? 0;
+
   // ── 1. Upsert individual framework scorecards ──────────────────────
   for (const fw of result.frameworkScores) {
     const code = fw.frameworkId;
@@ -50,6 +68,10 @@ export async function syncScorecard(
       partial_count: fw.partialCount ?? null,
       informal_count: fw.informalCount ?? null,
       gap_count: fw.gapCount ?? null,
+      // Run-scoped result quality (see above) — never omit, so the UI can
+      // qualify the score instead of presenting it as fully authoritative.
+      run_estimated_count: runEstimatedCount,
+      run_evaluation_error_count: runEvaluationErrorCount,
     };
 
     // Delete previous scorecard for this framework, then insert fresh
@@ -80,6 +102,8 @@ export async function syncScorecard(
           partial_count: fw.partialCount ?? null,
           informal_count: fw.informalCount ?? null,
           gap_count: fw.gapCount ?? null,
+          run_estimated_count: runEstimatedCount,
+          run_evaluation_error_count: runEvaluationErrorCount,
         },
         snapshot_data: snapshotData,
         score: score,
@@ -111,6 +135,8 @@ export async function syncScorecard(
       partial_count: fw.partialCount ?? null,
       informal_count: fw.informalCount ?? null,
       gap_count: fw.gapCount ?? null,
+      run_estimated_count: runEstimatedCount,
+      run_evaluation_error_count: runEvaluationErrorCount,
     };
   });
 
@@ -154,6 +180,8 @@ export async function syncScorecard(
         partial_count: partial,
         informal_count: informal,
         gap_count: gap,
+        run_estimated_count: runEstimatedCount,
+        run_evaluation_error_count: runEvaluationErrorCount,
       },
       snapshot_data: {
         frameworks: allFrameworks,
@@ -167,6 +195,8 @@ export async function syncScorecard(
         partial_count: partial,
         informal_count: informal,
         gap_count: gap,
+        run_estimated_count: runEstimatedCount,
+        run_evaluation_error_count: runEvaluationErrorCount,
       },
       score: result.totalControlsEvaluated > 0
         ? Math.round((result.totalControlsCompliant / result.totalControlsEvaluated) * 100)
