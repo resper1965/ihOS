@@ -718,9 +718,15 @@ async function localRoiPath(
       .filter((code: string) => !compliant.has(code));
 
     const topN = request.top_n || 5;
-    const pathItems = missing.slice(0, topN).map((code: string, idx: number) => ({
+    // No ROI score: the local fallback has no cost, coverage or impact data to
+    // derive one from, and `95 - idx * 4` derived it from the control's position
+    // in an arbitrarily-ordered list — the same defect as the cron's
+    // `60 + (name.length * 3) % 40`. The ordering below is still useful (these
+    // are the unimplemented controls) but it is not a ranking, and must not be
+    // presented as one.
+    const pathItems = missing.slice(0, topN).map((code: string) => ({
       control_id: code,
-      roi_score: 95 - idx * 4,
+      roi_score: null,
       key_mitigations: [`Implement requirement for ${code}`]
     }));
 
@@ -768,7 +774,9 @@ async function localBlastRadius(
     return {
       control_id: request.control_id,
       affected_frameworks: affectedFrameworks,
-      total_affected_controls: mappings?.length || 1,
+      // `|| 1` reported one affected control when the mapping read found none,
+      // contradicting the `|| 0` in the summary string built from the same array.
+      total_affected_controls: mappings?.length ?? 0,
       risk_summary: `Failure of ${request.control_id} impacts ${mappings?.length || 0} regulatory mappings.`
     };
   } catch (err) {

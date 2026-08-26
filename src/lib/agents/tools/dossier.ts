@@ -89,7 +89,10 @@ export const generateIntegratedDossier = tool({
       if (roiPathData && roiPathData.roi_path && roiPathData.roi_path.length > 0) {
         dossier += `To close the identified gaps efficiently, adopt the following controls:\n`;
         roiPathData.roi_path.forEach((roi: any) => {
-          dossier += `- **${roi.control_id}** (ROI Score: ${roi.roi_score})\n`;
+          const roiLabel = roi.roi_score === null || roi.roi_score === undefined
+            ? 'ROI score unavailable — ranking requires cost/impact data the local fallback does not have'
+            : `ROI Score: ${roi.roi_score}`;
+          dossier += `- **${roi.control_id}** (${roiLabel})\n`;
           dossier += `  Mitigates: ${roi.key_mitigations?.join(', ')}\n`;
         });
       } else {

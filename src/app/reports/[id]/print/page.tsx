@@ -144,7 +144,14 @@ export default async function PrintReportPage({ params }: PageProps) {
               <tr key={index} className="border-b border-gray-200 hover:bg-gray-50">
                 <td className="py-2 px-3 font-mono font-bold text-gray-900">{item.controlId || item.code}</td>
                 <td className="py-2 px-3 text-gray-700">{item.controlName || item.name}</td>
-                <td className="py-2 px-3 text-center font-bold text-primary">{item.roiScore || item.roi}</td>
+                <td className="py-2 px-3 text-center font-bold text-primary">
+                  {(() => {
+                    const roiValue = item.roiScore ?? item.roi;
+                    return roiValue === null || roiValue === undefined
+                      ? <span title="Not ranked — no cost/impact data available">—</span>
+                      : roiValue;
+                  })()}
+                </td>
                 <td className="py-2 px-3 text-right text-xs text-gray-500">
                   {Array.isArray(item.frameworks) ? item.frameworks.join(", ") : item.frameworks || ""}
                 </td>
