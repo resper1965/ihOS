@@ -414,3 +414,42 @@ debugging cycle on 2026-08-26 with `STANDARD_GRC_TENANT_ID`).
 
 Also update it in the Vercel project's environment variables, which this session
 could never verify (`vercel whoami` reports no credentials here) — see §C.
+
+### F8 — Status after the vendor's deployment (probed 2026-08-26, later)
+
+The route-side fix from §F3 has **deployed**. The error class changed on every
+affected route, which is the tell:
+
+```
+before:  403 INSUFFICIENT SCOPE  "This route is protected but has no
+                                  API key scopes configured."
+now:     403 FORBIDDEN           "Permission denied."
+```
+
+`INSUFFICIENT SCOPE` meant the route declared no permissions, so no scopes could
+be derived and nothing could ever satisfy it. `FORBIDDEN / Permission denied.`
+means the gate now works and **our key does not carry the required scope**. That
+is the second half of what the vendor asked us to check:
+
+> *"Please check your key carries `intelligence:run`. If it does not, that is a
+> one-line change on our side — tell us and we will reissue."*
+
+Current state of all 15 routes the client calls:
+
+| Routes | Status |
+|---|---|
+| `/scf/versions/latest`, `/scf/frameworks`, `/scf/versions/{id}/controls` | **200** — working |
+| 8 `/intelligence/*` scorers + `/intelligence/council` | 403 `Permission denied.` — needs `intelligence:run` |
+| `/privacy/scan-vendor-contract` | 403 `Permission denied.` — needs `privacy:read` |
+| `/gap/evaluate-evidence` | 403 `Permission denied.` — needs `gap:write` |
+| `/soc/status` | 403 — by design (§F4), key-inaccessible; our client should stop calling it |
+
+Fresh trace_ids: `a316511cac47fb01` (compliance-score),
+`a31651208b0353f5` (gap/evaluate-evidence), `a3165128e8f8e0f4`
+(privacy/scan-vendor-contract).
+
+**Open action: ask the vendor to grant `intelligence:run`, `privacy:read` and
+`gap:write` to the key** (prefix `236a84400ffe`), or to include them on the
+replacement key already requested in §F7. Nothing further is needed from our
+side on these routes — the client code is correct, the credential is not
+scoped.

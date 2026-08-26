@@ -13,6 +13,23 @@ const redisToken = process.env.UPSTASH_REDIS_REST_TOKEN || "";
 const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
 
 /**
+ * Whether a framework's score rests on anything.
+ *
+ * `totalRequired === 0` means the run evaluated no controls for this framework
+ * — the engine's framework filter matched nothing, or the API scoring call
+ * failed. Writing a score in that state produced the 2026-08-26 incident: an
+ * assessment that evaluated zero controls deleted the existing scorecard rows
+ * and wrote 0.0, so the dashboard reported 0% for frameworks it had never
+ * measured, and an operator had to remove the rows by hand.
+ *
+ * A genuine zero — controls required, none implemented — IS backed and must
+ * still be written. That is a finding, not an absence.
+ */
+export function isScoreBacked(fw: { totalRequired: number; implementedCount: number }): boolean {
+  return fw.totalRequired > 0;
+}
+
+/**
  * After an assessment completes, sync its scores into intelligence_snapshots.
  * This replaces any previous scorecard snapshots for the evaluated frameworks,
  * so the dashboard always shows the latest REAL assessment results.
@@ -44,6 +61,18 @@ export async function syncScorecard(
   // ── 1. Upsert individual framework scorecards ──────────────────────
   for (const fw of result.frameworkScores) {
     const code = fw.frameworkId;
+
+    // Nothing was evaluated for this framework, so there is no score to state.
+    // Crucially this also skips the DELETE below: overwriting a real previous
+    // score with an unbacked one is how the 2026-08-26 incident destroyed the
+    // only figures on the dashboard.
+    if (!isScoreBacked(fw)) {
+      console.warn(
+        `[syncScorecard] Skipping ${code}: 0 controls required, so no score is backed. Existing scorecard left untouched.`,
+      );
+      continue;
+    }
+
     const score = fw.totalRequired > 0
       ? Math.round((fw.implementedCount / fw.totalRequired) * 100)
       : (fw.score ?? null);
@@ -153,6 +182,15 @@ export async function syncScorecard(
   const allEvidenceScore = result.totalControlsEvaluated > 0
     ? Math.round((totalEv / result.totalControlsEvaluated) * 100)
     : null;
+
+  // The aggregate is only meaningful if at least one framework contributed a
+  // backed score. Writing it from an all-unbacked run produced the null-scored
+  // 'all' row the 2026-08-26 cleanup had to remove.
+  const backedFrameworks = result.frameworkScores.filter(isScoreBacked);
+  if (backedFrameworks.length === 0) {
+    console.warn('[syncScorecard] No framework had a backed score; leaving the aggregate untouched.');
+    return;
+  }
 
   // Delete old "all" scorecard
   await adminSupabase

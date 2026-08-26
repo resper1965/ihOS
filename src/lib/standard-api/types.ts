@@ -105,7 +105,10 @@ export interface RoiPathData extends EstimatedResultMarker {
   total_missing?: number;
   roi_path?: Array<{
     control_id: string;
-    roi_score: number;
+    // null means the ROI was not computed, because the local fallback has no
+    // cost, coverage or impact data to rank with — distinct from a genuine
+    // score of 0.
+    roi_score: number | null;
     mitigations_count?: number;
     key_mitigations?: string[];
   }>;

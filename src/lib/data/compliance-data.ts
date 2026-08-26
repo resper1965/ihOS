@@ -62,7 +62,10 @@ export interface GapItem {
 export interface RoiItem {
   code: string;
   name: string;
-  roi: number;
+  // null means the ROI was not computed, because the local fallback has no
+  // cost, coverage or impact data to rank with — distinct from a genuine
+  // score of 0.
+  roi: number | null;
   frameworks: string[];
 }
 

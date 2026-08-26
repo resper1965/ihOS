@@ -52,7 +52,7 @@ export const complianceScore = tool({
           return {
             framework: fw.code || fw.name,
             overallScore: fw.score,
-            controlsTotal: fw.total_controls || 120,
+            controlsTotal: fw.total_controls ?? null,
             controlsMet: fw.compliant_count || fw.controlsMet || 0,
             controlsPartial: fw.partial_count || fw.controlsPartial || 0,
             controlsNotMet: fw.missing || fw.controlsNotMet || 0,
@@ -88,11 +88,11 @@ export const complianceScore = tool({
         if (implementedControls.length === 0) {
           return {
             framework: input.framework,
-            overallScore: 0,
-            controlsTotal: 0,
-            controlsMet: 0,
-            controlsPartial: 0,
-            controlsNotMet: 0,
+            overallScore: null,
+            controlsTotal: null,
+            controlsMet: null,
+            controlsPartial: null,
+            controlsNotMet: null,
             lastAssessedAt: new Date().toISOString(),
             note: 'No implemented controls found in the knowledge base. Upload compliance documents first.',
           };
@@ -105,10 +105,13 @@ export const complianceScore = tool({
 
         return {
           framework: input.framework,
-          overallScore: result.score ?? result.overall_score ?? 0,
-          controlsTotal: result.total_required_controls ?? 1,
-          controlsMet: result.scf_controls_implemented_count ?? 1,
-          controlsPartial: 0,
+          overallScore: result.score ?? result.overall_score ?? null,
+          controlsTotal: result.total_required_controls ?? null,
+          controlsMet: result.scf_controls_implemented_count ?? null,
+          // /intelligence/compliance-score has no partial-state field at all
+          // (see docs/standard-api/CONTRACT_AUDIT.md §0) — null means "not
+          // reported by this source", not "measured and found to be zero".
+          controlsPartial: null,
           controlsNotMet: result.missing_controls?.length ?? 0,
           lastAssessedAt: new Date().toISOString(),
           source: 'standard-api' as const,
@@ -120,11 +123,11 @@ export const complianceScore = tool({
       console.warn('[Tool:complianceScore] API/DB unavailable:', (err as Error).message);
       return {
         framework: input.framework,
-        overallScore: 0,
-        controlsTotal: 0,
-        controlsMet: 0,
-        controlsPartial: 0,
-        controlsNotMet: 0,
+        overallScore: null,
+        controlsTotal: null,
+        controlsMet: null,
+        controlsPartial: null,
+        controlsNotMet: null,
         lastAssessedAt: new Date().toISOString(),
         source: 'unavailable' as const,
         error: (err as Error).message,
@@ -196,7 +199,7 @@ export const crossCoverage = tool({
         return {
           sourceFramework: input.sourceFramework,
           targetFramework: input.targetFramework,
-          coveragePercentage: 0,
+          coveragePercentage: null,
           overlappingControls: 0,
           mappings: [],
           gaps: [],
@@ -226,7 +229,7 @@ export const crossCoverage = tool({
         targetFramework: input.targetFramework,
         overlappingControls: 0,
         totalSourceControls: 0,
-        coveragePercentage: 0,
+        coveragePercentage: null,
         mappings: [],
         source: 'unavailable' as const,
         error: (err as Error).message,

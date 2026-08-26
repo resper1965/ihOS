@@ -68,12 +68,15 @@ export async function GET(
       "ROI Score (Priority)",
       "Mapped Frameworks",
     ];
-    const roiRows = (snapshotData.roiPath || []).map((item: any) => [
-      item.controlId || item.code || "",
-      item.controlName || item.name || "",
-      item.roiScore || item.roi || 0,
-      Array.isArray(item.frameworks) ? item.frameworks.join(", ") : item.frameworks || "",
-    ]);
+    const roiRows = (snapshotData.roiPath || []).map((item: any) => {
+      const roiValue = item.roiScore ?? item.roi;
+      return [
+        item.controlId || item.code || "",
+        item.controlName || item.name || "",
+        roiValue === null || roiValue === undefined ? "—" : roiValue,
+        Array.isArray(item.frameworks) ? item.frameworks.join(", ") : item.frameworks || "",
+      ];
+    });
     const wsRoi = XLSX.utils.aoa_to_sheet([roiHeader, ...roiRows]);
     XLSX.utils.book_append_sheet(wb, wsRoi, "Remediation Plan");
 

@@ -467,7 +467,10 @@ function ComplianceReportPDF({
                   React.createElement(Text, { style: [styles.tableCell, { width: 30, fontFamily: "Helvetica-Bold" }] }, String(i + 1)),
                   React.createElement(Text, { style: [styles.tableCell, { width: 60 }] }, item.controlId || item.code || "—"),
                   React.createElement(Text, { style: [styles.tableCell, { flex: 1 }] }, item.controlName || item.name || "—"),
-                  React.createElement(Text, { style: [styles.tableCell, { width: 55, fontFamily: "Helvetica-Bold" }] }, String(item.roiScore || item.roi || 0))
+                  React.createElement(Text, { style: [styles.tableCell, { width: 55, fontFamily: "Helvetica-Bold" }] }, (() => {
+                    const roiValue = item.roiScore ?? item.roi;
+                    return roiValue === null || roiValue === undefined ? "—" : String(roiValue);
+                  })())
                 )
               )
             ),

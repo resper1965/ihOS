@@ -129,7 +129,8 @@ describe('complianceScore tool', () => {
     );
 
     expect(result.source).toBe('unavailable');
-    expect(result.overallScore).toBe(0);
+    // Absence must survive as null, not be reported as a measured 0.
+    expect(result.overallScore).toBeNull();
   });
 });
 
