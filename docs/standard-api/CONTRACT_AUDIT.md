@@ -306,3 +306,111 @@ requests that would otherwise succeed. It is disabled (commented out) in BOTH
 key, so commenting it in one file only left it live. The correct `org_`-prefixed
 id is still unknown and IS required for `/gap/evaluate-evidence` (deep mode) and
 `/intelligence/council`.
+## F. Vendor response 2026-08-26 — corrections to THIS document
+
+The Standard team replied to the findings in §E, A9 and A10. Two of our own
+claims were wrong and are corrected here rather than left to mislead the next
+reader.
+
+### F1 — There is no `org_`-prefixed tenant id. §A2, §B2 and §C were wrong.
+
+Verbatim: *"There is no `org_`-prefixed identifier in this API. Organization ids
+are UUIDs. If your integration documentation says otherwise, that documentation
+is wrong and we would like to see it so we can correct it at the source."*
+
+This document said `x-standard-tenant-id: org_xxxxx` in §A2 and §C, and
+`README.md:98` said `STANDARD_GRC_TENANT_ID=org_your-org-id`. All of that was
+invented on our side. It also actively misled this session's diagnosis: the
+`org_` shape was used to argue the configured UUID was malformed, which turned
+out to be the wrong hypothesis twice over.
+
+### F2 — The header should be OMITTED, permanently. It is not a workaround.
+
+Verbatim: *"The key's own organization is bound to the key, so the
+straightforward fix is to omit `x-standard-tenant-id` entirely — every request
+you showed us succeeding did exactly that. The header is only for callers acting
+across organizations, which an API key never is."*
+
+So §B2's "required for data-scoped endpoints" is wrong for API-key callers.
+`STANDARD_GRC_TENANT_ID` is now commented out in `.env.local` and `.env`, and
+`README.md` / `docs/OPERATIONS.md` say to leave it unset. The value we held (a
+UUID beginning `000000`) they identify as "almost certainly a seed or fixture
+value".
+
+### F3 — Fix status as of 2026-08-26, verified by probe
+
+Deployed:
+```
+GET /api/v1/organizations  -> 405 (was 404; POST-only, wrong-verb bug fixed)
+GET /api/v1/tenants        -> 405   ** DEPRECATED, Sunset 2026-11-25 **
+openapi.json               -> 366 paths (was 51); /scf/* now 35 paths
+```
+`/api/v1/tenants` is deprecated in favour of `/api/v1/organizations` —
+`tenant` is legacy vocabulary, the field has been `organization_id` for some
+time. Our client's naming (`STANDARD_GRC_TENANT_ID`, `tenantId`,
+`tenantRequired`) inherits that legacy term.
+
+NOT yet deployed (still failing at time of writing):
+```
+POST /intelligence/compliance-score  -> 403 INSUFFICIENT SCOPE
+POST /intelligence/cross-coverage    -> 403 INSUFFICIENT SCOPE
+POST /privacy/scan-vendor-contract   -> 403 INSUFFICIENT SCOPE
+POST /gap/evaluate-evidence          -> 403 FORBIDDEN "Permission denied."
+```
+
+Root causes they gave, which are worth recording because they explain why
+`/scf/*` started working and these did not:
+- The ten routes declared **no permissions at all**, so no scopes could be
+  derived and the gateway failed closed. Required scopes now: `intelligence:run`
+  for all nine `/intelligence/*`, `privacy:read` for `/privacy/scan-vendor-contract`.
+- `/gap/evaluate-evidence` was a separate defect: routes declare *permissions*
+  (`evidence:run`) while keys carry *scopes* (`gap:write`), and the authorization
+  layer compared the two vocabularies directly. That only worked where a
+  permission and its scope share a name — `scf:read` happens to, which is
+  precisely why the catalog began working while this route did not. Now
+  translated before comparison; requires the `gap:write` scope.
+
+### F4 — `/soc/status` is by design, not a defect. Remove it from our client.
+
+Verbatim: *"It requires `admin:write` and a human actor. Administrative and
+approval-gated routes are deliberately unreachable by API keys, so that a
+machine credential can never approve an assessment, mint another key, or read
+platform-wide state."*
+
+That is a sound design decision and our client should stop calling it. If we
+need pipeline health they offered to expose a scoped equivalent — worth asking
+for rather than working around.
+
+### F5 — Open action on us: confirm the key's scopes
+
+They asked for the key's prefix (the first 12 characters after
+`standard_live_`) — **not** the full key — to look it up and confirm it carries
+`intelligence:run` and `gap:write`. They also stated plainly that if the full
+key has been transmitted in clear text at any point, it should be revoked and
+reissued rather than kept in use.
+
+### F6 — Spec now generated, so we can stop inferring shapes
+
+The spec is now generated from the routes with a CI check that fails the build
+on drift, and `/scf/*` and `/gap/*` carry full response schemas. That removes
+the reason our client normalizes "any shape" in `getScfControls` (§A1) and
+hand-maintains response types. Generating types from the spec is now viable and
+would have caught A9 (`control_id` vs `control_code`) at compile time.
+
+### F7 — PENDING: the current API key is being rotated
+
+Requested from the Standard team on 2026-08-26 because the full key had been
+transmitted in clear text (they asked to be told if that had happened, and it
+had). The key currently in `.env.local` / `.env` — prefix `236a84400ffe` — is
+therefore **live but scheduled for revocation**, and will stop working without
+further warning on our side.
+
+Deliberately NOT rotated locally yet: reissue takes time on their side, and the
+current key is what lets us keep probing whether the ten scope fixes have
+deployed. When the replacement arrives, update `STANDARD_GRC_API_KEY` in BOTH
+`.env.local` and `.env` — Next.js falls back to `.env` when `.env.local` omits a
+key, so changing one file only leaves the old value live (this exact trap cost a
+debugging cycle on 2026-08-26 with `STANDARD_GRC_TENANT_ID`).
+
+Also update it in the Vercel project's environment variables, which this session
+could never verify (`vercel whoami` reports no credentials here) — see §C.

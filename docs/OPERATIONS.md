@@ -167,7 +167,7 @@ snapshots gerados pelos assessments — sem assessment recente, está desatualiz
 | Variável | Efeito | Recomendação |
 |---|---|---|
 | `STANDARD_GRC_API_URL` | Base da Standard API — **precisa terminar em `/api/v1`** | `https://standard-api.bekaa.eu/api/v1` |
-| `STANDARD_GRC_TENANT_ID` | `org_xxxxx`; obrigatório p/ `evaluate-evidence` e `council` | Sempre setar |
+| `STANDARD_GRC_TENANT_ID` | **Deixar UNSET.** Não existe id com prefixo `org_` nessa API (org ids são UUID), e o header `x-standard-tenant-id` serve só para chamadas ENTRE organizações — o que uma API key nunca é. Uma key já está vinculada à própria org; enviar o header faz requisições que funcionariam falharem com 403. Corrigido pelo time do Standard em 2026-08-26. | Nunca setar |
 | `GRC_LOCAL_FALLBACK_ENABLED` | **Opt-in** do modo degradado (estimativas locais marcadas) | **Unset em produção** (fail-closed) |
 | `CRON_SECRET` | Protege endpoints de cron | Obrigatório em produção |
 
