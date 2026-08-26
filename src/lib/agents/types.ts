@@ -106,22 +106,24 @@ export interface ToolResult<T = unknown> {
 // Compliance-Domain Types (used by tools)
 // ---------------------------------------------------------------------------
 
+/** null means "not measured" (source unavailable or doesn't report this field) — distinct from a measured zero. */
 export interface ComplianceScore {
   framework: string;
-  overallScore: number;
-  controlsTotal: number;
-  controlsMet: number;
-  controlsPartial: number;
-  controlsNotMet: number;
+  overallScore: number | null;
+  controlsTotal: number | null;
+  controlsMet: number | null;
+  controlsPartial: number | null;
+  controlsNotMet: number | null;
   lastAssessedAt: string;
 }
 
+/** null means "not measured" (source unavailable or doesn't report this field) — distinct from a measured zero. */
 export interface CrossCoverageResult {
   sourceFramework: string;
   targetFramework: string;
   overlappingControls: number;
   totalSourceControls: number;
-  coveragePercentage: number;
+  coveragePercentage: number | null;
   mappings: Array<{
     sourceControlId: string;
     targetControlIds: string[];

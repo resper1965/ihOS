@@ -45,4 +45,22 @@ describe('unavailable tool results', () => {
     expect(backed.overallScore).toBe(0);
     expect(backed.controlsTotal).toBe(582);
   });
+
+  it('permits overallScore: null even when the source is authoritative (standard-api)', () => {
+    // The API responded (source is not 'unavailable'), and reported real
+    // control counts, but neither `score` nor `overall_score` — we don't
+    // have a number for the score specifically, so it must stay null rather
+    // than fabricating 0, even though the rest of the source is fine. This
+    // is distinct from the fully-unavailable case: some fields are real.
+    const noScoreReported = {
+      framework: 'lgpd',
+      overallScore: null,
+      controlsTotal: 65,
+      controlsMet: 42,
+      source: 'standard-api',
+    };
+    expect(noScoreReported.overallScore).toBeNull();
+    expect(noScoreReported.controlsTotal).toBe(65);
+    expect(noScoreReported.source).toBe('standard-api');
+  });
 });

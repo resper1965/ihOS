@@ -105,10 +105,13 @@ export const complianceScore = tool({
 
         return {
           framework: input.framework,
-          overallScore: result.score ?? result.overall_score ?? 0,
+          overallScore: result.score ?? result.overall_score ?? null,
           controlsTotal: result.total_required_controls ?? null,
           controlsMet: result.scf_controls_implemented_count ?? null,
-          controlsPartial: 0,
+          // /intelligence/compliance-score has no partial-state field at all
+          // (see docs/standard-api/CONTRACT_AUDIT.md §0) — null means "not
+          // reported by this source", not "measured and found to be zero".
+          controlsPartial: null,
           controlsNotMet: result.missing_controls?.length ?? 0,
           lastAssessedAt: new Date().toISOString(),
           source: 'standard-api' as const,
