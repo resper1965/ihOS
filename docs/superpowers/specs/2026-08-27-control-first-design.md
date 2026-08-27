@@ -190,7 +190,7 @@ Two further honesty columns:
 | Decision | Owner | Status |
 |---|---|---|
 | Does a partial mapping count as conforming? | product owner | **DECIDED 2026-08-27: no. "Parcial é parcial."** |
-| Direction of `subset` / `superset` | vendor (Q7) | open — now only to learn *which* of the two is the partial one |
+| Direction of `subset` / `superset` | vendor (Q7) | **ANSWERED 2026-08-27 — our assumption was inverted** |
 | Which of 272 vendor frameworks each local code means | product owner, one row each with a rationale | open — first row decided, see below |
 
 ### Framework identity decisions
@@ -210,25 +210,61 @@ The remaining local codes — `iso27701`, `fedramp`, `IEC-62304`, `TX-LEVEL-2`, 
 the five quarantined ones — are still open. Each gets its own row, or a row
 marked `undecided`, and none gets a derived value.
 
-### The partial rule, as decided
+### The curation policy, fully determined
 
-Partial coverage is its own state and never rolls up into conforming. The rule
-holds whichever way Q7 resolves:
+The product owner's rule: partial coverage is its own state and never rolls up
+into conforming. *"Parcial é parcial."*
 
-| Relationship | Contribution |
-|---|---|
-| full coverage (`equal`, plus whichever of subset/superset Q7 names) | satisfies |
-| partial coverage (the other of subset/superset) | **partial — never conforming** |
-| `intersects` | human review |
-| `no_relation` | excluded |
-| any `is_official: false` | human review |
+The vendor answered Q7 on which relationship is the partial one, and **our
+assumption was inverted**. The operator names are **requirement-relative** — read
+each as `requirement <operator> control`.
 
-Q7 no longer blocks the *rule*, only the labelling of two of its rows. Task 4 may
-therefore be written now against the four settled rows, with the partial/full
-assignment of `subset` and `superset` left as the single value Q7 fills in.
+| Vendor relationship | Reads as | Coverage | Contribution |
+|---|---|---|---|
+| `equal` | requirement = control | exact | **satisfies** |
+| `subset` | requirement ⊂ control | control covers the whole requirement | **satisfies** |
+| `superset` | requirement ⊃ control | control covers only part of it | **partial — never conforming** |
+| `intersects` | requirement ∩ control | partial overlap | **human review** |
+| `no_relation` | — | none | excluded |
+| any `is_official: false` | — | — | human review |
 
-Tasks 1–3 of the plan — catalogue load, crosswalk walk, framework identity table
-— depend on none of these and can proceed. Tasks 4 and 5 cannot.
+So the owner's rule attaches to `superset`, not `subset`. A `superset` mapping can
+never reach full coverage without work on the requirement side, which is why the
+vendor's ADR-001 caps it at 0.5.
+
+The convention was written down nowhere, and the vendor's own weight table
+contradicted itself about it: it printed the symbol `⊂` beside the annotation
+"SCF broader than req" — the symbol read control-relative, the words
+requirement-relative. Their words: *"an ambiguity that looks like a typo is worse
+than one that looks like an ambiguity."* No vendor weight changed; only the
+documentation was missing.
+
+**Task 4 is unblocked and fully specified. Nothing in the policy is a guess.**
+
+### `relationship_strength` is void, not merely unverified
+
+Stronger than first reported, and it changes how the field must be treated.
+
+The vendor's importer converts the source's numeric 0-10 strength into an enum
+(`"strong" | "moderate" | "weak"`) before storing it. Seeding then ran
+`(parseFloat(row.relationship_strength) || 0.5).toFixed(3)` — and
+`parseFloat("strong")` is `NaN`, so the `|| 0.5` fired on **every official row**.
+Every strength in the API today is `0.500`, identical everywhere, derived from
+nothing. The numeric value the source actually provides was discarded a step
+earlier.
+
+Their instruction is to treat every ingested `relationship_strength` as **void**,
+not as unverified. `strength_is_trustworthy` marks all of them, which is correct
+by construction since they are all the same value.
+
+This is also why routing `intersects` to review regardless of strength cost
+nothing: a coverage percentage thresholded on that field would have been
+thresholding a constant.
+
+### What remains open
+
+Only the framework identity rows beyond `iso27001`. Tasks 1–3 are complete;
+Tasks 4–5 no longer wait on anything.
 
 ## 10. Success criterion
 
