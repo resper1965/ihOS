@@ -154,27 +154,35 @@ export async function syncControlCatalog(
   const rejected: CatalogSyncResult['rejected'] = [];
   let synced = 0;
   let batch: Array<Record<string, unknown>> = [];
-  let lineNo = 0;
 
-  const res = await throttle.run(async () => {
-    const r = await fetch(
-      `${API_BASE}/scf/versions/${encodeURIComponent(scfVersionId)}/controls`,
-      { headers: authHeaders({ Accept: 'application/x-ndjson' }) },
-    );
-    observe(r, throttle);
-    if (!r.ok) {
-      const err = new Error(`NDJSON controls → ${r.status}`) as Error & { status?: number };
-      err.status = r.status;
-      throw err;
-    }
-    return r;
-  });
+  // Pagination is `page` + `per_page`, NOT `offset`.
+  //
+  // Measured 2026-08-27, after a first attempt with `offset` loaded 51 controls
+  // and looked successful:
+  //   ?limit=100              → AAT-01 … AAT-20.2
+  //   ?limit=100&offset=100   → AAT-01 … AAT-20.2   (offset accepted, ignored)
+  //   ?limit=100&offset=500   → AAT-01 … AAT-20.2
+  //   ?limit=100&page=2       → AAT-20.3 … AST-18   (works)
+  //   ?limit=100&page=5       → CRY-01.3 … DCH-23.4 (works)
+  // Response keys are `data, scf_version_id, page, per_page, trace_id` — the
+  // legacy offset shape the vendor described in their Q1 answer. Cursor mode is
+  // still unreachable: `pagination` is absent, so `next_cursor` never exists.
+  //
+  // The NDJSON export is NOT used, though the vendor recommended it. It returns
+  // HTTP 200, `content-type: application/x-ndjson`, chunked, well-formed — and
+  // stops after 51 rows, at AAT-11.3, entirely inside the alphabetically first
+  // domain, with no indication it truncated. They also said counting its lines
+  // is how to learn the catalogue size, which would have recorded a 51-control
+  // catalogue and made every framework denominator wrong. Reported as Q9.
+  const PER_PAGE = 100;
+  const MAX_PAGES = 60; // 6,000 ≫ any plausible catalogue; a runaway backstop
 
-  if (!res.body) throw new Error('NDJSON controls returned no body');
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder();
-  let buffered = '';
+  // Guard against the failure mode `offset` exhibits: a parameter accepted and
+  // ignored returns page 1 forever, and a loop that only checks `length < PER_PAGE`
+  // would spin to MAX_PAGES storing duplicates and call it success.
+  const seenCodes = new Set<string>();
+  let pagesRead = 0;
+  let repeatedPage = false;
 
   const flush = async () => {
     if (batch.length === 0) return;
@@ -184,42 +192,60 @@ export async function syncControlCatalog(
     onProgress?.(synced);
   };
 
-  const take = async (line: string) => {
-    const trimmed = line.trim();
-    if (trimmed === '') return;
-    lineNo++;
-    let parsed: VendorControl;
-    try {
-      parsed = JSON.parse(trimmed) as VendorControl;
-    } catch {
-      rejected.push({ line: lineNo, reason: 'unparseable JSON line' });
-      return;
-    }
-    // Some NDJSON producers wrap each record; accept both shapes.
-    const candidate = (parsed as { data?: VendorControl }).data ?? parsed;
-    const row = controlRow(candidate, scfVersionId);
-    if (!row) {
-      rejected.push({ line: lineNo, reason: 'missing control_code or control_id' });
-      return;
-    }
-    batch.push(row);
-    if (batch.length >= UPSERT_BATCH) await flush();
-  };
+  for (let page = 1; page <= MAX_PAGES; page++) {
+    const body = await requestJson<{ data?: VendorControl[] }>(
+      `/scf/versions/${encodeURIComponent(scfVersionId)}/controls?per_page=${PER_PAGE}&page=${page}`,
+      throttle,
+    );
+    const items = body.data ?? [];
+    pagesRead = page;
+    if (items.length === 0) break;
 
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffered += decoder.decode(value, { stream: true });
-    const lines = buffered.split('\n');
-    buffered = lines.pop() ?? '';
-    for (const line of lines) await take(line);
+    let freshOnThisPage = 0;
+    items.forEach((c, i) => {
+      const row = controlRow(c, scfVersionId);
+      if (row === null) {
+        rejected.push({ line: (page - 1) * PER_PAGE + i, reason: 'missing control_code or control_id' });
+        return;
+      }
+      const code = c.control_code as string;
+      if (seenCodes.has(code)) return;
+      seenCodes.add(code);
+      freshOnThisPage++;
+      batch.push(row);
+    });
+
+    if (batch.length >= UPSERT_BATCH) await flush();
+
+    if (freshOnThisPage === 0) {
+      // Every row on this page was already stored. The window is not moving.
+      repeatedPage = true;
+      break;
+    }
+    if (items.length < PER_PAGE) break;
   }
-  if (buffered.length > 0) await take(buffered);
+
   await flush();
 
-  // Deliberately no assertion that `synced` equals 1,468. That number is an
-  // observation from 2026-08-27, and the vendor has confirmed no total count
-  // exists — asserting it would be asserting a fact we were told not to rely on.
+  if (repeatedPage) {
+    throw new Error(
+      `control catalogue pagination stopped advancing at page ${pagesRead} after ` +
+        `${synced} controls — every row repeated an earlier page. Check whether ` +
+        `the vendor still honours per_page/page on this endpoint.`,
+    );
+  }
+  if (pagesRead >= MAX_PAGES) {
+    throw new Error(
+      `control catalogue exceeded ${MAX_PAGES} pages (${synced} controls) without ` +
+        `a short page. Refusing to continue: either the catalogue grew past this ` +
+        `backstop or pagination is looping.`,
+    );
+  }
+
+  // Deliberately no assertion that `synced` equals any particular number. 1,468
+  // is an observation, and the vendor has confirmed no total count exists — so
+  // asserting it would be asserting a fact we were told not to rely on. The
+  // guards above catch the failure that matters: a walk that silently stops early.
   return { scfVersionId, synced, rejected };
 }
 
