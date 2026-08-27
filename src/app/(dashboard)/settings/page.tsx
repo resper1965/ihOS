@@ -20,7 +20,11 @@ import { usePreferences } from "@/hooks/use-preferences";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { signOut } from "@/lib/supabase/auth-actions";
 import { Badge, type BadgeVariant } from "@/components/ui/badge";
-import { useStandardApiHealth } from "@/hooks/queries/use-standard-api-health";
+import {
+  useStandardApiHealth,
+  useSetStandardApiKey,
+  type StandardApiHealth,
+} from "@/hooks/queries/use-standard-api-health";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -146,6 +150,83 @@ function IntegrationRow({
           <p className="max-w-[16rem] text-right text-xs text-text-muted">{detail}</p>
         )}
       </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Standard API Key Field — admin/ionic_user only. Never displays an existing
+// key, not even masked with its length visible; the field starts empty and
+// only the prefix from the health probe (shown in IntegrationRow above) is
+// ever rendered.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function sourceLabel(keySource: StandardApiHealth["keySource"] | undefined): string {
+  switch (keySource) {
+    case "env":
+      return "In use: environment variable (a key saved here will not take effect)";
+    case "vault":
+      return "In use: saved key";
+    default:
+      return "In use: none — no key configured";
+  }
+}
+
+function StandardApiKeyField({
+  keySource,
+}: {
+  keySource: StandardApiHealth["keySource"] | undefined;
+}) {
+  const [key, setKey] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [shadowedByEnv, setShadowedByEnv] = useState<boolean | null>(null);
+  const { mutate, isPending } = useSetStandardApiKey();
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setShadowedByEnv(null);
+    mutate(key, {
+      onSuccess: (res) => {
+        setShadowedByEnv(res.shadowedByEnv);
+        setKey(""); // never leave the submitted value sitting in the field
+      },
+      onError: (err) => setError(err.message),
+    });
+  }
+
+  return (
+    <div className="mt-4 border-t border-white/5 pt-4">
+      <p className="mb-1 text-xs font-medium text-text-primary">Standard GRC API Key</p>
+      <p className="mb-3 text-xs text-text-muted">{sourceLabel(keySource)}</p>
+      <form onSubmit={handleSubmit} className="flex items-center gap-2">
+        <input
+          type="password"
+          autoComplete="off"
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          placeholder="standard_live_… or standard_test_…"
+          className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
+        />
+        <button
+          type="submit"
+          disabled={isPending || key.length === 0}
+          className="shrink-0 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-all hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isPending ? "Saving…" : "Save"}
+        </button>
+      </form>
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      {shadowedByEnv === true && (
+        <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+          Saved — but the STANDARD_GRC_API_KEY environment variable still takes precedence, so
+          this key has no effect. To use it, change or remove that environment variable in
+          Vercel.
+        </p>
+      )}
+      {shadowedByEnv === false && (
+        <p className="mt-2 text-xs text-emerald-400">Saved and now in use.</p>
+      )}
     </div>
   );
 }
@@ -333,6 +414,10 @@ export default function SettingsPage() {
             icon={ExternalLink}
           />
         </div>
+
+        {isAdmin && (
+          <StandardApiKeyField keySource={standardApiHealth?.keySource} />
+        )}
       </section>
 
       {/* Danger Zone */}

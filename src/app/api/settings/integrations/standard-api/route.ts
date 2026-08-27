@@ -10,7 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { getSecret } from "@/lib/supabase/vault";
+import { getSecret, getSecretSource } from "@/lib/supabase/vault";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +22,7 @@ export type StandardApiHealth = {
   reachable: boolean;
   keyConfigured: boolean;
   keyPrefix: string | null; // first 12 chars after standard_live_, never the key
+  keySource: "env" | "vault" | "none"; // which source getSecret() actually resolved — see vault.ts's getSecretSource
   scopesHeld: string[] | null; // parsed from the API's own 403 body
   scopesMissing: string[] | null;
   catalogReadable: boolean;
@@ -119,6 +120,7 @@ export async function GET() {
       reachable: false,
       keyConfigured: false,
       keyPrefix: null,
+      keySource: "none",
       scopesHeld: null,
       scopesMissing: null,
       catalogReadable: false,
@@ -127,6 +129,8 @@ export async function GET() {
     };
     return NextResponse.json(health);
   }
+
+  const keySource = await getSecretSource("STANDARD_GRC_API_KEY");
 
   const keyPrefix = extractKeyPrefix(apiKey);
   const baseUrl = (process.env.STANDARD_GRC_API_URL || "").replace(/\/+$/, "");
@@ -183,6 +187,7 @@ export async function GET() {
     reachable,
     keyConfigured: true,
     keyPrefix,
+    keySource,
     scopesHeld,
     scopesMissing,
     catalogReadable,
