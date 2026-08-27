@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import { classifyMapping } from '@/lib/standard-api/sync/crosswalk';
 
@@ -99,5 +101,68 @@ describe('crosswalk rows are stored with their provenance intact', () => {
   it('carries the version through, since every vendor uuid is scoped to one', () => {
     const r = classifyMapping({ ...base, relationship_type: 'equal' }, 'version-abc');
     expect(r.value?.scf_version_id).toBe('version-abc');
+  });
+
+  it('drops a mapping with no framework, which belongs to no denominator', () => {
+    const r = classifyMapping(
+      { ...base, framework_code: undefined as never, relationship_type: 'equal' },
+      'v1',
+    );
+    expect(r.store).toBe(false);
+    expect(r.reason).toBe('no_framework_code');
+  });
+});
+
+describe('the natural key needs framework_code, not just requirement_code', () => {
+  // Found by running the walk: it failed with "ON CONFLICT DO UPDATE command
+  // cannot affect row a second time", meaning two rows in one batch shared the
+  // key. Cause: requirement_code is not always a code. Tier-marker frameworks
+  // ("SCRM Focus  TIER 1 STRATEGIC", "SCRM Focus  TIER 2 OPERATIONAL") use the
+  // literal string "x", so a control applying at both tiers produced two rows
+  // with the same control_code and requirement_code.
+  //
+  // Measured over AAT-01, AAT-01.1 and AAT-01.2:
+  //   control + requirement_code             46/102 unique  ← collides
+  //   control + framework + requirement     102/102 unique  ← correct
+  const tierMarker = (framework: string) => ({
+    control_code: 'AAT-01',
+    requirement_code: 'x',
+    framework_code: framework,
+    relationship_type: 'subset' as const,
+    is_official: true,
+    is_synthetic: false,
+  });
+
+  it('distinguishes two tier-marker rows that share control and requirement', () => {
+    const a = classifyMapping(tierMarker('SCRM Focus  TIER 1 STRATEGIC'), 'v1');
+    const b = classifyMapping(tierMarker('SCRM Focus  TIER 2 OPERATIONAL'), 'v1');
+
+    expect(a.store).toBe(true);
+    expect(b.store).toBe(true);
+
+    const keyOf = (v: NonNullable<typeof a.value>) =>
+      `${v.scf_version_id}|${v.control_code}|${v.framework_code}|${v.requirement_code}`;
+
+    // Same control, same requirement_code — different rows.
+    expect(a.value!.requirement_code).toBe(b.value!.requirement_code);
+    expect(a.value!.control_code).toBe(b.value!.control_code);
+    expect(keyOf(a.value!)).not.toBe(keyOf(b.value!));
+
+    // And the key WITHOUT framework_code would collide, which is the bug.
+    const weakKey = (v: NonNullable<typeof a.value>) =>
+      `${v.scf_version_id}|${v.control_code}|${v.requirement_code}`;
+    expect(weakKey(a.value!)).toBe(weakKey(b.value!));
+  });
+
+  it('the migration keys on framework_code', () => {
+    const sql = readFileSync(
+      resolve(process.cwd(), 'supabase/migrations/20260828000003_mapping_key_includes_framework.sql'),
+      'utf8',
+    );
+    expect(sql).toMatch(
+      /PRIMARY KEY \(scf_version_id, control_code, framework_code, requirement_code\)/,
+    );
+    // framework_code cannot be nullable once it is part of the key.
+    expect(sql).toMatch(/ALTER COLUMN framework_code SET NOT NULL/);
   });
 });

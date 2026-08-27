@@ -52,7 +52,7 @@ export interface StoredMapping {
   scf_version_id: string;
   control_code: string;
   requirement_code: string;
-  framework_code: string | null;
+  framework_code: string;
   mapping_uuid: string | null;
   requirement_uuid: string | null;
   relationship_type: Relationship;
@@ -65,7 +65,11 @@ export interface StoredMapping {
 
 export type Classified =
   | { store: true; value: StoredMapping; reason?: undefined }
-  | { store: false; value?: undefined; reason: 'self_referential' | 'no_requirement_code' };
+  | {
+      store: false;
+      value?: undefined;
+      reason: 'self_referential' | 'no_requirement_code' | 'no_framework_code';
+    };
 
 function str(v: unknown): string | null {
   return typeof v === 'string' && v.length > 0 ? v : null;
@@ -94,6 +98,11 @@ export function classifyMapping(m: Record<string, unknown>, scfVersionId: string
   const framework = str(m.framework_code);
   if (framework !== null && /Secure Controls Framework/i.test(framework)) {
     return { store: false, reason: 'self_referential' };
+  }
+  if (framework === null) {
+    // A mapping with no framework belongs to no denominator, and framework_code
+    // is part of the primary key (see migration 20260828000003).
+    return { store: false, reason: 'no_framework_code' };
   }
 
   const requirementCode = str(m.requirement_code);
@@ -151,15 +160,20 @@ export interface CrosswalkSyncResult {
   lastControlCode: string | null;
 }
 
+interface ControlsQuery
+  extends PromiseLike<{
+    data: Array<{ control_code: string; control_uuid?: string }> | null;
+    error: { message: string } | null;
+  }> {
+  eq(col: string, v: string): ControlsQuery;
+  gt(col: string, v: string): ControlsQuery;
+  order(col: string): ControlsQuery;
+  range(from: number, to: number): ControlsQuery;
+}
+
 interface UpsertableClient {
   from(table: string): {
-    select(cols: string): {
-      eq(col: string, v: string): {
-        gt(col: string, v: string): {
-          order(col: string): Promise<{ data: Array<{ control_code: string }> | null; error: { message: string } | null }>;
-        };
-      };
-    };
+    select(cols: string): ControlsQuery;
     upsert(
       rows: Array<Record<string, unknown>>,
       opts: { onConflict: string },
@@ -182,13 +196,26 @@ export async function syncCrosswalk(
   if (!key) throw new Error('STANDARD_GRC_API_KEY is not set');
 
   // Ascending control_code order is what makes resumption a single comparison.
-  const { data: controls, error } = await supabase
-    .from('scf_controls_cache')
-    .select('control_code, control_uuid')
-    .eq('scf_version_id', scfVersionId)
-    .gt('control_code', opts.resumeAfterControlCode ?? '')
-    .order('control_code');
-  if (error) throw new Error(`could not read scf_controls_cache: ${error.message}`);
+  //
+  // Paged explicitly with .range(): supabase-js caps an unbounded select at
+  // 1,000 rows, and the catalogue is 1,473. Without this the walk would cover
+  // the first 1,000 controls, report success, and leave 473 unmapped — the same
+  // silent-truncation shape as the vendor's NDJSON export.
+  const READ_PAGE = 1000;
+  const controls: Array<{ control_code: string; control_uuid?: string }> = [];
+  for (let from = 0; ; from += READ_PAGE) {
+    const { data, error } = await supabase
+      .from('scf_controls_cache')
+      .select('control_code, control_uuid')
+      .eq('scf_version_id', scfVersionId)
+      .gt('control_code', opts.resumeAfterControlCode ?? '')
+      .order('control_code')
+      .range(from, from + READ_PAGE - 1);
+    if (error) throw new Error(`could not read scf_controls_cache: ${error.message}`);
+    const rows = data ?? [];
+    controls.push(...rows);
+    if (rows.length < READ_PAGE) break;
+  }
 
   const result: CrosswalkSyncResult = {
     scfVersionId,
@@ -200,18 +227,26 @@ export async function syncCrosswalk(
     lastControlCode: null,
   };
 
-  let batch: Array<Record<string, unknown>> = [];
+  // Keyed by the primary key, not an array, so an intra-batch duplicate is
+  // overwritten before it reaches Postgres. ON CONFLICT DO UPDATE cannot resolve
+  // two conflicting rows inside ONE statement — it raises "cannot affect row a
+  // second time" — so the key must be unique in the batch as well as the table.
+  // That is exactly how this bug first surfaced.
+  let batch = new Map<string, Record<string, unknown>>();
+  const batchKey = (v: StoredMapping) =>
+    `${v.scf_version_id}|${v.control_code}|${v.framework_code}|${v.requirement_code}`;
+
   const flush = async () => {
-    if (batch.length === 0) return;
+    if (batch.size === 0) return;
     const { error: upsertError } = await supabase
       .from('scf_control_mappings')
-      .upsert(batch, { onConflict: 'scf_version_id,control_code,requirement_code' });
+      .upsert([...batch.values()], { onConflict: 'scf_version_id,control_code,framework_code,requirement_code' });
     if (upsertError) throw new Error(`upsert into scf_control_mappings failed: ${upsertError.message}`);
-    result.mappingsStored += batch.length;
-    batch = [];
+    result.mappingsStored += batch.size;
+    batch = new Map();
   };
 
-  for (const control of (controls ?? []) as Array<{ control_code: string; control_uuid?: string }>) {
+  for (const control of controls) {
     const uuid = control.control_uuid;
     if (!uuid) {
       result.failures.push({ controlCode: control.control_code, reason: 'no control_uuid cached' });
@@ -261,13 +296,16 @@ export async function syncCrosswalk(
         else result.skippedNoRequirement++;
         continue;
       }
-      batch.push(classified.value as unknown as Record<string, unknown>);
-      if (batch.length >= UPSERT_BATCH) await flush();
+      batch.set(
+        batchKey(classified.value),
+        classified.value as unknown as Record<string, unknown>,
+      );
+      if (batch.size >= UPSERT_BATCH) await flush();
     }
 
     result.controlsWalked++;
     result.lastControlCode = control.control_code;
-    opts.onProgress?.(result.controlsWalked, result.mappingsStored + batch.length);
+    opts.onProgress?.(result.controlsWalked, result.mappingsStored + batch.size);
   }
 
   await flush();
