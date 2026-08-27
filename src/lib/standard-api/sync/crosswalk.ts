@@ -160,6 +160,8 @@ export function classifyMapping(m: Record<string, unknown>, scfVersionId: string
 
 export interface CrosswalkSyncResult {
   scfVersionId: string;
+  /** Controls skipped because they already had mappings stored. */
+  controlsAlreadyDone: number;
   controlsWalked: number;
   mappingsStored: number;
   skippedSelfReferential: number;
@@ -197,11 +199,23 @@ export async function syncCrosswalk(
     throttle?: Throttle;
     /** Resume a walk that stopped: only controls after this code are fetched. */
     resumeAfterControlCode?: string;
+    /**
+     * Skip controls that already have at least one mapping stored.
+     *
+     * Prefer this over resumeAfterControlCode for resuming an interrupted walk.
+     * Resuming by code assumes what is stored forms a contiguous prefix, and it
+     * does not: a probe that walked the tail, or any earlier partial run, leaves
+     * islands. Resuming after the highest stored code would then skip everything
+     * between — silently, and reporting success. Asking which controls are
+     * missing is order-independent and cannot make that mistake.
+     */
+    skipControlsWithMappings?: boolean;
     onProgress?: (walked: number, stored: number) => void;
   } = {},
 ): Promise<CrosswalkSyncResult> {
   const throttle = opts.throttle ?? createThrottle();
   const supabase = createAdminClient() as unknown as UpsertableClient;
+  let result0SkippedAlreadyDone = 0;
   const key = process.env.STANDARD_GRC_API_KEY;
   if (!key) throw new Error('STANDARD_GRC_API_KEY is not set');
 
@@ -212,23 +226,47 @@ export async function syncCrosswalk(
   // the first 1,000 controls, report success, and leave 473 unmapped — the same
   // silent-truncation shape as the vendor's NDJSON export.
   const READ_PAGE = 1000;
-  const controls: Array<{ control_code: string; control_uuid?: string }> = [];
-  for (let from = 0; ; from += READ_PAGE) {
-    const { data, error } = await supabase
-      .from('scf_controls_cache')
-      .select('control_code, control_uuid')
+  const readAll = async (
+    table: string,
+    cols: string,
+    apply: (q: ControlsQuery) => ControlsQuery,
+  ) => {
+    const out: Array<{ control_code: string; control_uuid?: string }> = [];
+    for (let from = 0; ; from += READ_PAGE) {
+      const { data, error } = await apply(
+        supabase.from(table).select(cols),
+      ).range(from, from + READ_PAGE - 1);
+      if (error) throw new Error(`could not read ${table}: ${error.message}`);
+      const rows = data ?? [];
+      out.push(...rows);
+      if (rows.length < READ_PAGE) break;
+    }
+    return out;
+  };
+
+  let controls = await readAll('scf_controls_cache', 'control_code, control_uuid', (q) =>
+    q
       .eq('scf_version_id', scfVersionId)
       .gt('control_code', opts.resumeAfterControlCode ?? '')
-      .order('control_code')
-      .range(from, from + READ_PAGE - 1);
-    if (error) throw new Error(`could not read scf_controls_cache: ${error.message}`);
-    const rows = data ?? [];
-    controls.push(...rows);
-    if (rows.length < READ_PAGE) break;
+      .order('control_code'),
+  );
+
+  if (opts.skipControlsWithMappings === true) {
+    const done = new Set(
+      (
+        await readAll('scf_control_mappings', 'control_code', (q) =>
+          q.eq('scf_version_id', scfVersionId).order('control_code'),
+        )
+      ).map((r) => r.control_code),
+    );
+    const before = controls.length;
+    controls = controls.filter((c) => !done.has(c.control_code));
+    result0SkippedAlreadyDone = before - controls.length;
   }
 
   const result: CrosswalkSyncResult = {
     scfVersionId,
+    controlsAlreadyDone: result0SkippedAlreadyDone,
     controlsWalked: 0,
     mappingsStored: 0,
     skippedSelfReferential: 0,

@@ -76,6 +76,11 @@ async function main() {
     const r = await syncCrosswalk(scfVersionId, {
       throttle,
       resumeAfterControlCode: resumeAfter,
+      // Always skip controls that already have mappings. Re-walking one costs
+      // 2.6s for nothing, and this makes every run a resume without the caller
+      // having to know where the last one stopped — which matters because what
+      // is stored is not a contiguous prefix once any probe has run.
+      skipControlsWithMappings: true,
       onProgress: (walked, stored) => {
         if (walked % 10 === 0) console.log(`  ${walked}/1473 controls, ${stored} mappings`);
       },
