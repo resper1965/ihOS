@@ -82,7 +82,11 @@ async function main() {
       // is stored is not a contiguous prefix once any probe has run.
       skipControlsWithMappings: true,
       onProgress: (walked, stored) => {
-        if (walked % 10 === 0) console.log(`  ${walked}/1473 controls, ${stored} mappings`);
+        // No fake denominator. The walk skips controls that already have
+        // mappings, so "/1473" would be wrong by however many were already done
+        // — and a misleading progress figure is the thing this whole codebase
+        // has been removing.
+        if (walked % 10 === 0) console.log(`  ${walked} controls walked, ${stored} mappings`);
       },
     });
     console.log(
