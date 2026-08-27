@@ -19,8 +19,8 @@ jobs:
     name: Unit Tests
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -35,8 +35,8 @@ jobs:
     runs-on: ubuntu-latest
     needs: [test]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
@@ -65,16 +65,22 @@ jobs:
       # which is what makes the brands load-bearing: widening one back to
       # `string` ADDS errors and fails here.
       #
-      # Deliberately placed after the build, not in its own job: tsc counts
-      # differ by whether .next/generated route types exist (197 without, 202
-      # with), so the count is only comparable to the local baseline once the
-      # build has run. Reusing this job also avoids a second npm ci.
+      # Deliberately placed after the build, not in its own job: the count
+      # depends on .next/ generated route types existing, so it is only
+      # meaningful once the build has run. Reusing this job also avoids a
+      # second npm ci.
+      #
+      # The baseline is whatever THIS environment measures, and it is not the
+      # local number. A Windows/WSL tree with .next/ present counts 202; this
+      # job counts 198. I predicted the gap but not its size, and guessed the
+      # cause was .next/ alone — a fresh `npm ci` on Linux clearly also moves
+      # it. Do not reconcile the two numbers; CI's is the one that gates.
       #
       # When someone fixes type errors, lower TSC_BASELINE in the same PR — a
       # falling number is the point of a ratchet.
       - name: Type errors must not increase
         env:
-          TSC_BASELINE: 202
+          TSC_BASELINE: 198
         run: |
           count=$(npx tsc --noEmit 2>&1 | grep -c 'error TS' || true)
           echo "tsc errors: $count (baseline $TSC_BASELINE)"
