@@ -172,7 +172,65 @@ our decision with a named owner — but we would prefer to be following you.
 
 ---
 
-## Q8 — `offset` appears to be ignored on `/scf/frameworks`
+## Q9 — the NDJSON export returns 51 of 1,473 controls and reports success
+
+This one we would flag urgently, because it fails silently and you offered it as
+the way to learn the catalogue's size.
+
+```
+GET /api/v1/scf/versions/8260df81-979f-4eab-a525-26550ad95d79/controls
+Accept: application/x-ndjson
+
+→ 200
+  content-type: application/x-ndjson
+  transfer-encoding: chunked
+  39,088 bytes, 51 non-empty lines
+  first: AAT-01
+  last:  AAT-11.3
+```
+
+Fifty-one rows, all inside `AAT` — the alphabetically first domain of 35. The
+stream is well-formed and ends cleanly. Nothing in the status, the headers, or
+the body says it stopped early.
+
+The paginated route gives 1,473 controls for the same version.
+
+Your Q2 answer said: *"That also answers 'how big is the catalogue' — count the
+lines."* Had we taken that, we would have recorded a 51-control catalogue, and
+every framework denominator we compute would have been wrong by a factor of
+about 29 — in the direction that flatters us. We only caught it because 51 sat
+suspiciously close to the "batches of 50" you mentioned.
+
+- Is the batching loop terminating after its first batch?
+- Is 51 rather than 50 meaningful — an off-by-one at a boundary?
+
+Until it is fixed we page with `per_page`/`page` instead, which works.
+
+## Q8 — `offset` is ignored on `/scf/frameworks` — and on the controls route too
+
+Broader than we first reported. On `/scf/versions/{id}/controls`:
+
+```
+?limit=100              → AAT-01 … AAT-20.2
+?limit=100&offset=100   → AAT-01 … AAT-20.2      offset accepted, ignored
+?limit=100&offset=500   → AAT-01 … AAT-20.2
+?limit=100&page=2       → AAT-20.3 … AST-18      works
+?limit=100&page=5       → CRY-01.3 … DCH-23.4    works
+```
+
+Response keys are `data, scf_version_id, page, per_page, trace_id`, so this is
+the legacy shape and `page` is the right parameter — our fault for reaching for
+`offset` first. But `offset` being accepted and silently ignored is what made it
+cost a debugging cycle: a rejected parameter would have told us immediately.
+
+We have added a guard on our side that throws when a page repeats rows an
+earlier page already returned, since that is the shape this failure takes.
+
+Also confirming cursor mode is still unreachable on this endpoint as of today —
+`pagination` is absent from the response, so `next_cursor` never exists. We
+assume that is simply the Q1 fix not yet being merged.
+
+### Original Q8 observation, on `/scf/frameworks`
 
 Requesting three pages concurrently:
 
