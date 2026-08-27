@@ -453,3 +453,88 @@ Fresh trace_ids: `a316511cac47fb01` (compliance-score),
 replacement key already requested in §F7. Nothing further is needed from our
 side on these routes — the client code is correct, the credential is not
 scoped.
+
+---
+
+## G. Vendor response 2026-08-27 — scopes granted, and a correction to us
+
+### G1 — The three scopes are granted, on the REPLACEMENT key
+
+`intelligence:run`, `privacy:read` and `gap:write` confirmed correct. They are
+being attached to the **replacement** key rather than added to the current one,
+so the rotation request and the scope grant land as a single step with the old
+key revoked at that point. That retires a key whose full value was transmitted
+in clear text without leaving a gap in coverage.
+
+| Route | Scope |
+|---|---|
+| `POST /api/v1/intelligence/*` (all nine) | `intelligence:run` |
+| `POST /api/v1/privacy/scan-vendor-contract` | `privacy:read` |
+| `POST /api/v1/gap/evaluate-evidence` | `gap:write` |
+
+**So the twelve routes open when the new key arrives, not before.** Nothing
+further is needed from our side. When it lands, update `STANDARD_GRC_API_KEY`
+in BOTH `.env.local` and `.env` (Next.js falls back to `.env` when
+`.env.local` omits a key — this trap already cost one debugging cycle) and in
+the Vercel project.
+
+### G2 — WE WERE WRONG about `/intelligence/roi-path`, and the cause is worth recording
+
+§F-era notes and an email to the vendor claimed `/intelligence/roi-path`
+documented `intelligence:create` while its siblings needed `intelligence:run`,
+and asked them to check whether that route was special. **It was not. The
+discrepancy did not exist.**
+
+The vendor checked and replied that roi-path documented nothing at all, like
+seven of its eight siblings, and that `council` was the only one carrying a
+clause — "which is likely where the `intelligence:create` you saw came from."
+
+They were right, and the cause is a defect in how we extracted it. Our script
+found the path key `"/api/v1/intelligence/roi-path"` and then regex-searched a
+**fixed 1400-character window** after it for `Requires permission(s)`. Measured
+in the generated spec:
+
+```
+roi-path  at char 199691
+council   at char 200248     distance: 557
+window:   1400 chars   ->    council's block fell INSIDE roi-path's window
+```
+
+So the first permission clause the window found belonged to the next route. We
+attributed a neighbour's permission to roi-path and reported it upstream as an
+inconsistency in the vendor's document.
+
+**The lesson, stated so it does not recur:** a fixed-width window over
+structured text crosses record boundaries silently. Extracting a field that
+belongs to a specific record requires parsing the structure — for JSON, parse
+the JSON; for the generated `.d.ts`, bound the search at the next sibling key.
+The cost here was small but it was borne by someone else: the vendor spent time
+disproving a discrepancy we invented.
+
+All nine `/intelligence/*` routes declare `intelligence:create`, which derives
+to the scope `intelligence:run`. roi-path behaves exactly like the family.
+
+### G3 — The spec gap we reported is fixed, and better than we asked
+
+Both halves of §F6's observation were accepted:
+
+- The permission clause was emitted only for routes with a *generated* OpenAPI
+  block; hand-written ones said nothing. Of the twelve routes we were blocked
+  on, one documented its permission and eleven were silent — so the endpoints
+  someone had bothered to document by hand were precisely the ones that said
+  nothing about what they require.
+- Even where the clause appeared it named the *permission* a route declares,
+  never the *scope* a key carries. Different vocabularies:
+  `/gap/evaluate-evidence` declares `evidence:run` and is reachable by a key
+  holding `gap:write`. So the spec could not be read as a scope reference at all.
+
+Now every route that declares permissions states **both**, regardless of block
+type — 271 of 407 operations carry the clause, and the remaining 136 require no
+permission. A route no API key can reach says so outright, which answers the
+`/soc/status` question inside the spec rather than by email. They added a test
+that walks every route and fails their build if one ships without a documented
+scope.
+
+**Consequence for us: regenerate.** `npm run gen:api-types` will now pick up
+the permission/scope clauses, which makes required scopes visible at our call
+sites. Worth doing once the replacement key arrives so both land together.
