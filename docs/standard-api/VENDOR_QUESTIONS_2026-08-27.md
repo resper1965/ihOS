@@ -172,6 +172,26 @@ our decision with a named owner — but we would prefer to be following you.
 
 ---
 
+## Q8 — `offset` appears to be ignored on `/scf/frameworks`
+
+Requesting three pages concurrently:
+
+```
+GET /scf/frameworks?scf_version={id}&limit=100&offset=0
+GET /scf/frameworks?scf_version={id}&limit=100&offset=100
+GET /scf/frameworks?scf_version={id}&limit=100&offset=200
+```
+
+returned 816 rows in total — 272 from each call, the same 272 each time. So
+`limit=100` is also not applied here, and `offset` has no effect.
+
+Possibly the same root cause as Q1: this route may be in the legacy offset shape
+and mishandling both parameters. Flagging in case your Q1 fix does not cover it.
+
+Not blocking us — 272 rows arrive in one request, which is all we need.
+
+---
+
 ## Smaller notes, no reply needed
 
 - `/scf/frameworks/{frameworkId}/coverage` and

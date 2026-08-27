@@ -187,11 +187,45 @@ Two further honesty columns:
 
 ## 9. Open decisions
 
-| Decision | Owner | Blocks |
+| Decision | Owner | Status |
 |---|---|---|
-| Direction of `subset` / `superset` | vendor (Q7) | policy, projection |
-| Final curation policy, once direction is known | named human, recorded in the policy file | projection |
-| Which of 272 vendor frameworks each local code means | named human, one row each with a rationale | framework-scoped figures |
+| Does a partial mapping count as conforming? | product owner | **DECIDED 2026-08-27: no. "Parcial é parcial."** |
+| Direction of `subset` / `superset` | vendor (Q7) | open — now only to learn *which* of the two is the partial one |
+| Which of 272 vendor frameworks each local code means | product owner, one row each with a rationale | open — first row decided, see below |
+
+### Framework identity decisions
+
+Task 1 seeds `framework_identity_curation` with these. One row per local code,
+no derivation.
+
+| our code | vendor `framework_code` | confidence | decided by | rationale |
+|---|---|---|---|---|
+| `iso27001` | `ISO 27001 2022` | `exact` | resper@ionic.health, 2026-08-27 | Only two candidates matched `27001\|27002` across all 272 vendor frameworks: `ISO 27001 2022` and `ISO 27002 2022`. 27002 is the implementation guidance, not the certifiable standard, so it is not what our `iso27001` means. |
+
+`iso27001` is our internal identifier, used across 17 files as a database key, a
+query filter, an assessment default and a UI selector. This row is the single
+place it acquires a vendor meaning; nothing else in the codebase needs to change.
+
+The remaining local codes — `iso27701`, `fedramp`, `IEC-62304`, `TX-LEVEL-2`, and
+the five quarantined ones — are still open. Each gets its own row, or a row
+marked `undecided`, and none gets a derived value.
+
+### The partial rule, as decided
+
+Partial coverage is its own state and never rolls up into conforming. The rule
+holds whichever way Q7 resolves:
+
+| Relationship | Contribution |
+|---|---|
+| full coverage (`equal`, plus whichever of subset/superset Q7 names) | satisfies |
+| partial coverage (the other of subset/superset) | **partial — never conforming** |
+| `intersects` | human review |
+| `no_relation` | excluded |
+| any `is_official: false` | human review |
+
+Q7 no longer blocks the *rule*, only the labelling of two of its rows. Task 4 may
+therefore be written now against the four settled rows, with the partial/full
+assignment of `subset` and `superset` left as the single value Q7 fills in.
 
 Tasks 1–3 of the plan — catalogue load, crosswalk walk, framework identity table
 — depend on none of these and can proceed. Tasks 4 and 5 cannot.
