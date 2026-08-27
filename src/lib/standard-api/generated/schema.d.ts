@@ -159,7 +159,7 @@ export interface paths {
         put?: never;
         /**
          * POST /mcp
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:create. API keys need scope(s): assessment:read, scf:read, soa:read, gap:read, poam:read, report:read, kb:read, kb:search, agent:run, intelligence:run.
          */
         post: operations["postMcp"];
         delete?: never;
@@ -197,7 +197,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/jobs/{job_id}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): document:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): document:read. API keys need scope(s): document:read.
          */
         get: operations["getJobsByJob_id"];
         put?: never;
@@ -277,7 +277,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/health/metrics
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getHealthMetrics"];
         put?: never;
@@ -317,7 +317,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/auth/debug
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getAuthDebug"];
         put?: never;
@@ -340,7 +340,7 @@ export interface paths {
         /**
          * Create Tenant
          * @deprecated
-         * @description PLATFORM ADMIN ONLY. Creates a new tenant (organization) in the system. DEPRECATED: use the equivalent /api/v1/organizations endpoint. This alias returns a Deprecation header and is scheduled for removal after Wed, 25 Nov 2026 00:00:00 GMT.
+         * @description PLATFORM ADMIN ONLY. Creates a new tenant (organization) in the system. DEPRECATED: use the equivalent /api/v1/organizations endpoint. This alias returns a Deprecation header and is scheduled for removal after Wed, 25 Nov 2026 00:00:00 GMT. Requires permission(s): admin:write. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postTenants"];
         delete?: never;
@@ -359,7 +359,7 @@ export interface paths {
         /**
          * Get Tenant
          * @deprecated
-         * @description PLATFORM ADMIN ONLY. Retrieves the details of a specific tenant. DEPRECATED: use the equivalent /api/v1/organizations endpoint. This alias returns a Deprecation header and is scheduled for removal after Wed, 25 Nov 2026 00:00:00 GMT.
+         * @description PLATFORM ADMIN ONLY. Retrieves the details of a specific tenant. DEPRECATED: use the equivalent /api/v1/organizations endpoint. This alias returns a Deprecation header and is scheduled for removal after Wed, 25 Nov 2026 00:00:00 GMT. Requires permission(s): admin:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getTenantsByOrganizationId"];
         put?: never;
@@ -370,7 +370,7 @@ export interface paths {
         /**
          * Update Tenant
          * @deprecated
-         * @description PLATFORM ADMIN ONLY. Updates the status or details of a tenant. DEPRECATED: use the equivalent /api/v1/organizations endpoint. This alias returns a Deprecation header and is scheduled for removal after Wed, 25 Nov 2026 00:00:00 GMT.
+         * @description PLATFORM ADMIN ONLY. Updates the status or details of a tenant. DEPRECATED: use the equivalent /api/v1/organizations endpoint. This alias returns a Deprecation header and is scheduled for removal after Wed, 25 Nov 2026 00:00:00 GMT. Requires permission(s): admin:write. Not reachable with an API key: this route is restricted to human actors.
          */
         patch: operations["patchTenantsByOrganizationId"];
         trace?: never;
@@ -386,7 +386,7 @@ export interface paths {
         put?: never;
         /**
          * Create Organization
-         * @description Creates an organization under the authenticated tenant.
+         * @description Creates an organization under the authenticated tenant. Requires permission(s): organization:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postOrganizations"];
         delete?: never;
@@ -404,7 +404,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/organizations/{organizationId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:read. API keys need scope(s): organization:read.
          */
         get: operations["getOrganizationsByOrganizationId"];
         put?: never;
@@ -425,7 +425,7 @@ export interface paths {
         /**
          * List Organizations by Tenant
          * @deprecated
-         * @description Returns all organizations for the specified tenant. DEPRECATED: `tenant` is legacy vocabulary for `organization_id` (renamed in migration 0032). This alias returns a Deprecation header and is scheduled for removal after Wed, 25 Nov 2026 00:00:00 GMT.
+         * @description Returns all organizations for the specified tenant. DEPRECATED: `tenant` is legacy vocabulary for `organization_id` (renamed in migration 0032). This alias returns a Deprecation header and is scheduled for removal after Wed, 25 Nov 2026 00:00:00 GMT. Requires permission(s): organization:read. API keys need scope(s): organization:read.
          */
         get: operations["getTenantsByOrganizationIdOrganizations"];
         put?: never;
@@ -445,7 +445,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/organizations/{orgId}/usage
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:read. API keys need scope(s): organization:read.
          */
         get: operations["getOrganizationsByOrgIdUsage"];
         put?: never;
@@ -468,14 +468,14 @@ export interface paths {
         post?: never;
         /**
          * Delete Organization
-         * @description Soft-deletes an organization by marking it inactive. Data is retained for audit purposes.
+         * @description Soft-deletes an organization by marking it inactive. Data is retained for audit purposes. Requires permission(s): organization:delete. Not reachable with an API key: this route is restricted to human actors.
          */
         delete: operations["deleteOrganizationsById"];
         options?: never;
         head?: never;
         /**
          * Update Organization
-         * @description Updates the name and/or slug of an organization.
+         * @description Updates the name and/or slug of an organization. Requires permission(s): organization:update. Not reachable with an API key: this route is restricted to human actors.
          */
         patch: operations["patchOrganizationsById"];
         trace?: never;
@@ -489,13 +489,13 @@ export interface paths {
         };
         /**
          * List API Keys
-         * @description Returns all API keys for the authenticated organization (masked). Use ?active=true to exclude revoked keys.
+         * @description Returns all API keys for the authenticated organization (masked). Use ?active=true to exclude revoked keys. Requires permission(s): apikey:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getOrganizationsByOrganizationIdApiKeys"];
         put?: never;
         /**
          * Create API Key
-         * @description Creates a new M2M API key. The raw key is returned only once â€” store it securely.
+         * @description Creates a new M2M API key. The raw key is returned only once â€” store it securely. Requires permission(s): apikey:manage. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postOrganizationsByOrganizationIdApiKeys"];
         delete?: never;
@@ -513,21 +513,21 @@ export interface paths {
         };
         /**
          * GET /api/v1/organizations/{organizationId}/api-keys/{keyId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): apikey:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): apikey:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getOrganizationsByOrganizationIdApiKeysByKeyId"];
         put?: never;
         post?: never;
         /**
          * DELETE /api/v1/organizations/{organizationId}/api-keys/{keyId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): apikey:manage.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): apikey:manage. Not reachable with an API key: this route is restricted to human actors.
          */
         delete: operations["deleteOrganizationsByOrganizationIdApiKeysByKeyId"];
         options?: never;
         head?: never;
         /**
          * Update API Key
-         * @description Update name, expiration date, and/or scopes of an existing API key.
+         * @description Update name, expiration date, and/or scopes of an existing API key. Requires permission(s): apikey:manage. Not reachable with an API key: this route is restricted to human actors.
          */
         patch: operations["patchOrganizationsByOrganizationIdApiKeysByKeyId"];
         trace?: never;
@@ -543,7 +543,7 @@ export interface paths {
         put?: never;
         /**
          * Rotate API Key
-         * @description Creates a new replacement key and schedules revocation of the old key after an optional grace period.
+         * @description Creates a new replacement key and schedules revocation of the old key after an optional grace period. Requires permission(s): apikey:manage. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postOrganizationsByOrganizationIdApiKeysByKeyIdRotate"];
         delete?: never;
@@ -561,7 +561,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/organizations/{organizationId}/api-keys/{keyId}/usage
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): apikey:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): apikey:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getOrganizationsByOrganizationIdApiKeysByKeyIdUsage"];
         put?: never;
@@ -581,13 +581,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessments"];
         put?: never;
         /**
          * POST /api/v1/assessments
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create. API keys need scope(s): assessment:write.
          */
         post: operations["postAssessments"];
         delete?: never;
@@ -605,7 +605,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByAssessmentId"];
         put?: never;
@@ -615,7 +615,7 @@ export interface paths {
         head?: never;
         /**
          * PATCH /api/v1/assessments/{assessmentId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:update. API keys need scope(s): assessment:write.
          */
         patch: operations["patchAssessmentsByAssessmentId"];
         trace?: never;
@@ -629,7 +629,7 @@ export interface paths {
         };
         /**
          * List Assessments by Organization
-         * @description Lists all assessments for a specific organization.
+         * @description Lists all assessments for a specific organization. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getOrganizationsByOrganizationIdAssessments"];
         put?: never;
@@ -649,7 +649,7 @@ export interface paths {
         };
         /**
          * Get Assessment Status
-         * @description Retrieves the current lifecycle status and phase of an assessment.
+         * @description Retrieves the current lifecycle status and phase of an assessment. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByAssessmentIdStatus"];
         put?: never;
@@ -669,7 +669,7 @@ export interface paths {
         };
         /**
          * Get Assessment Timeline
-         * @description Retrieves the chronological timeline of events for an assessment.
+         * @description Retrieves the chronological timeline of events for an assessment. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByAssessmentIdTimeline"];
         put?: never;
@@ -689,7 +689,7 @@ export interface paths {
         };
         /**
          * Evaluate Compliance Gate
-         * @description Evaluates if the assessment meets all requirements to pass its current gate.
+         * @description Evaluates if the assessment meets all requirements to pass its current gate. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByAssessmentIdComplianceGate"];
         put?: never;
@@ -710,7 +710,7 @@ export interface paths {
         get?: never;
         /**
          * Update Automation Rules
-         * @description Updates the automation execution rules for an assessment.
+         * @description Updates the automation execution rules for an assessment. Requires permission(s): assessment:update. API keys need scope(s): assessment:write.
          */
         put: operations["putAssessmentsByAssessmentIdAutomationRules"];
         post?: never;
@@ -731,7 +731,7 @@ export interface paths {
         put?: never;
         /**
          * Start New Assessment Cycle
-         * @description Clones an existing assessment into a new assessment cycle.
+         * @description Clones an existing assessment into a new assessment cycle. Requires permission(s): assessment:create. API keys need scope(s): assessment:write.
          */
         post: operations["postAssessmentsByAssessmentIdNewCycle"];
         delete?: never;
@@ -749,7 +749,7 @@ export interface paths {
         };
         /**
          * Live Collaboration Channel
-         * @description WebSocket connection for live collaboration on an assessment.
+         * @description WebSocket connection for live collaboration on an assessment. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByAssessmentIdLive"];
         put?: never;
@@ -769,13 +769,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/documents
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): document:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): document:read. API keys need scope(s): document:read.
          */
         get: operations["getAssessmentsByAssessmentIdDocuments"];
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/documents
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): document:upload.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): document:upload. API keys need scope(s): document:write.
          */
         post: operations["postAssessmentsByAssessmentIdDocuments"];
         delete?: never;
@@ -793,14 +793,14 @@ export interface paths {
         };
         /**
          * GET /api/v1/documents/{documentId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): document:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): document:read. API keys need scope(s): document:read.
          */
         get: operations["getDocumentsByDocumentId"];
         put?: never;
         post?: never;
         /**
          * DELETE /api/v1/documents/{documentId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): document:delete.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): document:delete. API keys need scope(s): document:delete.
          */
         delete: operations["deleteDocumentsByDocumentId"];
         options?: never;
@@ -817,7 +817,7 @@ export interface paths {
         };
         /**
          * Get Document Chunks
-         * @description Retrieves the parsed text chunks for a processed document.
+         * @description Retrieves the parsed text chunks for a processed document. Requires permission(s): document:read. API keys need scope(s): document:read.
          */
         get: operations["getDocumentsByDocumentIdChunks"];
         put?: never;
@@ -837,7 +837,7 @@ export interface paths {
         };
         /**
          * List Document Jobs
-         * @description Lists all background processing jobs associated with a document.
+         * @description Lists all background processing jobs associated with a document. Requires permission(s): document:read. API keys need scope(s): document:read.
          */
         get: operations["getDocumentsByDocumentIdJobs"];
         put?: never;
@@ -859,7 +859,7 @@ export interface paths {
         put?: never;
         /**
          * Reprocess Document
-         * @description Forces a document to be reprocessed by the ingestion pipeline.
+         * @description Forces a document to be reprocessed by the ingestion pipeline. Requires permission(s): document:reprocess. API keys need scope(s): document:write.
          */
         post: operations["postDocumentsByDocumentIdReprocess"];
         delete?: never;
@@ -877,7 +877,7 @@ export interface paths {
         };
         /**
          * List Assessment Ingestion Jobs
-         * @description Lists all document ingestion jobs for a given assessment.
+         * @description Lists all document ingestion jobs for a given assessment. Requires permission(s): document:read. API keys need scope(s): document:read.
          */
         get: operations["getAssessmentsByAssessmentIdIngestionJobs"];
         put?: never;
@@ -897,7 +897,7 @@ export interface paths {
         };
         /**
          * Get Ingestion Job
-         * @description Retrieves details of a specific ingestion job.
+         * @description Retrieves details of a specific ingestion job. Requires permission(s): document:read. API keys need scope(s): document:read.
          */
         get: operations["getIngestionJobsByJobId"];
         put?: never;
@@ -919,7 +919,7 @@ export interface paths {
         put?: never;
         /**
          * Submit Document for Embedding
-         * @description Forces a document to be embedded and added to the Knowledge Base.
+         * @description Forces a document to be embedded and added to the Knowledge Base. Requires permission(s): document:write. API keys need scope(s): document:write.
          */
         post: operations["postDocumentsByDocumentIdSubmitForEmbedding"];
         delete?: never;
@@ -939,7 +939,7 @@ export interface paths {
         put?: never;
         /**
          * Trigger Job Processing
-         * @description Manually triggers the processing queue for a specific job.
+         * @description Manually triggers the processing queue for a specific job. Requires permission(s): document:write. API keys need scope(s): document:write.
          */
         post: operations["postIngestionJobsByJobIdProcess"];
         delete?: never;
@@ -959,7 +959,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/kb/index
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:index.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:index. API keys need scope(s): kb:write.
          */
         post: operations["postAssessmentsByAssessmentIdKbIndex"];
         delete?: never;
@@ -977,7 +977,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/kb/indexing-jobs
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:read. API keys need scope(s): kb:read.
          */
         get: operations["getAssessmentsByAssessmentIdKbIndexingJobs"];
         put?: never;
@@ -997,7 +997,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/kb/indexing-jobs/{jobId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:read. API keys need scope(s): kb:read.
          */
         get: operations["getKbIndexingJobsByJobId"];
         put?: never;
@@ -1019,7 +1019,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/documents/{documentId}/kb/reindex
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:index.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:index. API keys need scope(s): kb:write.
          */
         post: operations["postDocumentsByDocumentIdKbReindex"];
         delete?: never;
@@ -1039,7 +1039,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/kb/search
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:search.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:search. API keys need scope(s): kb:search.
          */
         post: operations["postAssessmentsByAssessmentIdKbSearch"];
         delete?: never;
@@ -1057,7 +1057,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/kb/vector-references
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:read. API keys need scope(s): kb:read.
          */
         get: operations["getAssessmentsByAssessmentIdKbVectorReferences"];
         put?: never;
@@ -1077,7 +1077,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/documents/{documentId}/kb/vector-references
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:read. API keys need scope(s): kb:read.
          */
         get: operations["getDocumentsByDocumentIdKbVectorReferences"];
         put?: never;
@@ -1097,7 +1097,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/chunks/{chunkId}/context
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:read. API keys need scope(s): kb:read.
          */
         get: operations["getChunksByChunkIdContext"];
         put?: never;
@@ -1119,7 +1119,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/kb/indexing-jobs/{jobId}/process
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:write.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): kb:write. API keys need scope(s): kb:write.
          */
         post: operations["postKbIndexingJobsByJobIdProcess"];
         delete?: never;
@@ -1139,7 +1139,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/evidence-analysis/run
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:create. API keys need scope(s): gap:write.
          */
         post: operations["postAssessmentsByAssessmentIdEvidenceAnalysisRun"];
         delete?: never;
@@ -1157,7 +1157,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/evidence-findings
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read. API keys need scope(s): gap:read.
          */
         get: operations["getAssessmentsByAssessmentIdEvidenceFindings"];
         put?: never;
@@ -1177,7 +1177,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/evidence-findings/{evidenceFindingId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read. API keys need scope(s): gap:read.
          */
         get: operations["getEvidenceFindingsByEvidenceFindingId"];
         put?: never;
@@ -1199,7 +1199,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/evidence-findings/{evidenceFindingId}/refresh
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:update. API keys need scope(s): gap:write.
          */
         post: operations["postEvidenceFindingsByEvidenceFindingIdRefresh"];
         delete?: never;
@@ -1217,7 +1217,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/evidence-findings/{evidenceFindingId}/sources
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read. API keys need scope(s): gap:read.
          */
         get: operations["getEvidenceFindingsByEvidenceFindingIdSources"];
         put?: never;
@@ -1239,7 +1239,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/gap-analysis/draft
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:create. API keys need scope(s): gap:write.
          */
         post: operations["postAssessmentsByAssessmentIdGapAnalysisDraft"];
         delete?: never;
@@ -1257,7 +1257,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/gap-analysis
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read. API keys need scope(s): gap:read.
          */
         get: operations["getAssessmentsByAssessmentIdGapAnalysis"];
         put?: never;
@@ -1277,7 +1277,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/gap-analysis/{gapAnalysisVersionId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read. API keys need scope(s): gap:read.
          */
         get: operations["getGapAnalysisByGapAnalysisVersionId"];
         put?: never;
@@ -1297,7 +1297,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/gap-analysis/{gapAnalysisVersionId}/findings
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read. API keys need scope(s): gap:read.
          */
         get: operations["getGapAnalysisByGapAnalysisVersionIdFindings"];
         put?: never;
@@ -1317,7 +1317,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/gap-findings/{gapFindingId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read. API keys need scope(s): gap:read.
          */
         get: operations["getGapFindingsByGapFindingId"];
         put?: never;
@@ -1327,7 +1327,7 @@ export interface paths {
         head?: never;
         /**
          * PATCH /api/v1/gap-findings/{gapFindingId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:update. API keys need scope(s): gap:write.
          */
         patch: operations["patchGapFindingsByGapFindingId"];
         trace?: never;
@@ -1343,7 +1343,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/gap-analysis/{gapAnalysisVersionId}/validate
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:read. API keys need scope(s): gap:read.
          */
         post: operations["postGapAnalysisByGapAnalysisVersionIdValidate"];
         delete?: never;
@@ -1363,7 +1363,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/gap-analysis/{gapAnalysisVersionId}/submit-review
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:update. API keys need scope(s): gap:write.
          */
         post: operations["postGapAnalysisByGapAnalysisVersionIdSubmitReview"];
         delete?: never;
@@ -1383,7 +1383,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/gap-analysis/{gapAnalysisVersionId}/approve
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:approve.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:approve. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postGapAnalysisByGapAnalysisVersionIdApprove"];
         delete?: never;
@@ -1403,7 +1403,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/gap-analysis/{gapAnalysisVersionId}/regenerate
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:create. API keys need scope(s): gap:write.
          */
         post: operations["postGapAnalysisByGapAnalysisVersionIdRegenerate"];
         delete?: never;
@@ -1423,7 +1423,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/gap-analysis/{gapAnalysisVersionId}/findings/bulk-update
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:update. API keys need scope(s): gap:write.
          */
         post: operations["postGapAnalysisByGapAnalysisVersionIdFindingsBulkUpdate"];
         delete?: never;
@@ -1443,7 +1443,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/gap/evaluate-evidence
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): evidence:run.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): evidence:run. API keys need scope(s): gap:write.
          */
         post: operations["postGapEvaluateEvidence"];
         delete?: never;
@@ -1463,7 +1463,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/gap/evaluate-evidence/batch
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): evidence:run.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): evidence:run. API keys need scope(s): gap:write.
          */
         post: operations["postGapEvaluateEvidenceBatch"];
         delete?: never;
@@ -1503,7 +1503,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/gap-findings/bulk-delete
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): gap:update. API keys need scope(s): gap:write.
          */
         post: operations["postGapFindingsBulkDelete"];
         delete?: never;
@@ -1523,7 +1523,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/poam/draft
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:create. API keys need scope(s): poam:write.
          */
         post: operations["postAssessmentsByAssessmentIdPoamDraft"];
         delete?: never;
@@ -1541,7 +1541,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/poam
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read. API keys need scope(s): poam:read.
          */
         get: operations["getAssessmentsByAssessmentIdPoam"];
         put?: never;
@@ -1561,7 +1561,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/poam-summary
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read. API keys need scope(s): poam:read.
          */
         get: operations["getAssessmentsByAssessmentIdPoamSummary"];
         put?: never;
@@ -1581,7 +1581,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/poam/{poamVersionId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read. API keys need scope(s): poam:read.
          */
         get: operations["getPoamByPoamVersionId"];
         put?: never;
@@ -1601,7 +1601,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/poam/{poamVersionId}/items
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read. API keys need scope(s): poam:read.
          */
         get: operations["getPoamByPoamVersionIdItems"];
         put?: never;
@@ -1621,7 +1621,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/poam/{poamVersionId}/summary
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read. API keys need scope(s): poam:read.
          */
         get: operations["getPoamByPoamVersionIdSummary"];
         put?: never;
@@ -1641,7 +1641,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/poam-items/{poamItemId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read. API keys need scope(s): poam:read.
          */
         get: operations["getPoamItemsByPoamItemId"];
         put?: never;
@@ -1651,7 +1651,7 @@ export interface paths {
         head?: never;
         /**
          * PATCH /api/v1/poam-items/{poamItemId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:update. API keys need scope(s): poam:write.
          */
         patch: operations["patchPoamItemsByPoamItemId"];
         trace?: never;
@@ -1665,13 +1665,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/poam-items/{poamItemId}/milestones
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read. API keys need scope(s): poam:read.
          */
         get: operations["getPoamItemsByPoamItemIdMilestones"];
         put?: never;
         /**
          * POST /api/v1/poam-items/{poamItemId}/milestones
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:create. API keys need scope(s): poam:write.
          */
         post: operations["postPoamItemsByPoamItemIdMilestones"];
         delete?: never;
@@ -1695,7 +1695,7 @@ export interface paths {
         head?: never;
         /**
          * PATCH /api/v1/poam-milestones/{milestoneId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:update. API keys need scope(s): poam:write.
          */
         patch: operations["patchPoamMilestonesByMilestoneId"];
         trace?: never;
@@ -1711,7 +1711,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/poam/{poamVersionId}/validate
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read. API keys need scope(s): poam:read.
          */
         post: operations["postPoamByPoamVersionIdValidate"];
         delete?: never;
@@ -1731,7 +1731,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/poam/{poamVersionId}/submit-review
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:update. API keys need scope(s): poam:write.
          */
         post: operations["postPoamByPoamVersionIdSubmitReview"];
         delete?: never;
@@ -1751,7 +1751,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/poam/{poamVersionId}/approve
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:approve.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:approve. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postPoamByPoamVersionIdApprove"];
         delete?: never;
@@ -1771,7 +1771,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/poam/{poamVersionId}/regenerate
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:create. API keys need scope(s): poam:write.
          */
         post: operations["postPoamByPoamVersionIdRegenerate"];
         delete?: never;
@@ -1791,7 +1791,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/poam/{poamVersionId}/items/bulk-update
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:update. API keys need scope(s): poam:write.
          */
         post: operations["postPoamByPoamVersionIdItemsBulkUpdate"];
         delete?: never;
@@ -1811,7 +1811,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/poam/{poamVersionId}/dependencies/detect
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): poam:read. API keys need scope(s): poam:read.
          */
         post: operations["postPoamByPoamVersionIdDependenciesDetect"];
         delete?: never;
@@ -1831,7 +1831,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/reports/draft
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:create. API keys need scope(s): report:write.
          */
         post: operations["postAssessmentsByAssessmentIdReportsDraft"];
         delete?: never;
@@ -1849,7 +1849,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/reports
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read. API keys need scope(s): report:read.
          */
         get: operations["getAssessmentsByAssessmentIdReports"];
         put?: never;
@@ -1869,7 +1869,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/reports/{reportVersionId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read. API keys need scope(s): report:read.
          */
         get: operations["getReportsByReportVersionId"];
         put?: never;
@@ -1889,7 +1889,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/reports/{reportVersionId}/sections
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read. API keys need scope(s): report:read.
          */
         get: operations["getReportsByReportVersionIdSections"];
         put?: never;
@@ -1909,7 +1909,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/reports/{reportVersionId}/artifacts
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read. API keys need scope(s): report:read.
          */
         get: operations["getReportsByReportVersionIdArtifacts"];
         put?: never;
@@ -1931,7 +1931,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/reports/{reportVersionId}/validate
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read. API keys need scope(s): report:read.
          */
         post: operations["postReportsByReportVersionIdValidate"];
         delete?: never;
@@ -1951,7 +1951,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/reports/{reportVersionId}/render
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:create. API keys need scope(s): report:write.
          */
         post: operations["postReportsByReportVersionIdRender"];
         delete?: never;
@@ -1971,7 +1971,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/reports/{reportVersionId}/submit-review
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:update. API keys need scope(s): report:write.
          */
         post: operations["postReportsByReportVersionIdSubmitReview"];
         delete?: never;
@@ -1991,7 +1991,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/reports/{reportVersionId}/approve
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:approve.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:approve. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postReportsByReportVersionIdApprove"];
         delete?: never;
@@ -2011,7 +2011,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/reports/{reportVersionId}/regenerate
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:update. API keys need scope(s): report:write.
          */
         post: operations["postReportsByReportVersionIdRegenerate"];
         delete?: never;
@@ -2029,7 +2029,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/report-artifacts/{artifactId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read. API keys need scope(s): report:read.
          */
         get: operations["getReportArtifactsByArtifactId"];
         put?: never;
@@ -2049,7 +2049,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/report-artifacts/{artifactId}/download-url
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:download.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:download. API keys need scope(s): report:export.
          */
         get: operations["getReportArtifactsByArtifactIdDownloadUrl"];
         put?: never;
@@ -2069,13 +2069,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/exports
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read. API keys need scope(s): report:read.
          */
         get: operations["getAssessmentsByAssessmentIdExports"];
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/exports
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:create. API keys need scope(s): report:write.
          */
         post: operations["postAssessmentsByAssessmentIdExports"];
         delete?: never;
@@ -2093,7 +2093,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/export-jobs/{exportJobId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:read. API keys need scope(s): report:read.
          */
         get: operations["getExportJobsByExportJobId"];
         put?: never;
@@ -2115,7 +2115,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/reports/{reportVersionId}/exports/{format}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:create. API keys need scope(s): report:write.
          */
         post: operations["postReportsByReportVersionIdExportsByFormat"];
         delete?: never;
@@ -2135,7 +2135,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/audit-package
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:create. API keys need scope(s): report:write.
          */
         post: operations["postAssessmentsByAssessmentIdAuditPackage"];
         delete?: never;
@@ -2153,7 +2153,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/export-jobs/{exportJobId}/download
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:download.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): report:download. API keys need scope(s): report:export.
          */
         get: operations["getExportJobsByExportJobIdDownload"];
         put?: never;
@@ -2173,7 +2173,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/agent-runtime/agents
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:read. API keys need scope(s): agent:read.
          */
         get: operations["getAgentRuntimeAgents"];
         put?: never;
@@ -2193,13 +2193,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/agent-runs
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:read_runs.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:read_runs. API keys need scope(s): agent:read.
          */
         get: operations["getAssessmentsByAssessmentIdAgentRuns"];
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/agent-runs
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:run.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:run. API keys need scope(s): agent:run.
          */
         post: operations["postAssessmentsByAssessmentIdAgentRuns"];
         delete?: never;
@@ -2217,7 +2217,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/agent-runs/{agentRunId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:read. API keys need scope(s): agent:read.
          */
         get: operations["getAgentRunsByAgentRunId"];
         put?: never;
@@ -2239,7 +2239,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/agent-runs/{agentRunId}/tool-calls
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAgentRunsByAgentRunIdToolCalls"];
         delete?: never;
@@ -2259,7 +2259,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/agent-runs/{agentRunId}/complete
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAgentRunsByAgentRunIdComplete"];
         delete?: never;
@@ -2279,7 +2279,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/workflows/lifecycle/start
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:run_workflow.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:run_workflow. API keys need scope(s): workflow:write.
          */
         post: operations["postAssessmentsByAssessmentIdWorkflowsLifecycleStart"];
         delete?: never;
@@ -2297,7 +2297,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/workflows/lifecycle
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): workflow:read.
          */
         get: operations["getAssessmentsByAssessmentIdWorkflowsLifecycle"];
         put?: never;
@@ -2317,7 +2317,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/workflows/{workflowRunId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getWorkflowsByWorkflowRunId"];
         put?: never;
@@ -2339,7 +2339,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/workflows/{workflowRunId}/cancel
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:cancel.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:cancel. API keys need scope(s): workflow:write.
          */
         post: operations["postWorkflowsByWorkflowRunIdCancel"];
         delete?: never;
@@ -2359,7 +2359,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/workflows/{workflowRunId}/resume
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:run_workflow.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:run_workflow. API keys need scope(s): workflow:write.
          */
         post: operations["postWorkflowsByWorkflowRunIdResume"];
         delete?: never;
@@ -2379,7 +2379,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/workflows/{workflowRunId}/signals
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:run_workflow.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:run_workflow. API keys need scope(s): workflow:signal.
          */
         post: operations["postWorkflowsByWorkflowRunIdSignals"];
         delete?: never;
@@ -2397,7 +2397,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/audit-logs
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read. API keys need scope(s): audit:read.
          */
         get: operations["getAssessmentsByAssessmentIdAuditLogs"];
         put?: never;
@@ -2417,7 +2417,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/audit-logs/{auditLogId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read. API keys need scope(s): audit:read.
          */
         get: operations["getAuditLogsByAuditLogId"];
         put?: never;
@@ -2437,7 +2437,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/admin/security-events
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getAdminSecurityEvents"];
         put?: never;
@@ -2457,7 +2457,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/admin/security-events/{securityEventId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getAdminSecurityEventsBySecurityEventId"];
         put?: never;
@@ -2477,7 +2477,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/metrics
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): metrics:read.
          */
         get: operations["getAssessmentsByAssessmentIdMetrics"];
         put?: never;
@@ -2497,7 +2497,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/admin/metrics/operational
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getAdminMetricsOperational"];
         put?: never;
@@ -2517,7 +2517,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/usage
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): usage:read.
          */
         get: operations["getAssessmentsByAssessmentIdUsage"];
         put?: never;
@@ -2537,7 +2537,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/tenants/{organizationId}/usage
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): tenant:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): tenant:read. API keys need scope(s): organization:read.
          */
         get: operations["getTenantsByOrganizationIdUsage"];
         put?: never;
@@ -2557,7 +2557,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/admin/usage
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getAdminUsage"];
         put?: never;
@@ -2577,7 +2577,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/observability/audit-logs
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read. API keys need scope(s): audit:read.
          */
         get: operations["getObservabilityAuditLogs"];
         put?: never;
@@ -2597,7 +2597,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/observability/audit
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read. API keys need scope(s): audit:read.
          */
         get: operations["getObservabilityAudit"];
         put?: never;
@@ -2617,7 +2617,7 @@ export interface paths {
         };
         /**
          * GET /api/observability/audit
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read. API keys need scope(s): audit:read.
          */
         get: operations["getApiObservabilityAudit"];
         put?: never;
@@ -2637,7 +2637,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/observability/metrics
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getObservabilityMetrics"];
         put?: never;
@@ -2657,7 +2657,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/observability/security-events
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getObservabilitySecurityEvents"];
         put?: never;
@@ -2677,7 +2677,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/observability/usage
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): tenant:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): tenant:read. API keys need scope(s): organization:read.
          */
         get: operations["getObservabilityUsage"];
         put?: never;
@@ -2699,7 +2699,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/transitions
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:update. API keys need scope(s): assessment:transition.
          */
         post: operations["postAssessmentsByAssessmentIdTransitions"];
         delete?: never;
@@ -2717,7 +2717,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/available-transitions
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByAssessmentIdAvailableTransitions"];
         put?: never;
@@ -2737,7 +2737,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/lifecycle-events
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByAssessmentIdLifecycleEvents"];
         put?: never;
@@ -2757,13 +2757,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/approvals
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): approval:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): approval:read. API keys need scope(s): approval:read.
          */
         get: operations["getAssessmentsByAssessmentIdApprovals"];
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/approvals
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): approval:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): approval:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAssessmentsByAssessmentIdApprovals"];
         delete?: never;
@@ -2781,7 +2781,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/approvals/{approvalId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): approval:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): approval:read. API keys need scope(s): approval:read.
          */
         get: operations["getApprovalsByApprovalId"];
         put?: never;
@@ -2801,7 +2801,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/organizations/{orgId}/approvals/pending
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): approval:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): approval:read. API keys need scope(s): approval:read.
          */
         get: operations["getOrganizationsByOrgIdApprovalsPending"];
         put?: never;
@@ -2823,7 +2823,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/approvals/{approvalId}/approve
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): approval:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): approval:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postApprovalsByApprovalIdApprove"];
         delete?: never;
@@ -2843,7 +2843,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/approvals/{approvalId}/reject
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): approval:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): approval:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postApprovalsByApprovalIdReject"];
         delete?: never;
@@ -2861,13 +2861,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/artifacts/{artifactType}/versions
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): artifact:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): artifact:read. API keys need scope(s): artifact:read.
          */
         get: operations["getAssessmentsByAssessmentIdArtifactsByArtifactTypeVersions"];
         put?: never;
         /**
          * POST /api/v1/assessments/{assessmentId}/artifacts/{artifactType}/versions
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): artifact:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): artifact:create. API keys need scope(s): artifact:write.
          */
         post: operations["postAssessmentsByAssessmentIdArtifactsByArtifactTypeVersions"];
         delete?: never;
@@ -2885,7 +2885,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/artifacts/{artifactVersionId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): artifact:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): artifact:read. API keys need scope(s): artifact:read.
          */
         get: operations["getArtifactsByArtifactVersionId"];
         put?: never;
@@ -2907,7 +2907,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/artifacts/{artifactVersionId}/submit-review
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): artifact:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): artifact:update. API keys need scope(s): artifact:write.
          */
         post: operations["postArtifactsByArtifactVersionIdSubmitReview"];
         delete?: never;
@@ -2927,7 +2927,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/artifacts/{artifactVersionId}/approve
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): artifact:approve.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): artifact:approve. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postArtifactsByArtifactVersionIdApprove"];
         delete?: never;
@@ -2947,7 +2947,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/artifacts/{artifactVersionId}/supersede
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): artifact:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): artifact:create. API keys need scope(s): artifact:write.
          */
         post: operations["postArtifactsByArtifactVersionIdSupersede"];
         delete?: never;
@@ -2965,7 +2965,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/controls/{controlId}/linked-entities
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfControlsByControlIdLinkedEntities"];
         put?: never;
@@ -2985,7 +2985,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/versions
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfVersions"];
         put?: never;
@@ -3005,7 +3005,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/versions/latest
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfVersionsLatest"];
         put?: never;
@@ -3025,7 +3025,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/versions/{scfVersionId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfVersionsByScfVersionId"];
         put?: never;
@@ -3045,7 +3045,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/versions/{scfVersionId}/domains
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfVersionsByScfVersionIdDomains"];
         put?: never;
@@ -3065,7 +3065,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/versions/{scfVersionId}/controls
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfVersionsByScfVersionIdControls"];
         put?: never;
@@ -3085,7 +3085,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/domains/{domainCode}/controls
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfDomainsByDomainCodeControls"];
         put?: never;
@@ -3105,7 +3105,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/controls/by-code/{controlCode}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfControlsByCodeByControlCode"];
         put?: never;
@@ -3125,7 +3125,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/frameworks
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfFrameworks"];
         put?: never;
@@ -3145,7 +3145,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/frameworks/{frameworkId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfFrameworksByFrameworkId"];
         put?: never;
@@ -3165,7 +3165,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/controls/{controlId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfControlsByControlId"];
         put?: never;
@@ -3185,7 +3185,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/frameworks/{frameworkId}/requirements
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfFrameworksByFrameworkIdRequirements"];
         put?: never;
@@ -3205,7 +3205,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/requirements/{requirementId}/mappings
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfRequirementsByRequirementIdMappings"];
         put?: never;
@@ -3225,7 +3225,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/controls/{controlId}/mappings
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfControlsByControlIdMappings"];
         put?: never;
@@ -3245,7 +3245,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/frameworks/{frameworkId}/coverage
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfFrameworksByFrameworkIdCoverage"];
         put?: never;
@@ -3265,7 +3265,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/cross-mapping/{frameworkA}/{frameworkB}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfCrossMappingByFrameworkAByFrameworkB"];
         put?: never;
@@ -3285,13 +3285,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/admin/scf/import-runs
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getAdminScfImportRuns"];
         put?: never;
         /**
          * POST /api/v1/admin/scf/import-runs
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:import.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:import. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAdminScfImportRuns"];
         delete?: never;
@@ -3309,7 +3309,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/admin/scf/import-runs/{importRunId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getAdminScfImportRunsByImportRunId"];
         put?: never;
@@ -3331,7 +3331,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/admin/scf/import-runs/{importRunId}/dry-run
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:import.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:import. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAdminScfImportRunsByImportRunIdDryRun"];
         delete?: never;
@@ -3351,7 +3351,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/admin/scf/import-xlsx
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:import.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:import. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAdminScfImportXlsx"];
         delete?: never;
@@ -3371,7 +3371,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/admin/scf/import-xlsx/dry-run
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:import.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:import. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAdminScfImportXlsxDryRun"];
         delete?: never;
@@ -3389,7 +3389,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/controls/{controlId}/assessment-objectives
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfControlsByControlIdAssessmentObjectives"];
         put?: never;
@@ -3409,7 +3409,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/controls/{controlId}/pptdf-profile
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfControlsByControlIdPptdfProfile"];
         put?: never;
@@ -3429,7 +3429,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/controls/{controlId}/evidence-requests
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfControlsByControlIdEvidenceRequests"];
         put?: never;
@@ -3449,7 +3449,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/controls/{controlId}/maturity-criteria
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfControlsByControlIdMaturityCriteria"];
         put?: never;
@@ -3469,7 +3469,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/controls/{controlId}/risks
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfControlsByControlIdRisks"];
         put?: never;
@@ -3489,7 +3489,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/controls/{controlId}/threats
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfControlsByControlIdThreats"];
         put?: never;
@@ -3509,7 +3509,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/strm
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfStrm"];
         put?: never;
@@ -3529,7 +3529,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/strm/lookup
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfStrmLookup"];
         put?: never;
@@ -3549,7 +3549,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/strm/control/{control_code}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfStrmControlByControl_code"];
         put?: never;
@@ -3569,7 +3569,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/scf/strm/compare
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getScfStrmCompare"];
         put?: never;
@@ -3689,7 +3689,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/cdpas/standards
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getCdpasStandards"];
         put?: never;
@@ -3709,7 +3709,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/cdpas/standards/{standardId}/sub-requirements
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getCdpasStandardsByStandardIdSubRequirements"];
         put?: never;
@@ -3729,7 +3729,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/cdpas/sub-requirements/{subReqId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getCdpasSubRequirementsBySubReqId"];
         put?: never;
@@ -3749,7 +3749,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/cdpas/findings
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByAssessmentIdCdpasFindings"];
         put?: never;
@@ -3770,7 +3770,7 @@ export interface paths {
         get?: never;
         /**
          * PUT /api/v1/assessments/{assessmentId}/cdpas/findings/{subReqId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:update. API keys need scope(s): assessment:write.
          */
         put: operations["putAssessmentsByAssessmentIdCdpasFindingsBySubReqId"];
         post?: never;
@@ -3789,7 +3789,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/cdpas/summary
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByAssessmentIdCdpasSummary"];
         put?: never;
@@ -3809,13 +3809,13 @@ export interface paths {
         };
         /**
          * Get Assessment Scope
-         * @description Retrieves the scope definition for a given assessment.
+         * @description Retrieves the scope definition for a given assessment. Requires permission(s): soa:read. API keys need scope(s): soa:read.
          */
         get: operations["getAssessmentsByAssessmentIdScope"];
         put?: never;
         /**
          * Create Scope
-         * @description Creates the initial scope definition for an assessment.
+         * @description Creates the initial scope definition for an assessment. Requires permission(s): soa:create. API keys need scope(s): soa:write.
          */
         post: operations["postAssessmentsByAssessmentIdScope"];
         delete?: never;
@@ -3833,7 +3833,7 @@ export interface paths {
         };
         /**
          * Get Scope by ID
-         * @description Retrieves a specific scope by its ID.
+         * @description Retrieves a specific scope by its ID. Requires permission(s): soa:read. API keys need scope(s): soa:read.
          */
         get: operations["getScopesByScopeId"];
         put?: never;
@@ -3843,7 +3843,7 @@ export interface paths {
         head?: never;
         /**
          * Update Scope
-         * @description Updates properties of an existing scope.
+         * @description Updates properties of an existing scope. Requires permission(s): soa:update. API keys need scope(s): soa:write.
          */
         patch: operations["patchScopesByScopeId"];
         trace?: never;
@@ -3859,7 +3859,7 @@ export interface paths {
         put?: never;
         /**
          * Submit Scope for Review
-         * @description Submits a drafted scope for review.
+         * @description Submits a drafted scope for review. Requires permission(s): soa:update. API keys need scope(s): soa:write.
          */
         post: operations["postScopesByScopeIdSubmitReview"];
         delete?: never;
@@ -3879,7 +3879,7 @@ export interface paths {
         put?: never;
         /**
          * Approve Scope
-         * @description Approves a scope that is under review.
+         * @description Approves a scope that is under review. Requires permission(s): soa:approve. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postScopesByScopeIdApprove"];
         delete?: never;
@@ -3899,7 +3899,7 @@ export interface paths {
         put?: never;
         /**
          * Create SoA Draft
-         * @description Generates a new Statement of Applicability draft for an assessment.
+         * @description Generates a new Statement of Applicability draft for an assessment. Requires permission(s): soa:create. API keys need scope(s): soa:write.
          */
         post: operations["postAssessmentsByAssessmentIdSoaDraft"];
         delete?: never;
@@ -3917,7 +3917,7 @@ export interface paths {
         };
         /**
          * List Assessment SoA Versions
-         * @description Lists all Statement of Applicability versions for an assessment.
+         * @description Lists all Statement of Applicability versions for an assessment. Requires permission(s): soa:read. API keys need scope(s): soa:read.
          */
         get: operations["getAssessmentsByAssessmentIdSoa"];
         put?: never;
@@ -3937,7 +3937,7 @@ export interface paths {
         };
         /**
          * Get SoA Version
-         * @description Retrieves a specific SoA version by its ID.
+         * @description Retrieves a specific SoA version by its ID. Requires permission(s): soa:read. API keys need scope(s): soa:read.
          */
         get: operations["getSoaBySoaVersionId"];
         put?: never;
@@ -3957,7 +3957,7 @@ export interface paths {
         };
         /**
          * List SoA Items
-         * @description Lists all items (controls) in a specific SoA version.
+         * @description Lists all items (controls) in a specific SoA version. Requires permission(s): soa:read. API keys need scope(s): soa:read.
          */
         get: operations["getSoaBySoaVersionIdItems"];
         put?: never;
@@ -3983,7 +3983,7 @@ export interface paths {
         head?: never;
         /**
          * Update SoA Item
-         * @description Updates an individual item in the Statement of Applicability.
+         * @description Updates an individual item in the Statement of Applicability. Requires permission(s): soa:update. API keys need scope(s): soa:write.
          */
         patch: operations["patchSoaItemsBySoaItemId"];
         trace?: never;
@@ -3999,7 +3999,7 @@ export interface paths {
         put?: never;
         /**
          * Refresh SoA Evidence
-         * @description Forces a refresh of evidence mapping for the SoA.
+         * @description Forces a refresh of evidence mapping for the SoA. Requires permission(s): soa:update. API keys need scope(s): soa:write.
          */
         post: operations["postSoaBySoaVersionIdEvidenceRefresh"];
         delete?: never;
@@ -4019,7 +4019,7 @@ export interface paths {
         put?: never;
         /**
          * Submit SoA for Review
-         * @description Submits a drafted SoA for review.
+         * @description Submits a drafted SoA for review. Requires permission(s): soa:update. API keys need scope(s): soa:write.
          */
         post: operations["postSoaBySoaVersionIdSubmitReview"];
         delete?: never;
@@ -4039,7 +4039,7 @@ export interface paths {
         put?: never;
         /**
          * Approve SoA Version
-         * @description Approves an SoA that is under review.
+         * @description Approves an SoA that is under review. Requires permission(s): soa:approve. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postSoaBySoaVersionIdApprove"];
         delete?: never;
@@ -4059,7 +4059,7 @@ export interface paths {
         put?: never;
         /**
          * Mark SoA as Ingested
-         * @description Marks an approved SoA as fully ingested into the assessment.
+         * @description Marks an approved SoA as fully ingested into the assessment. Requires permission(s): soa:update. API keys need scope(s): soa:write.
          */
         post: operations["postSoaBySoaVersionIdMarkIngested"];
         delete?: never;
@@ -4079,7 +4079,7 @@ export interface paths {
         put?: never;
         /**
          * Mark Ingestion Required
-         * @description Flags the SoA as needing re-ingestion.
+         * @description Flags the SoA as needing re-ingestion. Requires permission(s): soa:update. API keys need scope(s): soa:write.
          */
         post: operations["postSoaBySoaVersionIdMarkIngestionRequired"];
         delete?: never;
@@ -4099,7 +4099,7 @@ export interface paths {
         put?: never;
         /**
          * Regenerate SoA
-         * @description Regenerates an SoA based on updated frameworks or scopes.
+         * @description Regenerates an SoA based on updated frameworks or scopes. Requires permission(s): soa:update. API keys need scope(s): soa:write.
          */
         post: operations["postSoaBySoaVersionIdRegenerate"];
         delete?: never;
@@ -4117,7 +4117,7 @@ export interface paths {
         };
         /**
          * Validate SoA
-         * @description Runs validation checks against the SoA.
+         * @description Runs validation checks against the SoA. Requires permission(s): soa:read. API keys need scope(s): soa:read.
          */
         get: operations["getSoaBySoaVersionIdValidation"];
         put?: never;
@@ -4139,7 +4139,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/email/test
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:write.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:write. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postEmailTest"];
         delete?: never;
@@ -4157,7 +4157,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/agent-tools/scf-controls
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): agent:read. API keys need scope(s): agent:read.
          */
         get: operations["getAgentToolsScfControls"];
         put?: never;
@@ -4179,7 +4179,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/integrations/assessments/{assessmentId}/analyze-text
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:create. API keys need scope(s): integration:analyze.
          */
         post: operations["postIntegrationsAssessmentsByAssessmentIdAnalyzeText"];
         delete?: never;
@@ -4237,13 +4237,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/organizations/{organizationId}/webhooks
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getOrganizationsByOrganizationIdWebhooks"];
         put?: never;
         /**
          * POST /api/v1/organizations/{organizationId}/webhooks
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postOrganizationsByOrganizationIdWebhooks"];
         delete?: never;
@@ -4261,21 +4261,21 @@ export interface paths {
         };
         /**
          * GET /api/v1/webhooks/{webhookId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getWebhooksByWebhookId"];
         put?: never;
         post?: never;
         /**
          * DELETE /api/v1/webhooks/{webhookId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:delete.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:delete. Not reachable with an API key: this route is restricted to human actors.
          */
         delete: operations["deleteWebhooksByWebhookId"];
         options?: never;
         head?: never;
         /**
          * PATCH /api/v1/webhooks/{webhookId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:update. Not reachable with an API key: this route is restricted to human actors.
          */
         patch: operations["patchWebhooksByWebhookId"];
         trace?: never;
@@ -4289,7 +4289,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/webhooks/{webhookId}/deliveries
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getWebhooksByWebhookIdDeliveries"];
         put?: never;
@@ -4311,7 +4311,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/webhooks/{webhookId}/rotate-secret
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:update. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postWebhooksByWebhookIdRotateSecret"];
         delete?: never;
@@ -4331,7 +4331,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/webhooks/{webhookId}/test
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): webhook:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postWebhooksByWebhookIdTest"];
         delete?: never;
@@ -4739,7 +4739,7 @@ export interface paths {
         put?: never;
         /**
          * B2B Legal Analyzer (Vendor Risk Scanner)
-         * @description Transforms raw contract text into executive intelligence about sub-processors and LGPD/GDPR privacy compliance.
+         * @description Transforms raw contract text into executive intelligence about sub-processors and LGPD/GDPR privacy compliance. Requires permission(s): privacy:read. API keys need scope(s): privacy:read.
          */
         post: operations["postPrivacyScanVendorContract"];
         delete?: never;
@@ -4877,7 +4877,7 @@ export interface paths {
         };
         /**
          * Export personal data (LGPD art. 18)
-         * @description Returns a portable JSON export of all personal data stored for the authenticated user. Compliant with LGPD art. 18 (right of access and portability). The response includes a Content-Disposition header for download.
+         * @description Returns a portable JSON export of all personal data stored for the authenticated user. Compliant with LGPD art. 18 (right of access and portability). The response includes a Content-Disposition header for download. Requires permission(s): privacy:read. API keys need scope(s): privacy:read.
          */
         get: operations["getMeDataExport"];
         put?: never;
@@ -4900,7 +4900,7 @@ export interface paths {
         post?: never;
         /**
          * Request account deletion (LGPD art. 18)
-         * @description Initiates an account deletion request. The account is flagged for deletion immediately. Personal data is permanently purged within 30 days per the data retention policy.
+         * @description Initiates an account deletion request. The account is flagged for deletion immediately. Personal data is permanently purged within 30 days per the data retention policy. Requires permission(s): privacy:delete. Not reachable with an API key: this route is restricted to human actors.
          */
         delete: operations["deleteMeAccount"];
         options?: never;
@@ -4937,13 +4937,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/users/me/organizations
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:read. API keys need scope(s): organization:read.
          */
         get: operations["getUsersMeOrganizations"];
         put?: never;
         /**
          * POST /api/v1/users/me/organizations
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postUsersMeOrganizations"];
         delete?: never;
@@ -4963,7 +4963,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/users/me/organizations/{organizationId}/activate
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postUsersMeOrganizationsByOrganizationIdActivate"];
         delete?: never;
@@ -4983,7 +4983,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/users/me/organizations/{organizationId}/deactivate
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postUsersMeOrganizationsByOrganizationIdDeactivate"];
         delete?: never;
@@ -5021,7 +5021,7 @@ export interface paths {
         };
         /**
          * SOC pipeline health status
-         * @description Returns SOC monitoring pipeline status: queue binding health, alert service configuration, and pipeline readiness. Requires admin:write permission (platform admin only).
+         * @description Returns SOC monitoring pipeline status: queue binding health, alert service configuration, and pipeline readiness. Requires admin:write permission (platform admin only). Requires permission(s): admin:write. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getSocStatus"];
         put?: never;
@@ -5081,7 +5081,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/summary
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByAssessmentIdSummary"];
         put?: never;
@@ -5101,7 +5101,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/organizations/{organizationId}/dashboard
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): organization:read. API keys need scope(s): organization:read.
          */
         get: operations["getOrganizationsByOrganizationIdDashboard"];
         put?: never;
@@ -5121,7 +5121,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/tenants/{organizationId}/audit-logs
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read. API keys need scope(s): audit:read.
          */
         get: operations["getTenantsByOrganizationIdAuditLogs"];
         put?: never;
@@ -5141,7 +5141,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/organizations/{organizationId}/audit-logs
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): audit:read. API keys need scope(s): audit:read.
          */
         get: operations["getOrganizationsByOrganizationIdAuditLogs"];
         put?: never;
@@ -5661,7 +5661,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{assessmentId}/projection/{frameworkId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByAssessmentIdProjectionByFrameworkId"];
         put?: never;
@@ -6063,7 +6063,7 @@ export interface paths {
         put?: never;
         /**
          * Calculate Control Blast Radius
-         * @description Determines the impact radius of a control across risks, regulations, and data categories.
+         * @description Determines the impact radius of a control across risks, regulations, and data categories. Requires permission(s): intelligence:create. API keys need scope(s): intelligence:run.
          */
         post: operations["postIntelligenceBlastRadius"];
         delete?: never;
@@ -6083,7 +6083,7 @@ export interface paths {
         put?: never;
         /**
          * Perform Gap Analysis
-         * @description Analyzes implemented controls against a target framework to identify gaps.
+         * @description Analyzes implemented controls against a target framework to identify gaps. Requires permission(s): intelligence:create. API keys need scope(s): intelligence:run.
          */
         post: operations["postIntelligenceGapAnalysis"];
         delete?: never;
@@ -6103,7 +6103,7 @@ export interface paths {
         put?: never;
         /**
          * Calculate DPIA Score
-         * @description Calculates the DPIA risk score based on data categories and implemented controls.
+         * @description Calculates the DPIA risk score based on data categories and implemented controls. Requires permission(s): intelligence:create. API keys need scope(s): intelligence:run.
          */
         post: operations["postIntelligenceDpiaScore"];
         delete?: never;
@@ -6123,7 +6123,7 @@ export interface paths {
         put?: never;
         /**
          * Calculate Compliance Score
-         * @description Calculates compliance score against a specific regulation based on implemented controls.
+         * @description Calculates compliance score against a specific regulation based on implemented controls. Requires permission(s): intelligence:create. API keys need scope(s): intelligence:run.
          */
         post: operations["postIntelligenceComplianceScore"];
         delete?: never;
@@ -6143,7 +6143,7 @@ export interface paths {
         put?: never;
         /**
          * Check Data Retention Rules
-         * @description Checks data retention rules based on category, purpose, and jurisdiction.
+         * @description Checks data retention rules based on category, purpose, and jurisdiction. Requires permission(s): intelligence:create. API keys need scope(s): intelligence:run.
          */
         post: operations["postIntelligenceRetentionCheck"];
         delete?: never;
@@ -6163,7 +6163,7 @@ export interface paths {
         put?: never;
         /**
          * Check Breach Notification SLA
-         * @description Determines breach notification SLA based on regulation and severity.
+         * @description Determines breach notification SLA based on regulation and severity. Requires permission(s): intelligence:create. API keys need scope(s): intelligence:run.
          */
         post: operations["postIntelligenceBreachSla"];
         delete?: never;
@@ -6183,7 +6183,7 @@ export interface paths {
         put?: never;
         /**
          * Calculate Cross-Framework Coverage
-         * @description Calculates coverage mapping between a source framework and a target framework.
+         * @description Calculates coverage mapping between a source framework and a target framework. Requires permission(s): intelligence:create. API keys need scope(s): intelligence:run.
          */
         post: operations["postIntelligenceCrossCoverage"];
         delete?: never;
@@ -6203,7 +6203,7 @@ export interface paths {
         put?: never;
         /**
          * Calculate ROI Path for Controls
-         * @description Recommends the most impactful controls to implement based on ROI.
+         * @description Recommends the most impactful controls to implement based on ROI. Requires permission(s): intelligence:create. API keys need scope(s): intelligence:run.
          */
         post: operations["postIntelligenceRoiPath"];
         delete?: never;
@@ -6223,7 +6223,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/intelligence/council
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): intelligence:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): intelligence:create. API keys need scope(s): intelligence:run.
          */
         post: operations["postIntelligenceCouncil"];
         delete?: never;
@@ -6721,13 +6721,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/tpra/vendors
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getTpraVendors"];
         put?: never;
         /**
          * POST /api/v1/tpra/vendors
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create. API keys need scope(s): assessment:write.
          */
         post: operations["postTpraVendors"];
         delete?: never;
@@ -6745,7 +6745,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/tpra/vendors/{vendorId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getTpraVendorsByVendorId"];
         put?: never;
@@ -6765,13 +6765,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/tpra/vendors/{vendorId}/assessments
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getTpraVendorsByVendorIdAssessments"];
         put?: never;
         /**
          * POST /api/v1/tpra/vendors/{vendorId}/assessments
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create. API keys need scope(s): assessment:write.
          */
         post: operations["postTpraVendorsByVendorIdAssessments"];
         delete?: never;
@@ -6791,7 +6791,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/tpra/assessments/{id}/submit
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create. API keys need scope(s): assessment:write.
          */
         post: operations["postTpraAssessmentsByIdSubmit"];
         delete?: never;
@@ -6811,7 +6811,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/tpra/assessments/{id}/risk-score
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create. API keys need scope(s): assessment:write.
          */
         post: operations["postTpraAssessmentsByIdRiskScore"];
         delete?: never;
@@ -6829,7 +6829,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/tpra/vendors/{vendorId}/risk-scores
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getTpraVendorsByVendorIdRiskScores"];
         put?: never;
@@ -6849,13 +6849,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/admin/users
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getAdminUsers"];
         put?: never;
         /**
          * POST /api/v1/admin/users
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:write.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:write. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAdminUsers"];
         delete?: never;
@@ -6876,14 +6876,14 @@ export interface paths {
         post?: never;
         /**
          * DELETE /api/v1/admin/users/{userId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:delete.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:delete. Not reachable with an API key: this route is restricted to human actors.
          */
         delete: operations["deleteAdminUsersByUserId"];
         options?: never;
         head?: never;
         /**
          * PATCH /api/v1/admin/users/{userId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:write.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:write. Not reachable with an API key: this route is restricted to human actors.
          */
         patch: operations["patchAdminUsersByUserId"];
         trace?: never;
@@ -6899,7 +6899,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/admin/users/{userId}/ban
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAdminUsersByUserIdBan"];
         delete?: never;
@@ -6919,7 +6919,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/admin/users/{userId}/unban
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAdminUsersByUserIdUnban"];
         delete?: never;
@@ -6939,7 +6939,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/admin/users/{userId}/approve
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:approve.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:approve. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAdminUsersByUserIdApprove"];
         delete?: never;
@@ -6959,7 +6959,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/admin/users/{userId}/reject
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:create. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAdminUsersByUserIdReject"];
         delete?: never;
@@ -6977,7 +6977,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/admin/users/pending-count
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getAdminUsersPendingCount"];
         put?: never;
@@ -6997,7 +6997,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/admin/organizations
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:read. Not reachable with an API key: this route is restricted to human actors.
          */
         get: operations["getAdminOrganizations"];
         put?: never;
@@ -7020,7 +7020,7 @@ export interface paths {
         post?: never;
         /**
          * DELETE /api/v1/admin/organizations/{organizationId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:write.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): admin:write. Not reachable with an API key: this route is restricted to human actors.
          */
         delete: operations["deleteAdminOrganizationsByOrganizationId"];
         options?: never;
@@ -7037,7 +7037,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/mad/standards
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getMadStandards"];
         put?: never;
@@ -7057,7 +7057,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/mad/standards/{standardId}/sub-requirements
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getMadStandardsByStandardIdSubRequirements"];
         put?: never;
@@ -7077,7 +7077,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/mad/sub-requirements/{subReqId}/maturity-criteria
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): scf:read. API keys need scope(s): scf:read.
          */
         get: operations["getMadSubRequirementsBySubReqIdMaturityCriteria"];
         put?: never;
@@ -7097,13 +7097,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/mad/transaction-assessments
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getMadTransactionAssessments"];
         put?: never;
         /**
          * POST /api/v1/mad/transaction-assessments
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create. API keys need scope(s): assessment:write.
          */
         post: operations["postMadTransactionAssessments"];
         delete?: never;
@@ -7121,7 +7121,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/mad/transaction-assessments/{taId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getMadTransactionAssessmentsByTaId"];
         put?: never;
@@ -7142,7 +7142,7 @@ export interface paths {
         get?: never;
         /**
          * PUT /api/v1/mad/transaction-assessments/{taId}/scores/{subReqId}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:update.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:update. API keys need scope(s): assessment:write.
          */
         put: operations["putMadTransactionAssessmentsByTaIdScoresBySubReqId"];
         post?: never;
@@ -7161,7 +7161,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/mad/transaction-assessments/{taId}/summary
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getMadTransactionAssessmentsByTaIdSummary"];
         put?: never;
@@ -7181,13 +7181,13 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{id}/maturity-versions
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByIdMaturityVersions"];
         put?: never;
         /**
          * POST /api/v1/assessments/{id}/maturity-versions
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create. API keys need scope(s): assessment:write.
          */
         post: operations["postAssessmentsByIdMaturityVersions"];
         delete?: never;
@@ -7205,7 +7205,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{id}/maturity-versions/{vid}
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByIdMaturityVersionsByVid"];
         put?: never;
@@ -7225,7 +7225,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{id}/maturity-versions/{vid}/scores
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByIdMaturityVersionsByVidScores"];
         put?: never;
@@ -7245,7 +7245,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{id}/maturity-versions/{vid}/summary
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByIdMaturityVersionsByVidSummary"];
         put?: never;
@@ -7267,7 +7267,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/assessments/{id}/maturity-versions/{vid}/submit-review
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:create. API keys need scope(s): assessment:write.
          */
         post: operations["postAssessmentsByIdMaturityVersionsByVidSubmitReview"];
         delete?: never;
@@ -7285,7 +7285,7 @@ export interface paths {
         };
         /**
          * GET /api/v1/assessments/{id}/roc-summary
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): assessment:read. API keys need scope(s): assessment:read.
          */
         get: operations["getAssessmentsByIdRocSummary"];
         put?: never;
@@ -7331,7 +7331,7 @@ export interface paths {
         put?: never;
         /**
          * POST /api/v1/assessments/{id}/maturity-versions/{vid}/approve
-         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): maturity:approve.
+         * @description Generated from the route definition; no hand-written OpenAPI block exists for this endpoint yet. Requires permission(s): maturity:approve. Not reachable with an API key: this route is restricted to human actors.
          */
         post: operations["postAssessmentsByIdMaturityVersionsByVidApprove"];
         delete?: never;
@@ -11246,12 +11246,20 @@ export interface components {
             pptdf_dimensions: ("people" | "process" | "technology" | "data" | "facility")[];
         };
         ScfControlResponse: {
-            /** Format: uuid */
+            /**
+             * Format: uuid
+             * @description Surrogate primary key for this control row. Opaque UUID, unique per SCF version: the same control has a different control_id in each version. Use it for links between Standard resources, never as a join key against your own catalogue.
+             * @example 9f1c2d3e-4a5b-6c7d-8e9f-0a1b2c3d4e5f
+             */
             control_id: string;
             /** Format: uuid */
             scf_version_id: string;
             /** Format: uuid */
             scf_domain_id: string;
+            /**
+             * @description The control's identifier in the Secure Controls Framework, stable across SCF versions. This is the value to join on when reconciling with your own catalogue or another tool's export.
+             * @example GOV-01
+             */
             control_code: string;
             control_title: string;
             control_description?: string;
