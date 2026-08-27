@@ -1,0 +1,17 @@
+# Shell scripts MUST be checked out with LF, on every platform.
+#
+# Added 2026-08-27 after scripts/generate-api-types.sh shipped to main unable to
+# run: it was written on the Windows side of a WSL2 mount, got CRLF, and bash
+# read the shebang as `#!/usr/bin/env bash\r` and `set -euo pipefail\r` — which
+# fails with `set: pipefail: invalid option name`. The script's own test checked
+# that the generated output existed, not that the script executed, so nothing
+# caught it.
+#
+# Deliberately narrow. This repo has long-standing CRLF drift across ~60 files
+# and a blanket `* text=auto` would renormalise all of them in one unreviewable
+# commit. Shell scripts are the case where the line ending decides whether the
+# file *works*, so they are the case worth fixing now.
+*.sh text eol=lf
+
+# Same reasoning: these are executed or pasted somewhere that cares.
+*.bash text eol=lf

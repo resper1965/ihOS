@@ -19,7 +19,12 @@ import { useUser } from "@/hooks/use-user";
 import { usePreferences } from "@/hooks/use-preferences";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { signOut } from "@/lib/supabase/auth-actions";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import {
+  useStandardApiHealth,
+  useSetStandardApiKey,
+  type StandardApiHealth,
+} from "@/hooks/queries/use-standard-api-health";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -110,10 +115,19 @@ function IntegrationRow({
   name,
   status,
   icon: Icon,
+  variant = "success",
+  detail,
+  keyPrefix,
 }: {
   name: string;
   status: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** Badge color. Defaults to "success" so existing callers (Supabase, OpenAI) render unchanged. */
+  variant?: BadgeVariant;
+  /** Optional reason shown under the badge — e.g. why a probe reports red/amber. */
+  detail?: string | null;
+  /** Optional key prefix shown under the integration name. Never the full key. */
+  keyPrefix?: string | null;
 }) {
   return (
     <div className="flex items-center justify-between gap-4 py-3">
@@ -121,11 +135,98 @@ function IntegrationRow({
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5">
           <Icon className="h-4 w-4 text-slate-400" />
         </div>
-        <p className="text-sm font-medium text-text-primary">{name}</p>
+        <div>
+          <p className="text-sm font-medium text-text-primary">{name}</p>
+          {keyPrefix && (
+            <p className="font-mono text-xs text-text-muted">Key: {keyPrefix}…</p>
+          )}
+        </div>
       </div>
-      <Badge variant="success" dot>
-        {status}
-      </Badge>
+      <div className="flex flex-col items-end gap-1">
+        <Badge variant={variant} dot>
+          {status}
+        </Badge>
+        {detail && (
+          <p className="max-w-[16rem] text-right text-xs text-text-muted">{detail}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Standard API Key Field — admin/ionic_user only. Never displays an existing
+// key, not even masked with its length visible; the field starts empty and
+// only the prefix from the health probe (shown in IntegrationRow above) is
+// ever rendered.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function sourceLabel(keySource: StandardApiHealth["keySource"] | undefined): string {
+  switch (keySource) {
+    case "env":
+      return "In use: environment variable (a key saved here will not take effect)";
+    case "vault":
+      return "In use: saved key";
+    default:
+      return "In use: none — no key configured";
+  }
+}
+
+function StandardApiKeyField({
+  keySource,
+}: {
+  keySource: StandardApiHealth["keySource"] | undefined;
+}) {
+  const [key, setKey] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [shadowedByEnv, setShadowedByEnv] = useState<boolean | null>(null);
+  const { mutate, isPending } = useSetStandardApiKey();
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setShadowedByEnv(null);
+    mutate(key, {
+      onSuccess: (res) => {
+        setShadowedByEnv(res.shadowedByEnv);
+        setKey(""); // never leave the submitted value sitting in the field
+      },
+      onError: (err) => setError(err.message),
+    });
+  }
+
+  return (
+    <div className="mt-4 border-t border-white/5 pt-4">
+      <p className="mb-1 text-xs font-medium text-text-primary">Standard GRC API Key</p>
+      <p className="mb-3 text-xs text-text-muted">{sourceLabel(keySource)}</p>
+      <form onSubmit={handleSubmit} className="flex items-center gap-2">
+        <input
+          type="password"
+          autoComplete="off"
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          placeholder="standard_live_… or standard_test_…"
+          className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
+        />
+        <button
+          type="submit"
+          disabled={isPending || key.length === 0}
+          className="shrink-0 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm font-medium text-primary transition-all hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isPending ? "Saving…" : "Save"}
+        </button>
+      </form>
+      {error && <p className="mt-2 text-xs text-red-400">{error}</p>}
+      {shadowedByEnv === true && (
+        <p className="mt-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+          Saved — but the STANDARD_GRC_API_KEY environment variable still takes precedence, so
+          this key has no effect. To use it, change or remove that environment variable in
+          Vercel.
+        </p>
+      )}
+      {shadowedByEnv === false && (
+        <p className="mt-2 text-xs text-emerald-400">Saved and now in use.</p>
+      )}
     </div>
   );
 }
@@ -137,11 +238,44 @@ function IntegrationRow({
 export default function SettingsPage() {
   const { user, profile, isLoading } = useUser();
   const { prefs, setPref, isSaving } = usePreferences();
+  const { data: standardApiHealth, isLoading: isStandardApiHealthLoading } =
+    useStandardApiHealth();
 
   const email = user?.email ?? "—";
   const initials = getInitials(user?.email);
   const roleLabel = getRoleLabel(profile?.role);
   const isAdmin = profile?.role === "admin" || profile?.role === "ionic_user";
+
+  // Real probe result, not a hardcoded string — see
+  // src/app/api/settings/integrations/standard-api/route.ts.
+  const standardApiRow: {
+    status: string;
+    variant: BadgeVariant;
+    detail?: string | null;
+    keyPrefix?: string | null;
+  } = (() => {
+    if (isStandardApiHealthLoading || !standardApiHealth) {
+      return { status: "Checking…", variant: "neutral" };
+    }
+    const { keyConfigured, reachable, scopesMissing, keyPrefix, detail } = standardApiHealth;
+
+    if (!keyConfigured || !reachable) {
+      return {
+        status: keyConfigured ? "Unreachable" : "Not configured",
+        variant: "danger",
+        detail,
+        keyPrefix,
+      };
+    }
+    if (scopesMissing && scopesMissing.length > 0) {
+      return {
+        status: `Missing scopes: ${scopesMissing.join(", ")}`,
+        variant: "warning",
+        keyPrefix,
+      };
+    }
+    return { status: "Connected", variant: "success", keyPrefix };
+  })();
 
   return (
     <div className="w-full space-y-8">
@@ -268,7 +402,10 @@ export default function SettingsPage() {
           />
           <IntegrationRow
             name="Standard GRC API"
-            status="Connected"
+            status={standardApiRow.status}
+            variant={standardApiRow.variant}
+            detail={standardApiRow.detail}
+            keyPrefix={standardApiRow.keyPrefix}
             icon={ExternalLink}
           />
           <IntegrationRow
@@ -277,6 +414,10 @@ export default function SettingsPage() {
             icon={ExternalLink}
           />
         </div>
+
+        {isAdmin && (
+          <StandardApiKeyField keySource={standardApiHealth?.keySource} />
+        )}
       </section>
 
       {/* Danger Zone */}
