@@ -7,17 +7,31 @@ import type {
   FrameworkScore,
   ProgressCallback,
 } from './engine';
-import ISO27001_ANNEX_A from './data/iso27001-annex-a.json';
+import { projectFrameworkFromCrosswalk } from './projection';
 
 // ---------------------------------------------------------------------------
-// ISO 27001:2022 Annex A Controls (93 controls, 4 themes)
-// Data loaded from ./data/iso27001-annex-a.json
+// The control base
+//
+// Was: ./data/iso27001-annex-a.json — 93 hand-maintained ISO Annex A controls,
+// a committed duplicate of a catalogue we do not own. Because this engine began
+// with ISO controls it had to guess an SCF code for each one
+// (`control.id.replace(/^A\./,'')` looked up in scf_framework_mappings) and
+// substituted a hardcoded 'GOV-01.3' when the guess missed — deriving the
+// domain from that default too.
+//
+// Now: scf_controls_cache, the vendor's catalogue, populated by
+// src/lib/standard-api/sync/catalog.ts. The control IS the SCF control, so
+// nothing is guessed and the fallback has nothing to fall back from.
+//
+// Consequence worth knowing before running this: the catalogue is roughly
+// 1,468 controls rather than 93, and every control's description is embedded.
+// That is ~16× the embedding cost of a run against the old JSON.
 // ---------------------------------------------------------------------------
 
-interface AnnexAControl {
-  id: string;
-  name: string;
-  domain: string; // A.5–A.8
+interface CatalogControl {
+  id: string;          // control_code, e.g. "AAT-01"
+  name: string;        // control_title
+  domain: string;      // domain prefix of the code, e.g. "AAT"
   description: string;
 }
 
@@ -41,35 +55,61 @@ export async function runLocalAssessment(
   const startedAt = new Date().toISOString();
   const adminSupabase = createAdminClient();
 
-  // Phase 1: Load controls and SCF framework mappings
-  const controls = ISO27001_ANNEX_A;
+  // Phase 1: Load the vendor's control catalogue from local storage.
+  //
+  // No mapping lookup happens here any more. It used to exist so an ISO Annex A
+  // id could be turned into an SCF code; iterating SCF controls makes that
+  // translation unnecessary. Framework requirements are joined later, by the
+  // projection, from the official crosswalk.
+  const { data: catalogRows, error: catalogError } = await (
+    adminSupabase as unknown as {
+      from: (t: string) => {
+        select: (c: string) => Promise<{
+          data: Array<Record<string, unknown>> | null;
+          error: { message: string } | null;
+        }>;
+      };
+    }
+  )
+    .from('scf_controls_cache')
+    .select('control_code, control_title, control_description');
+
+  if (catalogError) {
+    throw new Error(`could not read scf_controls_cache: ${catalogError.message}`);
+  }
+
+  const controls: CatalogControl[] = (catalogRows ?? [])
+    .map((r) => {
+      const code = typeof r.control_code === 'string' ? r.control_code : '';
+      return {
+        id: code,
+        name: typeof r.control_title === 'string' ? r.control_title : code,
+        domain: code.split('-')[0] ?? '',
+        description:
+          typeof r.control_description === 'string' && r.control_description.length > 0
+            ? r.control_description
+            : typeof r.control_title === 'string'
+              ? r.control_title
+              : code,
+      };
+    })
+    .filter((c) => c.id.length > 0);
+
+  if (controls.length === 0) {
+    // Silence here is what produced three nightly runs recording scores against
+    // zero evaluated controls. An empty catalogue is a setup failure, not a 0%.
+    throw new Error(
+      'scf_controls_cache is empty — run the SCF catalogue sync before assessing. ' +
+        'POST /api/admin/sync/scf',
+    );
+  }
+
   onProgress?.({
     phase: 'loading_controls',
     current: controls.length,
     total: controls.length,
-    message: `Loaded ${controls.length} ISO 27001:2022 Annex A controls. Loading SCF mappings...`,
+    message: `Loaded ${controls.length} SCF controls from the local catalogue.`,
   });
-
-  // Query scf_framework_mappings for target mapping lookup
-  const { data: mappingsData, error: mappingsError } = await adminSupabase
-    .from('scf_framework_mappings')
-    .select('target_control_id, scf_control_code')
-    .eq('framework_code', 'iso27001');
-
-  if (mappingsError) {
-    console.error('[Audit] Failed to load SCF framework mappings:', mappingsError.message);
-  }
-
-  // Group mappings in a Map for fast lookup
-  const mappingsMap = new Map<string, string[]>();
-  if (mappingsData) {
-    for (const m of mappingsData) {
-      const key = m.target_control_id;
-      const list = mappingsMap.get(key) || [];
-      list.push(m.scf_control_code);
-      mappingsMap.set(key, list);
-    }
-  }
 
   // Phase 2: Evaluate each control against RAG evidence
   const evaluations: ControlEvaluation[] = [];
@@ -88,16 +128,15 @@ export async function runLocalAssessment(
 
   // Helper: evaluate a single control against RAG evidence
   async function evaluateControl(
-    control: AnnexAControl,
+    control: CatalogControl,
     queryEmbedding: number[],
-    mappingsMap: Map<string, string[]>,
   ): Promise<{ evaluation: ControlEvaluation; isCompliant: boolean }> {
     try {
-      // Map control ID to SCF code
-      const targetId = control.id.replace(/^A\./, '');
-      const scfCodes = mappingsMap.get(targetId) || [];
-      const scfControlCode = scfCodes[0] || 'GOV-01.3'; // Fallback
-      const domainCode = scfControlCode.split('-')[0];
+      // The control IS the SCF control. No translation, and therefore no
+      // fallback: the previous `scfCodes[0] || 'GOV-01.3'` silently attributed
+      // an unmapped control to a default and derived its domain from that.
+      const scfControlCode = control.id;
+      const domainCode = control.domain;
 
       // --- PHASE 1: ISMS policies/procedures RAG search ---
       const { data: ismsData, error: ismsError } = await adminSupabase.rpc('match_documents_hybrid', {
@@ -235,9 +274,7 @@ export async function runLocalAssessment(
     const batchEmbeddings = queryEmbeddings.slice(i, i + BATCH_SIZE);
 
     const results = await Promise.all(
-      batch.map((control, idx) =>
-        evaluateControl(control, batchEmbeddings[idx], mappingsMap)
-      )
+      batch.map((control, idx) => evaluateControl(control, batchEmbeddings[idx]))
     );
 
     for (const { evaluation, isCompliant } of results) {
@@ -276,25 +313,71 @@ export async function runLocalAssessment(
   const totalInformal = evaluations.filter(e => e.combinedStatus === 'informal').length;
   const totalGap = evaluations.filter(e => e.combinedStatus === 'gap').length;
 
+  // Catalogue coverage: what share of the SCF catalogue this organisation
+  // conforms to. A real number, and NOT a framework score — kept on each
+  // framework row as ismsScore/evidenceScore, which is what they always were.
   const ismsScore = Math.round((totalIsmsCompliant / controls.length) * 100);
   const evidenceScore = Math.round((totalEvidenceCompliant / controls.length) * 100);
-  const score = Math.round((totalConforming / controls.length) * 100);
 
-  const frameworkScores: FrameworkScore[] = config.frameworks.map(fwId => ({
-    frameworkId: fwId,
-    score,
-    implementedCount: totalConforming,
-    totalRequired: controls.length,
-    missingControls: evaluations
-      .filter(e => e.combinedStatus !== 'conforming')
-      .map(e => e.controlId),
-    ismsScore,
-    evidenceScore,
-    conformingCount: totalConforming,
-    partialCount: totalPartial,
-    informalCount: totalInformal,
-    gapCount: totalGap,
-  }));
+  // What this replaces:
+  //
+  //   const score = Math.round((totalConforming / controls.length) * 100);
+  //   config.frameworks.map(fwId => ({ frameworkId: fwId, score, ... }))
+  //
+  // One number — conforming controls over the catalogue's own length — assigned
+  // to every requested framework. Asking for iso27001 and soc2 returned the
+  // SAME figure twice, each labelled as that framework's compliance. A figure
+  // that cannot differ between frameworks is not a framework figure, and
+  // presenting it as one is the same defect class as the 25,589 fabricated
+  // mapping rows: something framework-independent wearing a framework's name.
+  //
+  // Now each framework is projected separately from the official crosswalk, so
+  // two frameworks differ exactly insofar as their requirements do.
+  const frameworkScores: FrameworkScore[] = [];
+  for (const fwId of config.frameworks) {
+    const shared = {
+      ismsScore,
+      evidenceScore,
+      conformingCount: totalConforming,
+      partialCount: totalPartial,
+      informalCount: totalInformal,
+      gapCount: totalGap,
+    };
+
+    try {
+      const projection = await projectFrameworkFromCrosswalk(fwId, evaluations);
+      frameworkScores.push({
+        frameworkId: fwId,
+        // The projection returns a ratio; FrameworkScore is 0-100.
+        score: projection.score === null ? null : projection.score * 100,
+        implementedCount: projection.requirementsSatisfied,
+        totalRequired: projection.requirementsTotal,
+        missingControls: [],
+        message:
+          projection.reason === 'no_requirements_mapped'
+            ? `No requirements mapped for ${fwId} — nothing to score against. ` +
+              'Run the crosswalk sync, and check framework_identity_curation names it.'
+            : undefined,
+        policyVersion: projection.policyVersion,
+        policyOwner: projection.policyOwner,
+        requirementsNeedingReview: projection.requirementsNeedingReview,
+        requirementsPartial: projection.requirementsPartial,
+        requirementsUnevaluated: projection.requirementsUnevaluated,
+        ...shared,
+      });
+    } catch (err) {
+      // Absence of a score, stated. Not a zero.
+      frameworkScores.push({
+        frameworkId: fwId,
+        score: null,
+        implementedCount: 0,
+        totalRequired: 0,
+        missingControls: [],
+        message: `Could not project ${fwId}: ${err instanceof Error ? err.message : 'unknown error'}`,
+        ...shared,
+      });
+    }
+  }
 
   // Phase 4: Result
   const completedAt = new Date().toISOString();
@@ -321,7 +404,16 @@ export async function runLocalAssessment(
     phase: 'complete',
     current: 1,
     total: 1,
-    message: `Assessment complete: ${totalConforming}/${evaluations.length} controls fully conforming (${score}%). Policies: ${totalIsmsCompliant}, Evidence: ${totalEvidenceCompliant}.`,
+    // Reports catalogue coverage, and says that is what it is. The framework
+    // figures are per-framework and live in frameworkScores — deliberately not
+    // summarised into one number here, because that conflation is the defect
+    // this change removed.
+    message:
+      `Assessment complete: ${totalConforming}/${evaluations.length} SCF controls fully conforming. ` +
+      `Policies: ${totalIsmsCompliant}, Evidence: ${totalEvidenceCompliant}. ` +
+      `Framework figures: ${frameworkScores
+        .map((f) => `${f.frameworkId} ${f.score === null ? 'no score' : `${Math.round(f.score)}%`}`)
+        .join(', ')}.`,
   });
 
   return result;
