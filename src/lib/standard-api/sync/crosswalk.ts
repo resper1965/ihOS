@@ -34,12 +34,19 @@ export const RELATIONSHIP_TYPES = [
 export type Relationship = (typeof RELATIONSHIP_TYPES)[number];
 
 /**
- * The vendor's pre-2026-08-27 seeding was
- * `(parseFloat(row.relationship_strength) || 0.5).toFixed(3)`, so an
- * unparseable source value became this exact number. Any row carrying it may be
- * a parse failure wearing a measurement's clothes.
+ * Not "possibly wrong" — definitively meaningless, on every official row.
+ *
+ * The vendor's importer converts the source's numeric 0-10 strength into an enum
+ * ("strong" | "moderate" | "weak") before storing it. Seeding then ran
+ * `(parseFloat(row.relationship_strength) || 0.5).toFixed(3)`, and
+ * `parseFloat("strong")` is NaN — so the `|| 0.5` fired everywhere. Every
+ * strength the API serves today is this exact value, derived from nothing, with
+ * the real numeric strength discarded a step earlier.
+ *
+ * Their instruction: treat every ingested strength as void, not unverified.
+ * Rows carrying it are marked so a re-read can find them once their fix ships.
  */
-const SUSPECT_STRENGTH = 0.5;
+const VOID_STRENGTH = 0.5;
 
 export interface StoredMapping {
   scf_version_id: string;
@@ -122,7 +129,7 @@ export function classifyMapping(m: Record<string, unknown>, scfVersionId: string
       requirement_uuid: str(m.scf_framework_requirement_id),
       relationship_type: rel,
       relationship_strength: strength,
-      strength_is_trustworthy: strength !== SUSPECT_STRENGTH,
+      strength_is_trustworthy: strength !== VOID_STRENGTH,
       mapping_source: str(m.mapping_source),
       is_official: m.is_official === true,
       is_synthetic: m.is_synthetic === true,

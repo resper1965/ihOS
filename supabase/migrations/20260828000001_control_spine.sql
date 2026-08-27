@@ -150,11 +150,11 @@ COMMENT ON COLUMN public.scf_control_mappings.relationship_type IS
   'contributes and cannot decide for a type it has never seen.';
 
 COMMENT ON COLUMN public.scf_control_mappings.strength_is_trustworthy IS
-  'False where relationship_strength may be the vendor''s pre-2026-08-27 '
-  'parse-failure default rather than a measurement. Their seeding code was '
-  '(parseFloat(row.relationship_strength) || 0.5).toFixed(3), so an '
-  'unparseable source value became a confident 0.500 indistinguishable from a '
-  'real one. They disclosed this unprompted; these rows want a re-read once '
+  'False where relationship_strength is the vendor''s meaningless constant. '
+  'Their importer enum-ised the source strength, then seeding ran '
+  '(parseFloat(x) || 0.5) — and parseFloat("strong") is NaN, so the default '
+  'fired on EVERY official row. Every strength served today is 0.500, derived '
+  'from nothing. Void, not merely unverified — these rows want a re-read once '
   'their fix is live.';
 
 COMMENT ON COLUMN public.scf_control_mappings.is_official IS
