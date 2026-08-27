@@ -2,6 +2,7 @@
 // Core Assessment Engine — orchestrates RAG + Standard API
 
 import { searchDocuments } from '@/lib/chat/rag-search';
+import { projectFrameworkFromCrosswalk } from './projection';
 import * as standardApi from '@/lib/standard-api/client';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -68,11 +69,31 @@ export interface ControlEvaluation {
 
 export interface FrameworkScore {
   frameworkId: string;
-  score: number;
+  /**
+   * Null when no requirement could be projected — never 0 as a stand-in.
+   *
+   * Phase 3 used to obtain this from POST /intelligence/compliance-score and,
+   * when that returned 403, write 0 with totalRequired 0 for every framework.
+   * Every consumer must therefore handle null: it means "we cannot speak about
+   * this framework", which is a different statement from "0% compliant".
+   */
+  score: number | null;
   implementedCount: number;
   totalRequired: number;
   missingControls: string[];
   message?: string;
+
+  // ── Projection detail (src/lib/assessment/projection.ts) ──
+  /** The curation policy version that produced `score`. */
+  policyVersion?: string;
+  /** Who answers for that policy. */
+  policyOwner?: string;
+  /** Requirements a human must look at. Never counted for or against. */
+  requirementsNeedingReview?: number;
+  /** Requirements with real but incomplete coverage. */
+  requirementsPartial?: number;
+  /** Requirements whose controls were never evaluated. Not the same as a gap. */
+  requirementsUnevaluated?: number;
   
   // 2-Phase scores and counts
   ismsScore?: number;
@@ -572,28 +593,49 @@ export async function runAssessment(
       message: `Scoring ${frameworkId}...`,
     });
 
+    // The score is now a projection over the vendor's official crosswalk and our
+    // own evidence verdicts, filtered by an explicit curation policy.
+    //
+    // What was here before: a call to POST /intelligence/compliance-score, which
+    // returns 403 for our key, wrapped in a catch that pushed
+    // `score: 0, totalRequired: 0`. Not gated by mode, so it ran on every
+    // assessment — the mechanism behind a dashboard showing 0% from real
+    // evaluation work. The zeros were stopped downstream by isScoreBacked; the
+    // cause is removed here.
     try {
-      const scoreResult = await standardApi.complianceScore({
-        regulation_id: frameworkId,
-        scf_controls_implemented: implementedControlIds,
-      });
+      const projection = await projectFrameworkFromCrosswalk(frameworkId, evaluations);
 
       frameworkScores.push({
         frameworkId,
-        score: scoreResult.score ?? scoreResult.overall_score ?? 0,
-        implementedCount: scoreResult.scf_controls_implemented_count ?? implementedControlIds.length,
-        totalRequired: scoreResult.total_required_controls ?? 0,
-        missingControls: (scoreResult.missing_controls ?? []).map((c: any) => typeof c === 'string' ? c : c.control_id || c),
-        message: scoreResult.message,
+        // projection.score is a ratio in [0,1]. Everything downstream — stored
+        // snapshots, the 70/40 dashboard thresholds, the cron's comparisons —
+        // is 0-100, so the conversion happens here, once.
+        score: projection.score === null ? null : projection.score * 100,
+        implementedCount: projection.requirementsSatisfied,
+        totalRequired: projection.requirementsTotal,
+        missingControls: [],
+        message:
+          projection.reason === 'no_requirements_mapped'
+            ? 'No requirements mapped for this framework — nothing to score against. ' +
+              'Run the crosswalk sync, and check framework_identity_curation names this framework.'
+            : undefined,
+        policyVersion: projection.policyVersion,
+        policyOwner: projection.policyOwner,
+        requirementsNeedingReview: projection.requirementsNeedingReview,
+        requirementsPartial: projection.requirementsPartial,
+        requirementsUnevaluated: projection.requirementsUnevaluated,
       });
     } catch (err) {
+      // A failure to project is not a score of zero. It is the absence of one,
+      // and it says so — the previous catch's `score: 0` is exactly the defect
+      // this whole plan exists to remove.
       frameworkScores.push({
         frameworkId,
-        score: 0,
+        score: null,
         implementedCount: 0,
         totalRequired: 0,
         missingControls: [],
-        message: `Score calculation failed: ${err instanceof Error ? err.message : 'Unknown error'}`,
+        message: `Could not project ${frameworkId}: ${err instanceof Error ? err.message : 'unknown error'}`,
       });
     }
   }

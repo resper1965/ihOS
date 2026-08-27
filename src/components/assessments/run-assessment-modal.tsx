@@ -469,19 +469,34 @@ export function RunAssessmentModal({
                     </span>
                     <div className="flex items-center gap-3">
                       <span className="text-xs text-text-muted">
-                        {fs.implementedCount}/{fs.totalRequired} controls
+                        {fs.totalRequired > 0
+                          ? `${fs.implementedCount}/${fs.totalRequired} requirements`
+                          : "nothing mapped"}
                       </span>
-                      <span
-                        className={`text-sm font-bold ${
-                          fs.score >= 70
-                            ? "text-emerald-400"
-                            : fs.score >= 40
-                            ? "text-amber-400"
-                            : "text-red-400"
-                        }`}
-                      >
-                        {fs.score}%
-                      </span>
+                      {/* A null score means "we cannot speak about this
+                          framework", not "0%". Rendering it as a number — or as
+                          an empty "%" — is the class of dishonesty this whole
+                          change removes. */}
+                      {fs.score === null || fs.score === undefined ? (
+                        <span
+                          className="text-sm font-medium text-text-muted"
+                          title={fs.message ?? "No score could be computed"}
+                        >
+                          no score
+                        </span>
+                      ) : (
+                        <span
+                          className={`text-sm font-bold ${
+                            fs.score >= 70
+                              ? "text-emerald-400"
+                              : fs.score >= 40
+                              ? "text-amber-400"
+                              : "text-red-400"
+                          }`}
+                        >
+                          {Math.round(fs.score)}%
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
