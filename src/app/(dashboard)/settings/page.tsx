@@ -19,7 +19,8 @@ import { useUser } from "@/hooks/use-user";
 import { usePreferences } from "@/hooks/use-preferences";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { signOut } from "@/lib/supabase/auth-actions";
-import { Badge } from "@/components/ui/badge";
+import { Badge, type BadgeVariant } from "@/components/ui/badge";
+import { useStandardApiHealth } from "@/hooks/queries/use-standard-api-health";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -110,10 +111,19 @@ function IntegrationRow({
   name,
   status,
   icon: Icon,
+  variant = "success",
+  detail,
+  keyPrefix,
 }: {
   name: string;
   status: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** Badge color. Defaults to "success" so existing callers (Supabase, OpenAI) render unchanged. */
+  variant?: BadgeVariant;
+  /** Optional reason shown under the badge — e.g. why a probe reports red/amber. */
+  detail?: string | null;
+  /** Optional key prefix shown under the integration name. Never the full key. */
+  keyPrefix?: string | null;
 }) {
   return (
     <div className="flex items-center justify-between gap-4 py-3">
@@ -121,11 +131,21 @@ function IntegrationRow({
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/5">
           <Icon className="h-4 w-4 text-slate-400" />
         </div>
-        <p className="text-sm font-medium text-text-primary">{name}</p>
+        <div>
+          <p className="text-sm font-medium text-text-primary">{name}</p>
+          {keyPrefix && (
+            <p className="font-mono text-xs text-text-muted">Key: {keyPrefix}…</p>
+          )}
+        </div>
       </div>
-      <Badge variant="success" dot>
-        {status}
-      </Badge>
+      <div className="flex flex-col items-end gap-1">
+        <Badge variant={variant} dot>
+          {status}
+        </Badge>
+        {detail && (
+          <p className="max-w-[16rem] text-right text-xs text-text-muted">{detail}</p>
+        )}
+      </div>
     </div>
   );
 }
@@ -137,11 +157,44 @@ function IntegrationRow({
 export default function SettingsPage() {
   const { user, profile, isLoading } = useUser();
   const { prefs, setPref, isSaving } = usePreferences();
+  const { data: standardApiHealth, isLoading: isStandardApiHealthLoading } =
+    useStandardApiHealth();
 
   const email = user?.email ?? "—";
   const initials = getInitials(user?.email);
   const roleLabel = getRoleLabel(profile?.role);
   const isAdmin = profile?.role === "admin" || profile?.role === "ionic_user";
+
+  // Real probe result, not a hardcoded string — see
+  // src/app/api/settings/integrations/standard-api/route.ts.
+  const standardApiRow: {
+    status: string;
+    variant: BadgeVariant;
+    detail?: string | null;
+    keyPrefix?: string | null;
+  } = (() => {
+    if (isStandardApiHealthLoading || !standardApiHealth) {
+      return { status: "Checking…", variant: "neutral" };
+    }
+    const { keyConfigured, reachable, scopesMissing, keyPrefix, detail } = standardApiHealth;
+
+    if (!keyConfigured || !reachable) {
+      return {
+        status: keyConfigured ? "Unreachable" : "Not configured",
+        variant: "danger",
+        detail,
+        keyPrefix,
+      };
+    }
+    if (scopesMissing && scopesMissing.length > 0) {
+      return {
+        status: `Missing scopes: ${scopesMissing.join(", ")}`,
+        variant: "warning",
+        keyPrefix,
+      };
+    }
+    return { status: "Connected", variant: "success", keyPrefix };
+  })();
 
   return (
     <div className="w-full space-y-8">
@@ -268,7 +321,10 @@ export default function SettingsPage() {
           />
           <IntegrationRow
             name="Standard GRC API"
-            status="Connected"
+            status={standardApiRow.status}
+            variant={standardApiRow.variant}
+            detail={standardApiRow.detail}
+            keyPrefix={standardApiRow.keyPrefix}
             icon={ExternalLink}
           />
           <IntegrationRow
