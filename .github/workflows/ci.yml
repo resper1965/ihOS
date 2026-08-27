@@ -52,3 +52,37 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ci-placeholder-service-role-key-00
           STANDARD_GRC_API_URL: https://ci-placeholder.invalid/api/v1
           CRON_SECRET: ci-placeholder-cron-secret-0000000000000000
+
+      # Type-error ratchet. `next.config.ts` sets `ignoreBuildErrors: true`, so
+      # the build above compiles regardless of type errors and `tsc --noEmit`
+      # ran nowhere automatic. That made several structural invariants
+      # unenforced — notably the ControlCode/ControlUuid brands in
+      # src/lib/standard-api/identity.ts, whose whole purpose is to make the
+      # control-identity mismatch a compile error, plus the @ts-expect-error
+      # pinning it. A guard only a human remembers to run is not a guard.
+      #
+      # This does not fix the pre-existing errors. It stops the count growing,
+      # which is what makes the brands load-bearing: widening one back to
+      # `string` ADDS errors and fails here.
+      #
+      # Deliberately placed after the build, not in its own job: tsc counts
+      # differ by whether .next/generated route types exist (197 without, 202
+      # with), so the count is only comparable to the local baseline once the
+      # build has run. Reusing this job also avoids a second npm ci.
+      #
+      # When someone fixes type errors, lower TSC_BASELINE in the same PR — a
+      # falling number is the point of a ratchet.
+      - name: Type errors must not increase
+        env:
+          TSC_BASELINE: 202
+        run: |
+          count=$(npx tsc --noEmit 2>&1 | grep -c 'error TS' || true)
+          echo "tsc errors: $count (baseline $TSC_BASELINE)"
+          if [ "$count" -gt "$TSC_BASELINE" ]; then
+            echo "::error::type errors rose from $TSC_BASELINE to $count"
+            npx tsc --noEmit 2>&1 | grep 'error TS' | head -40
+            exit 1
+          fi
+          if [ "$count" -lt "$TSC_BASELINE" ]; then
+            echo "::notice::$((TSC_BASELINE - count)) fewer than baseline — lower TSC_BASELINE to $count"
+          fi
