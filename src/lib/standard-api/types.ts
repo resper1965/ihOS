@@ -1,6 +1,15 @@
 // TypeScript interfaces for the Standard GRC Engine API
 // Base URL: STANDARD_GRC_API_URL (e.g. https://api.standardgrc.com/v1)
 
+// NOTE (2026-08-26): the interfaces in this file that describe Standard GRC API
+// *responses* are no longer the source of truth. Response shapes are generated
+// from the vendor's OpenAPI spec into ./generated/schema.d.ts — see
+// docs/superpowers/plans/2026-08-26-generated-api-types.md. Two of this file's
+// declarations had already drifted from runtime reality by the time that plan
+// was written (RoiPathData.roi_score was non-nullable while the code returned
+// null). Prefer the generated types for anything the spec covers; keep these
+// only for request bodies and for shapes the spec does not describe.
+
 // ---------------------------------------------------------------------------
 // Shared types
 // ---------------------------------------------------------------------------

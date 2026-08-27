@@ -6,6 +6,7 @@ import * as standardApi from '@/lib/standard-api/client';
 import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getCorpusFingerprint } from './corpus-fingerprint';
+import { asControlCode, type ControlCode } from '@/lib/standard-api/identity';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -154,12 +155,12 @@ export type ProgressCallback = (progress: {
 export function controlIdentity(
   control: Record<string, unknown>,
   fallbackIndex?: number,
-): string {
+): ControlCode {
   const candidates = [control.control_code, control.code, control.control_id, control.id];
   for (const c of candidates) {
-    if (typeof c === 'string' && c.length > 0) return c;
+    if (typeof c === 'string' && c.length > 0) return asControlCode(c);
   }
-  return `CTRL-${fallbackIndex ?? 0}`;
+  return asControlCode(`CTRL-${fallbackIndex ?? 0}`);
 }
 
 export async function runAssessment(
@@ -210,7 +211,9 @@ export async function runAssessment(
         .in('framework_code', config.frameworks);
         
       if (mappings && mappings.length > 0) {
-        const relevantControlIds = new Set(mappings.map((m: any) => m.scf_control_code));
+        const relevantControlIds = new Set<ControlCode>(
+          mappings.map((m: any) => asControlCode(m.scf_control_code)),
+        );
         allControls = allControls.filter(c => relevantControlIds.has(controlIdentity(c)));
       } else {
         // If no mappings exist for the selected frameworks, do NOT evaluate all 1,468 controls!
@@ -244,7 +247,9 @@ export async function runAssessment(
         .eq('sales_channel', config.salesChannel)
         .eq('applicable', false);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const excluded = new Set(((napRows ?? []) as any[]).map((r) => r.scf_control_code));
+      const excluded = new Set<ControlCode>(
+        ((napRows ?? []) as any[]).map((r) => asControlCode(r.scf_control_code)),
+      );
       if (excluded.size > 0) {
         notApplicableControls = allControls
           .map((c) => controlIdentity(c))
@@ -284,7 +289,7 @@ export async function runAssessment(
     ? `vendor:${config.vendorId}` 
     : `${config.productVersionId ?? 'global'}:${config.salesChannel ?? 'all'}`;
   const corpusFingerprint = await getCorpusFingerprint(config.productVersionId ?? null, config.vendorId ?? null);
-  const cacheMap = new Map<string, { corpusFingerprint: string; evaluation: ControlEvaluation; evaluatedAt: string }>();
+  const cacheMap = new Map<ControlCode, { corpusFingerprint: string; evaluation: ControlEvaluation; evaluatedAt: string }>();
   if (!config.forceReevaluate) {
     const admin = createAdminClient();
     // The strict postgrest query-builder typing collapses this
@@ -300,7 +305,7 @@ export async function runAssessment(
       .eq('scope_key', scopeKey);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     for (const row of (cacheRows ?? []) as any[]) {
-      cacheMap.set(row.control_code, {
+      cacheMap.set(asControlCode(row.control_code), {
         corpusFingerprint: row.corpus_fingerprint,
         evaluation: row.evaluation,
         evaluatedAt: row.evaluated_at,

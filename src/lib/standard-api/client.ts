@@ -27,8 +27,17 @@ import { generateObject } from "ai";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
+import type { paths } from "./generated/schema";
 
+// Response shapes taken from the vendor's published spec rather than
+// hand-maintained. See docs/superpowers/plans/2026-08-26-generated-api-types.md
+// for why: finding A9 was a control_id (uuid) / control_code (code) mismatch
+// that these types make a compile error.
+type Json200<P extends keyof paths, M extends keyof paths[P]> =
+  paths[P][M] extends { responses: { 200: { content: { 'application/json': infer R } } } } ? R : never;
 
+export type ScfControlsResponse = Json200<'/api/v1/scf/versions/{scfVersionId}/controls', 'get'>;
+export type ScfControl = NonNullable<ScfControlsResponse['data']>[number];
 
 // ---------------------------------------------------------------------------
 // Error class
@@ -360,7 +369,7 @@ export async function getScfControls(
   versionId: string,
   page: number = 1,
   perPage: number = 100
-): Promise<{ data: any[]; total?: number }> {
+): Promise<{ data: ScfControl[]; total?: number }> {
   const cappedPerPage = Math.min(perPage, 100);
   const endpoint = `/scf/versions/${versionId}/controls?page=${page}&per_page=${cappedPerPage}`;
   try {
@@ -376,9 +385,13 @@ export async function getScfControls(
 /**
  * Normalize the SCF controls list into `{ data, total }` regardless of the
  * response shape after the `{ data, trace_id }` envelope has been unwrapped
- * (bare array, `{ data }`, `{ items }`, or `{ controls }`). Exported for tests.
+ * (bare array, `{ data }`, `{ items }`, or `{ controls }`). The real API
+ * returns `{ data, pagination }` per the vendor's spec, but the local
+ * fallback (tryStaticCatalogFallback) fabricates a different shape, so this
+ * still has two real inputs to reconcile — keep the guessing. Exported for
+ * tests.
  */
-export function normalizeControlsResponse(result: any): { data: any[]; total?: number } {
+export function normalizeControlsResponse(result: any): { data: ScfControl[]; total?: number } {
   if (Array.isArray(result)) return { data: result, total: result.length };
   const data = result?.data ?? result?.items ?? result?.controls ?? [];
   return {
