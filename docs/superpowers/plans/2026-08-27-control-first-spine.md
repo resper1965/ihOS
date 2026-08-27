@@ -16,14 +16,17 @@
 
 Every value below was measured against the live API on 2026-08-27, not read from the OpenAPI document. Where the document and the API disagree, the API wins.
 
-- **Rate limit: 120 requests per 60 seconds.** Headers `x-ratelimit-limit: 120`, `x-ratelimit-reset: 60`. Every sync must throttle to stay under this and must be resumable, because a full crosswalk walk is ~1,468 requests ≈ 13 minutes of continuous budget.
-- **`limit` caps at 100.** `?limit=200` and `?limit=2000` both return 100 items. Pagination is mandatory.
-- **`pagination` is absent from the live controls response** even though the generated schema declares `{ has_more, next_cursor, limit, offset, total }`. Termination must not depend on it. Stop when a page returns fewer than 100 items, and log the total reached.
+- **UUIDs are NOT stable across SCF versions.** Vendor-confirmed 2026-08-27, from their schema: `scf_controls`, `scf_frameworks` and `scf_mappings` all use `id uuid defaultRandom()` with the real uniqueness on `(scf_version_id, <business key>)`. A new row is minted per version, so `control_id`, `framework_id` and the mapping row's own `id` **all rotate on a version bump**. Their words: *"the UUID is a row identity, not a control identity."* **Every persisted key in this plan is therefore `(scf_version_id, control_code)` or equivalent — never a bare UUID.** This is the single most consequential constraint here and it invalidated the first draft of Task 1.
+- **Rate limit: 120 requests per 60 seconds.** Headers `x-ratelimit-limit: 120`, `x-ratelimit-reset: 60`. The crosswalk walk must throttle and must be resumable. The vendor will raise the limit for our key during a window we name — ask before a full load rather than absorbing 13 minutes of budget.
+- **Controls have a bulk export; mappings do not.** `GET /scf/versions/{id}/controls` with `Accept: application/x-ndjson` streams the entire catalogue in **one request**. That is also the only way to learn the catalogue's size — count the lines; there is no total count and the vendor has said they are not adding one. For mappings, per-control walking is the only path today (~1,468 requests); no bulk export and no changed-since delta exists, though the vendor is building the former and declined to give a date.
+- **`limit` caps at 100** on the JSON form. Cursor pagination is the correct walk: send `?after=` **present but empty** to enter cursor mode, then follow `pagination.next_cursor`. Until 2026-08-27 the route selected its response shape by reading the *value* of `after`, so a cold start always fell into the legacy offset shape and `pagination` was unreachable — which is why an earlier draft of this plan recorded `pagination` as absent. It is not absent; it was unenterable. Fix pending merge on their side.
+- **Any `relationship_strength` of exactly `0.500` already ingested is unverified.** The vendor's seeding code was `(parseFloat(row.relationship_strength) || 0.5).toFixed(3)`, so a source value that failed to parse became a confident-looking `0.500` indistinguishable from a measured one. Their fix keeps unparseable values null and omits the field. **Re-read mappings after that ships**, and until then treat `0.500` as "unquantified", never as a measurement.
+- **An empty `scf_framework_id` is a bug, not a signal.** It was hardcoded `scf_framework_id: "", // resolved at service layer via requirement` and never resolved, which also made their own framework-filtered queries return nothing. Task 3's drop rule was built on the opposite premise and must be revisited once their fix is live — as written it discards legitimate rows.
 - **Frameworks are addressed by UUID, never by code.** `/scf/frameworks/{frameworkId}/coverage` and `/scf/cross-mapping/{a}/{b}` reject `iso27001` with `400 Invalid UUID format for parameter: frameworkId`.
 - **The vendor's `framework_code` is a human string, not a slug** — e.g. `"AICPA TSC 2017:2022 (used for SOC 2)"`, `"AICPA Privacy Management Framework (PMF)"`. There are **272** frameworks. Our own codes (`iso27001`, `soc2`, `BR-LGPD`, …) are ours and address nothing on their side.
 - **`relationship_type` vocabulary is exactly:** `"equal" | "subset" | "intersects" | "superset" | "no_relation"`. `relationship_strength` is a decimal string (observed `"0.500"`).
 - **Never write a number a policy cannot explain.** Constitution Principle VIII. In this plan that hardens into: no framework score may be persisted without the id of the curation policy version that produced it.
-- **Absence of a permission clause in the OpenAPI document does not mean a route is open.** `/regulations` documents no permission and returns `403`. Reachability is established by calling, never by reading.
+- **Absence of a permission clause in the OpenAPI document does not mean a route is open.** `/regulations` documented no permission and returned `403`. Reachability is established by calling, never by reading. The vendor traced this to an empty permission list failing closed in both directions — no RBAC runs so any human session passes, while the M2M scope check denies every API key because required scopes are *derived from* permissions. **91 read routes were in that state.** All now declare a permission, and the static catalogue (`/regulations` and its sub-resources) takes `scf:read`, which our key already holds. Only `GET /users/me` and `DELETE /auth/sessions/others` remain permission-free by design.
 - **Run commands as:** `(cd /c/ && wsl.exe -d Ubuntu -- bash -lc "cd /home/resper/ihOS && <command>")`.
 
 ---
@@ -118,7 +121,7 @@ describe('framework identity is curated, never derived', () => {
     // A local code with no defensible vendor counterpart must be storable as
     // undecided. The alternative — omitting the row — is what let fabricated
     // mappings look like an absence of data rather than a decision not made.
-    expect(sql).toMatch(/framework_id\s+uuid\s*(null|references[^,]*)/i);
+    expect(sql).toMatch(/vendor_framework_code\s+text\s+null/i);
     expect(sql).toMatch(/'undecided'/);
   });
 
@@ -128,6 +131,23 @@ describe('framework identity is curated, never derived', () => {
     // 25,589 quarantined rows were manufactured.
     expect(sql).not.toMatch(/replace\s*\(\s*framework_code/i);
     expect(sql).not.toMatch(/framework_code\s*\|\|/);
+  });
+
+  it('keys nothing on a vendor UUID, because vendor UUIDs rotate per version', () => {
+    // Vendor-confirmed: scf_controls / scf_frameworks / scf_mappings all use
+    // `id uuid defaultRandom()` and mint a new row per SCF version. A UUID
+    // primary key here would break every reference on a version bump, and in
+    // framework_identity_curation it would silently destroy human decisions.
+    // scf_version_id IS legitimately part of a key — it is the version scope
+    // that makes a business code unique. What must never appear in a key is a
+    // rotating row identity. Those are named *_uuid by convention here
+    // precisely so this assertion can be written.
+    const pkLines = sql.match(/PRIMARY KEY\s*\([^)]*\)/gi) ?? [];
+    expect(pkLines.length).toBeGreaterThanOrEqual(4);
+    for (const pk of pkLines) {
+      expect(pk).not.toMatch(/_uuid/i);
+    }
+    expect(sql).not.toMatch(/REFERENCES\s+public\.scf_framework_catalog/i);
   });
 });
 ```
@@ -146,31 +166,53 @@ Expected: FAIL — the migration file does not exist (`ENOENT`).
 -- rebuilt at will. The fourth, framework_identity_curation, is the only one
 -- holding human judgement and must never be rebuilt from a transform.
 
+-- Vendor-confirmed 2026-08-27: every UUID this API returns for a control, a
+-- framework or a mapping row is minted per SCF version and rotates on a
+-- version bump. Their words: "the UUID is a row identity, not a control
+-- identity." So no UUID is a primary key anywhere below. UUIDs are stored as
+-- attributes — they are needed to address the API within a version — and the
+-- keys are the business identifiers that survive.
+
 CREATE TABLE IF NOT EXISTS public.scf_framework_catalog (
-  framework_id   uuid PRIMARY KEY,
-  framework_code text NOT NULL,
-  framework_name text NOT NULL,
+  scf_version_id uuid  NOT NULL,
+  framework_code text  NOT NULL,
+  framework_uuid uuid  NOT NULL,          -- valid ONLY within scf_version_id
+  framework_name text  NOT NULL,
   is_synthetic   boolean NOT NULL DEFAULT false,
-  status         text NOT NULL,
-  scf_version_id uuid NOT NULL,
-  synced_at      timestamptz NOT NULL DEFAULT now()
+  status         text  NOT NULL,
+  synced_at      timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (scf_version_id, framework_code)
 );
+
+COMMENT ON COLUMN public.scf_framework_catalog.framework_uuid IS
+  'The UUID to put in a URL path. Rotates per SCF version — never store it as '
+  'a foreign key and never persist it outside a row that also names the version.';
 
 COMMENT ON TABLE public.scf_framework_catalog IS
   'Mirror of GET /api/v1/scf/frameworks. 272 rows as of 2026-08-27. '
   'framework_code is the vendor human string (e.g. "AICPA TSC 2017:2022 '
   '(used for SOC 2)") and is NOT one of our slugs. Safe to truncate and re-sync.';
 
--- The judgement table. Our slugs on the left, a vendor UUID on the right,
--- and a named human in the middle. framework_id is nullable on purpose:
--- "we looked and could not defensibly decide" is a real, recordable answer,
--- and it is the answer the fabricated mappings should have carried.
+-- The judgement table. Our slugs on the left, the vendor's framework on the
+-- right, a named human in the middle.
+--
+-- The first draft of this plan had `framework_id uuid REFERENCES ...` here.
+-- That was wrong in the worst possible place: this is the one table that holds
+-- human decisions and must never be rebuilt from a transform, and it would
+-- have had every row's foreign key break on an SCF version bump — silently
+-- orphaning curation work with no way to tell which decision had been lost.
+-- It keys on framework_code, which survives versions.
+--
+-- vendor_framework_code stays nullable on purpose: "we looked and could not
+-- defensibly decide" is a real, recordable answer, and it is the answer the
+-- 25,589 fabricated rows should have carried instead of a manufactured id.
 CREATE TABLE IF NOT EXISTS public.framework_identity_curation (
-  local_code   text PRIMARY KEY,
-  framework_id uuid NULL REFERENCES public.scf_framework_catalog(framework_id),
+  local_code            text PRIMARY KEY,
+  vendor_framework_code text NULL,
   confidence   text NOT NULL CHECK (confidence IN ('exact','probable','rejected','undecided')),
   decided_by   text NOT NULL,
   decided_at   timestamptz NOT NULL DEFAULT now(),
+  decided_against_version uuid NOT NULL,  -- which SCF version the human was looking at
   rationale    text NOT NULL
 );
 
@@ -178,38 +220,49 @@ COMMENT ON TABLE public.framework_identity_curation IS
   'Which vendor framework each of our local codes means. Populated by a '
   'human, never by a string transform. Migration 20260825000002 quarantined '
   '25,589 rows manufactured by prefixing one framework''s control ids into '
-  'another''s; this table is the structural answer to that.';
+  'another''s; this table is the structural answer to that. Deliberately has '
+  'no FK: framework_code is stable, and a hard reference would make a vendor '
+  'version bump destroy curation work.';
 
 CREATE TABLE IF NOT EXISTS public.scf_controls_cache (
-  control_id       uuid PRIMARY KEY,
   scf_version_id   uuid NOT NULL,
   control_code     text NOT NULL,
+  control_uuid     uuid NOT NULL,         -- valid ONLY within scf_version_id
   control_title    text NOT NULL,
   control_description text,
-  scf_domain_id    uuid,
+  scf_domain_uuid  uuid,
   status           text NOT NULL,
   is_synthetic     boolean NOT NULL DEFAULT false,
-  synced_at        timestamptz NOT NULL DEFAULT now()
+  synced_at        timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (scf_version_id, control_code)
 );
 
-CREATE INDEX IF NOT EXISTS scf_controls_cache_code_idx
-  ON public.scf_controls_cache (control_code);
-
 CREATE TABLE IF NOT EXISTS public.scf_control_mappings (
-  id                       uuid PRIMARY KEY,
-  scf_control_id           uuid NOT NULL,
+  scf_version_id           uuid NOT NULL,
   control_code             text NOT NULL,
-  scf_framework_requirement_id uuid,
+  requirement_code         text NOT NULL,
   framework_code           text,
-  requirement_code         text,
+  mapping_uuid             uuid,          -- row identity, rotates per version
+  requirement_uuid         uuid,          -- rotates per version
   relationship_type        text NOT NULL
     CHECK (relationship_type IN ('equal','subset','intersects','superset','no_relation')),
-  relationship_strength    numeric,
+  relationship_strength    numeric NULL,
+  strength_is_trustworthy  boolean NOT NULL DEFAULT true,
   mapping_source           text,
   is_official              boolean NOT NULL DEFAULT false,
   is_synthetic             boolean NOT NULL DEFAULT false,
-  synced_at                timestamptz NOT NULL DEFAULT now()
+  synced_at                timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (scf_version_id, control_code, requirement_code)
 );
+
+-- Until the vendor's fix ships, a stored strength of exactly 0.500 may be a
+-- parse failure dressed as a measurement: their seeding did
+-- `(parseFloat(row.relationship_strength) || 0.5).toFixed(3)`. The sync sets
+-- this false for any 0.500 ingested before that fix is live, so a later
+-- re-read can find them and no projection can mistake one for a real value.
+COMMENT ON COLUMN public.scf_control_mappings.strength_is_trustworthy IS
+  'False where relationship_strength may be the vendor''s pre-2026-08-27 '
+  'parse-failure default of 0.500 rather than a measurement.';
 
 CREATE INDEX IF NOT EXISTS scf_control_mappings_control_idx
   ON public.scf_control_mappings (scf_control_id);
@@ -310,9 +363,13 @@ A sliding window of request timestamps, `perWindow` default 110 (not 120 — lea
 
 Expected: PASS, 2 tests.
 
-- [ ] **Step 5: Implement `syncControlCatalog`**
+- [ ] **Step 5: Implement `syncControlCatalog` over the NDJSON stream**
 
-Page `GET /scf/versions/{scfVersionId}/controls?limit=100&offset=N` through the throttle. Upsert each row into `scf_controls_cache` on `control_id`. Terminate when a page returns fewer than 100 items. Log the final count; do not assert it equals 1,468 — that number is an observation from 2026-08-27, not a contract.
+One request, not fifteen: `GET /scf/versions/{scfVersionId}/controls` with header `Accept: application/x-ndjson` streams the whole catalogue (the vendor fetches it server-side in batches of 50). Parse line by line and upsert into `scf_controls_cache` on `(scf_version_id, control_code)`.
+
+Counting the lines is also the **only** way to learn the catalogue's size — the vendor has confirmed there is no total count and that they are not adding one. Log the count reached; do not assert it equals 1,468, which is an observation from 2026-08-27 and not a contract.
+
+Keep a JSON fallback path behind the same function for the case where the NDJSON content type is refused, and make it use cursor pagination correctly: send `?after=` **present but empty** to enter cursor mode, then follow `pagination.next_cursor`. Sending no `after` at all drops into the legacy offset shape where `pagination` never appears — that was a vendor bug, fixed 2026-08-27, and the plan records it because a fallback written against the old behaviour would silently paginate wrong.
 
 - [ ] **Step 6: Commit**
 
@@ -361,19 +418,54 @@ describe('crosswalk rows are stored with their provenance intact', () => {
     expect(row.value?.is_official).toBe(true);
   });
 
-  it('drops SCF-to-SCF rows, which describe the catalogue not a framework', () => {
-    // Observed on AAT-01: framework_code "Secure Controls Framework (SCF)"
-    // with an empty scf_framework_id. Counting these would inflate every
-    // denominator with the catalogue mapped onto itself.
-    const row = classifyMapping({
-      id: '1', scf_control_id: '2', control_code: 'AAT-01',
+  it('drops SCF-to-SCF rows on framework_code alone, never on an empty id', () => {
+    // The first draft dropped rows where scf_framework_id was "". The vendor
+    // has since confirmed that field was hardcoded `scf_framework_id: ""` and
+    // never resolved — a bug, not a signal, and one that also made their own
+    // framework-filtered queries return nothing. Dropping on it would discard
+    // legitimate mappings wholesale.
+    //
+    // The catalogue-mapped-onto-itself case is real and still worth dropping,
+    // but it is identified by framework_code, which is populated.
+    const selfRef = classifyMapping({
+      control_code: 'AAT-01', requirement_code: 'r',
       relationship_type: 'equal', relationship_strength: '1.000',
       framework_code: 'Secure Controls Framework (SCF)',
+      is_official: true, is_synthetic: false,
+    });
+    expect(selfRef.store).toBe(false);
+    expect(selfRef.reason).toBe('self_referential');
+
+    const emptyId = classifyMapping({
+      control_code: 'AAT-01', requirement_code: 'r',
+      relationship_type: 'equal', relationship_strength: '1.000',
+      framework_code: 'ISO 27001:2022',
       scf_framework_id: '',
       is_official: true, is_synthetic: false,
     });
-    expect(row.store).toBe(false);
-    expect(row.reason).toBe('self_referential');
+    expect(emptyId.store).toBe(true);
+  });
+
+  it('flags a 0.500 strength as untrustworthy rather than storing it as fact', () => {
+    // The vendor's seeding was
+    //   (parseFloat(row.relationship_strength) || 0.5).toFixed(3)
+    // so an unparseable source value became a confident 0.500 indistinguishable
+    // from a measurement. Until their fix is live, every 0.500 is suspect and
+    // must be findable later for a re-read.
+    const r = classifyMapping({
+      control_code: 'X', requirement_code: 'r', framework_code: 'ISO 27001:2022',
+      relationship_type: 'subset', relationship_strength: '0.500',
+      is_official: true, is_synthetic: false,
+    });
+    expect(r.store).toBe(true);
+    expect(r.value?.strength_is_trustworthy).toBe(false);
+
+    const ok = classifyMapping({
+      control_code: 'X', requirement_code: 'r2', framework_code: 'ISO 27001:2022',
+      relationship_type: 'subset', relationship_strength: '0.750',
+      is_official: true, is_synthetic: false,
+    });
+    expect(ok.value?.strength_is_trustworthy).toBe(true);
   });
 
   it('refuses a relationship type it has never seen instead of storing it', () => {
@@ -439,7 +531,22 @@ This task is why the plan exists. `intersects` at strength 0.500 is not an answe
 **Interfaces:**
 - Produces: `CURATION_POLICY_VERSION: string`, `type Contribution = 'satisfies' | 'contributes' | 'needs_review' | 'excluded'`, `contributionOf(m: { relationship_type: Relationship; relationship_strength: number | null; is_official: boolean }): Contribution`.
 
-**Assumption stated, because it is a product decision this plan cannot make:** the default policy below counts only `equal` and `superset` as satisfying, treats `subset` as contributing but never sufficient alone, and routes **every** `intersects` to `needs_review` regardless of strength. That is the conservative reading, and it will make early framework coverage look low. It is chosen because the opposite error — a percentage that quietly counted partial overlaps — is the error this whole codebase has been correcting for. **Task 0's spec review is where this gets confirmed or changed; it is not settled here.**
+**BLOCKED on a vendor answer. Do not implement this task until it arrives.**
+
+The vendor confirmed our `intersects` decision explicitly — *"routing intersects to human review at any strength is the one we would defend"* — and then, in the same paragraph, described their own ADR-001 as capping `superset` at 0.5 and treating **`equal` and `subset`** as 1.0.
+
+That is the opposite of this plan's first draft, which counted `equal` and `superset` as satisfying and `subset` as merely contributing. Both readings are internally coherent, and which one is right depends entirely on a convention neither party has stated:
+
+| If the convention is… | `subset` means | `superset` means |
+|---|---|---|
+| control ⊆ requirement (our first draft) | control covers only part of the requirement → **contributes** | control covers the requirement and more → **satisfies** |
+| requirement ⊆ control (implied by their ADR-001) | the requirement sits inside the control → **satisfies** | the control covers only part → **contributes** |
+
+The two conventions invert which relationship types count toward a customer-facing number. Guessing has a fifty per cent chance of publishing coverage that is wrong in the direction that flatters us, which is the precise failure this codebase has spent a week removing. Asked as Q7; see `docs/standard-api/VENDOR_QUESTIONS_2026-08-27.md`.
+
+**What is already settled and may be implemented as written:** `intersects` → `needs_review` at any strength (vendor-endorsed); `no_relation` → `excluded`; `is_official: false` → `needs_review`; a strength of `0.500` with `strength_is_trustworthy = false` must never be read as a measurement. The `equal` case is safe in both conventions — it satisfies either way.
+
+**Still a product decision after the vendor answers:** the vendor states plainly that they are *not aware of official SCF guidance* designating which relationship types satisfy a requirement for audit purposes as opposed to relate to it. So even a correct reading of the direction convention leaves the audit judgement ours. Task 0's spec review is where that gets owned by a named person.
 
 - [ ] **Step 1: Write the failing test**
 

@@ -128,6 +128,50 @@ it would not catch a route that documents nothing and enforces something.
 
 ---
 
+# Follow-up after your answers — one question, and it blocks us
+
+Your reply resolved five of six. Q3, Q4 and Q5 changed our schema before a line
+of it was written: keying on `control_code` + version rather than UUID, and a
+`strength_is_trustworthy` column so every `0.500` we have already ingested can
+be found again after your fix ships. The NDJSON export turns our catalogue load
+from fifteen requests into one. Thank you for the directness on all three —
+particularly on the `0.500`, which you had no obligation to volunteer.
+
+One new question, and it is the one thing now stopping us.
+
+## Q7 — which direction do `subset` and `superset` run?
+
+You endorsed routing `intersects` to human review at any strength, which we were
+glad to have confirmed. In the same paragraph you described ADR-001 as capping
+`superset` at 0.5 and treating **`equal` and `subset`** as 1.0.
+
+That is the inverse of what we had written. Our policy counted `equal` and
+`superset` as satisfying, and `subset` as contributing but never sufficient.
+
+The disagreement is entirely about an unstated convention:
+
+| If the relation reads… | `subset` | `superset` |
+|---|---|---|
+| control ⊆ requirement (our reading) | control covers part of the requirement → partial | control covers it and more → satisfies |
+| requirement ⊆ control (your ADR implies) | requirement sits inside the control → satisfies | control covers only part → partial |
+
+Both are coherent. They invert which relationship types count toward a
+customer-facing coverage figure.
+
+- Which is it: is the subject of `subset` the control or the requirement?
+
+We are not guessing this one. A coin flip here has an even chance of publishing
+coverage that errs in the direction that flatters us, and we have just finished
+removing 25,589 rows that did exactly that.
+
+Related, and we understand the answer may be "no": you noted you are not aware
+of official SCF guidance on which relationship types satisfy a requirement for
+audit purposes. If ADR-001 is shareable, even in summary, we would rather cite
+your reasoning than invent our own. Where we must decide, we will record it as
+our decision with a named owner — but we would prefer to be following you.
+
+---
+
 ## Smaller notes, no reply needed
 
 - `/scf/frameworks/{frameworkId}/coverage` and
