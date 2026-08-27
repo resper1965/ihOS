@@ -538,3 +538,54 @@ scope.
 **Consequence for us: regenerate.** `npm run gen:api-types` will now pick up
 the permission/scope clauses, which makes required scopes visible at our call
 sites. Worth doing once the replacement key arrives so both land together.
+
+---
+
+## §H — Measured API contract, 2026-08-27
+
+Every value here came from calling the API, not from reading the OpenAPI
+document. Recorded because §A–§G were written the other way round twice and
+both times cost a wrong diagnosis.
+
+| Fact | Evidence |
+|---|---|
+| `GET /scf/controls/{id}/mappings` is reachable with our current key | HTTP 200, 65 official mappings for `AAT-01` |
+| Four crosswalk endpoints need only `scf:read` | `/scf/controls/{id}/mappings`, `/scf/requirements/{id}/mappings`, `/scf/frameworks/{id}/coverage`, `/scf/cross-mapping/{a}/{b}` |
+| The only blocked crosswalk route is the computed one | `POST /intelligence/cross-coverage` → `intelligence:run` |
+| Rate limit | `x-ratelimit-limit: 120`, `x-ratelimit-reset: 60` |
+| `limit` caps at 100 on the JSON form | `?limit=200` and `?limit=2000` both return 100 |
+| Controls have an NDJSON bulk export; mappings do not | `Accept: application/x-ndjson`, whole catalogue in one request |
+| No total count exists for the catalogue, and none is planned | vendor, 2026-08-27 |
+| Frameworks are addressed by UUID, never by code | `iso27001` → `400 Invalid UUID format for parameter: frameworkId`, trace `a31b6e1d4ec803e0` |
+| 272 frameworks; `framework_code` is a human string | e.g. `"AICPA TSC 2017:2022 (used for SOC 2)"` |
+| `relationship_type` vocabulary is exactly five values | `equal \| subset \| intersects \| superset \| no_relation` |
+
+### Vendor disclosures that change what we store
+
+- **UUIDs rotate per SCF version.** `scf_controls`, `scf_frameworks` and
+  `scf_mappings` all use `id uuid defaultRandom()`, uniqueness on
+  `(scf_version_id, business key)`. *"The UUID is a row identity, not a control
+  identity."* Key on `control_code` + version.
+- **A `relationship_strength` of `0.500` may be a parse failure.** Their seeding
+  was `(parseFloat(row.relationship_strength) || 0.5).toFixed(3)`. Any `0.500`
+  ingested before their fix ships is unverified.
+- **An empty `scf_framework_id` was hardcoded**, not a self-referential signal.
+  It also made their own framework-filtered queries return nothing.
+- **`pagination` was real but unenterable.** The route chose its response shape
+  from the *value* of `after`, so a cold start always fell into the legacy offset
+  shape. Enter cursor mode by sending `?after=` present but empty.
+- **91 read routes had an empty permission list**, which failed closed both ways:
+  open to any human session, shut to every API key, silent in the document. All
+  now declare a permission; the static catalogue takes `scf:read`.
+
+### Our own errors, recorded
+
+- I reported a `roi-path` scope discrepancy that did not exist. Cause: an
+  extraction script using a fixed 1400-char window after the path key, which
+  crossed into a sibling record 557 chars away. **A fixed-width window over
+  structured text crosses record boundaries silently.**
+- I inferred `/regulations` was open because it documented no permission. It
+  returned 403. **Absence of a permission clause does not mean a route is open.**
+  Reachability is established by calling.
+- §D step 3 claimed the mappings upload route was gated by role. It was not,
+  until `20260827`. The branch's own defect class, in its own documentation.
