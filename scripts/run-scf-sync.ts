@@ -70,13 +70,14 @@ async function main() {
     const { syncCrosswalk } = await import('../src/lib/standard-api/sync/crosswalk');
     console.log(
       `walking the crosswalk${resumeAfter ? ` from after ${resumeAfter}` : ''} — ` +
-        'roughly 13 minutes at 120 req/60s',
+        'roughly 64 minutes. The API takes ~2.6s per mappings call, so its own ' +
+        'latency binds, not the 120-req/60s limit.',
     );
     const r = await syncCrosswalk(scfVersionId, {
       throttle,
       resumeAfterControlCode: resumeAfter,
       onProgress: (walked, stored) => {
-        if (walked % 50 === 0) console.log(`  ${walked} controls, ${stored} mappings`);
+        if (walked % 10 === 0) console.log(`  ${walked}/1473 controls, ${stored} mappings`);
       },
     });
     console.log(

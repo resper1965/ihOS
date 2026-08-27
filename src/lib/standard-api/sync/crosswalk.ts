@@ -12,15 +12,25 @@
 // framework figure is decided in src/lib/assessment/curation/policy.ts, once,
 // explicitly, with a version stamped onto every number. Nothing here decides.
 //
-// Cost, measured 2026-08-27: ~1,468 controls × one request, against 120 req/60s.
-// Roughly 13 minutes. There is no bulk export for mappings and no changed-since
-// delta, so this is resumable by control_code and must never run per assessment.
+// Cost, measured 2026-08-27 by running it: 1,473 controls × one request, and the
+// binding constraint is the API's own latency, NOT the rate limit. Each mappings
+// call takes ~2.6s, so a full walk is roughly SIXTY-FOUR minutes. The 120-req/60s
+// limit would allow 110 per minute; we get ~23. An earlier estimate of "13
+// minutes" assumed the rate limit bound it, and that estimate is what made a
+// working run look stalled.
+//
+// There is no bulk export for mappings and no changed-since delta, so this is
+// resumable by control_code and must never run per assessment.
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createThrottle, type Throttle } from './throttle';
 
 const API_BASE = process.env.STANDARD_GRC_API_URL ?? 'https://standard-api.bekaa.eu/api/v1';
-const UPSERT_BATCH = 500;
+// Small on purpose. At ~11 mappings per control, 500 rows is ~45 controls and
+// ~2 minutes with nothing written and nothing visible — long enough that an
+// operator checking progress concludes the walk is stuck. 100 rows is ~9
+// controls, so progress appears within half a minute and a crash loses less.
+const UPSERT_BATCH = 100;
 
 /** Vendor vocabulary, exactly these five as of 2026-08-27. */
 export const RELATIONSHIP_TYPES = [
