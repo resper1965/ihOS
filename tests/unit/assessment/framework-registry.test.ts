@@ -138,6 +138,7 @@ describe('FRAMEWORK_REGISTRY', () => {
     'iso27701',    // 2026-08-28, docs/sql/2026-08-28e_APPLY_ME_iso27701_identity.sql
                    // confidence 'probable', not 'exact' — the only candidate is the
                    // 2025 edition and our slug means 2019. Q14(b) settles it.
+    'TX-LEVEL-2',  // 2026-08-28, docs/sql/2026-08-28f_APPLY_ME_txramp_identity.sql
   ]);
 
   // Offered, but with no curation row yet. They project no score until one
@@ -152,9 +153,8 @@ describe('FRAMEWORK_REGISTRY', () => {
   // The three that remain are blocked on the vendor, not on a decision anyone
   // here is avoiding.
   const OFFERED_WITHOUT_IDENTITY = new Set([
-    'fedramp',    // Q14(c) — four baselines, our slug names none
-    'IEC-62304',  // Q14(a) — no candidate among the vendor's 272
-    'TX-LEVEL-2', // unambiguous candidate exists; row simply not written yet
+    'fedramp',   // Q14(c) — four baselines, our slug names none
+    'IEC-62304', // Q14(a) — no candidate among the vendor's 272
   ]);
 
   it('offers only frameworks whose identity a person has curated', () => {
