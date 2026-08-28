@@ -172,6 +172,88 @@ our decision with a named owner — but we would prefer to be following you.
 
 ---
 
+## Q10 — `relationship_type` is `intersects` on every real mapping. Same shape as the 0.500.
+
+We completed the full crosswalk walk: 1,473 controls, 79,133 mappings. Then we
+counted what came back.
+
+| `relationship_type` | rows |
+|---|---|
+| `intersects` | **79,127** |
+| `equal` | 6 |
+| `subset` | 0 |
+| `superset` | 0 |
+| `no_relation` | 0 |
+
+And the six `equal` rows are not production data:
+
+```
+BCR-001  framework SYNTH-STD-1        official_scf   is_official=true
+GOV-001  framework SYNTH-STD-1        official_scf   is_official=true
+IAC-001  framework SYNTH-STD-1        official_scf   is_official=true
+TPR-001  framework SYNTH-STD-1        official_scf   is_official=true
+VPM-001  framework SYNTH-STD-1        official_scf   is_official=true
+IAC-001  framework ONS-RO-901.000     consultative   is_official=false
+```
+
+Five sit in a framework named `SYNTH-STD-1`; the sixth is consultative and not
+official. So **every one of the 79,126 official production mappings is
+`intersects`**, and all 79,126 also carry the `0.500` strength you have already
+identified as a parse-failure constant.
+
+Confirmed at the source rather than in our storage — raw API, one control:
+
+```
+GET /api/v1/scf/controls/{IAC-01}/mappings
+→ 349 rows
+  relationship_type: { "intersects": 349 }
+  relationship_strength: [ "0.500" ]
+```
+
+The requirement side is clearly real. ISO 27001 2022 returns 316 mappings across
+148 distinct requirements with genuine clause codes — `4.2`, `4.2(a)`, `4.3`,
+`6.3`. It is the relationship column that carries no information.
+
+### Why this stops us
+
+You endorsed our rule of routing `intersects` to human review at any strength.
+With both columns constant, that rule now consumes the entire crosswalk. We ran
+the projection against real data, twice:
+
+```
+ISO 27001, no evidence evaluated:
+  148 requirements, 0 satisfied, 148 unevaluated       → no score
+
+ISO 27001, ALL 1,473 controls conforming (the ceiling):
+  148 requirements, 0 satisfied, 148 needing review    → no score
+```
+
+The ceiling is "no score". An organisation that implemented every control in the
+SCF catalogue would still receive no ISO 27001 figure, because nothing in the
+crosswalk says any control covers any requirement — only that they intersect, to
+an unstated degree.
+
+We are not going to relax the rule to produce a number. A percentage derived from
+79,126 identical `intersects` values would be a percentage derived from nothing,
+and it would look more authoritative than the fabricated data we spent last week
+removing, because it would arrive with a policy version stamped on it.
+
+### The questions
+
+1. Is `relationship_type` being defaulted the way `relationship_strength` was? The
+   symptom is identical — one value across every official row — and SCF's STRM
+   vocabulary is precisely `equal | subset | intersects | superset | no_relation`,
+   so a mapping step that fails to translate would land everything on the middle
+   value.
+2. If the source data does carry real relationship types, when can we expect them
+   through the API?
+3. If it genuinely is `intersects` everywhere by design, then we would like to
+   understand how ADR-001's weights are ever exercised — `equal` and `subset` at
+   1.0, `superset` capped at 0.5 — since no production row reaches any of them.
+
+This is the only thing now blocking a defensible framework figure. Everything
+else on our side is built, tested and running against your data.
+
 ## Q9 — the NDJSON export returns 51 of 1,473 controls and reports success
 
 This one we would flag urgently, because it fails silently and you offered it as

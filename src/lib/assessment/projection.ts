@@ -47,7 +47,7 @@ export interface FrameworkProjection {
    * sometimes 62 is a 100× bug waiting for whoever reads it next.
    */
   score: number | null;
-  reason: 'no_requirements_mapped' | null;
+  reason: 'no_requirements_mapped' | 'nothing_assessable' | null;
 
   requirementsTotal: number;
   requirementsSatisfied: number;
@@ -240,13 +240,36 @@ export function computeProjection(input: ProjectionInput): FrameworkProjection {
     counts[state]++;
   }
 
+  // A requirement is DECIDABLE when the evidence settled it either way:
+  // satisfied, partially covered, or a gap. One sitting in human review, or
+  // whose controls were never evaluated, was not assessed at all.
+  const decidable = counts.satisfied + counts.partial + counts.gap;
+
+  // Two different kinds of "no score", and they are not the same statement.
+  //
+  //   no_requirements_mapped — this framework has no crosswalk. We do not know
+  //   what it asks for.
+  //
+  //   nothing_assessable — we know all 148 requirements and settled none of
+  //   them. Found by running this against real data: the vendor's crosswalk is
+  //   99.99% `intersects`, our policy sends every `intersects` to human review,
+  //   so even with all 1,473 controls conforming the result was
+  //   satisfied 0 / review 148 — and this function returned `score: 0`.
+  //
+  // That zero was the defect this codebase has spent a week removing, rebuilt
+  // one layer up: a 0 standing in for "we cannot say", indistinguishable on a
+  // dashboard from a genuine 0% and arriving with more authority because a
+  // policy version was stamped on it.
+  //
+  // Note the denominator stays `total`, not `decidable`. Scoring over decidable
+  // requirements only would report 100% for one satisfied requirement out of
+  // 148 while 147 went unlooked-at — flattering, and worse than saying nothing.
+  const score = total === 0 || decidable === 0 ? null : counts.satisfied / total;
+
   return {
-    // Null, not zero. A framework with nothing mapped is a framework we cannot
-    // speak about — and assessment-to-scorecard.ts's isScoreBacked guard already
-    // refuses to persist one, which until now fired on a symptom rather than a
-    // stated reason.
-    score: total === 0 ? null : counts.satisfied / total,
-    reason: total === 0 ? 'no_requirements_mapped' : null,
+    score,
+    reason:
+      total === 0 ? 'no_requirements_mapped' : decidable === 0 ? 'nothing_assessable' : null,
 
     requirementsTotal: total,
     requirementsSatisfied: counts.satisfied,

@@ -103,6 +103,55 @@ describe('a framework score is a projection that can explain itself', () => {
     expect(p.requirementsTotal).toBe(0);
   });
 
+  it('refuses a score when requirements are known but none was settled', () => {
+    // Found by running this against real data. The vendor's crosswalk is 99.99%
+    // `intersects`, the policy sends every `intersects` to human review, so even
+    // with every control conforming the result was 148 requirements, 0 satisfied,
+    // 148 in review — and this returned `score: 0`.
+    //
+    // A 0 there is indistinguishable on a dashboard from a genuine 0% and
+    // arrives with more authority, because a policy version is stamped on it.
+    // "We know what this framework asks and settled none of it" is not zero
+    // per cent.
+    const p = computeProjection({
+      mappings: [
+        mapping({ requirement_code: 'r1', relationship_type: 'intersects' }),
+        mapping({ requirement_code: 'r2', relationship_type: 'intersects', control_code: 'GOV-02' }),
+      ],
+      verdicts: new Map([
+        ['GOV-01', 'conforming'],
+        ['GOV-02', 'conforming'],
+      ]),
+    });
+
+    expect(p.requirementsTotal).toBe(2);
+    expect(p.requirementsNeedingReview).toBe(2);
+    expect(p.score).toBeNull();
+    expect(p.reason).toBe('nothing_assessable');
+  });
+
+  it('scores over ALL requirements once any is settled, not only the settled ones', () => {
+    // One satisfied out of three is 33%, not 100%. Dividing by the settled
+    // subset would report full compliance while two requirements went unlooked-at.
+    const p = computeProjection({
+      mappings: [
+        mapping({ requirement_code: 'r1', control_code: 'GOV-01' }),
+        mapping({ requirement_code: 'r2', control_code: 'GOV-02', relationship_type: 'intersects' }),
+        mapping({ requirement_code: 'r3', control_code: 'GOV-03', relationship_type: 'intersects' }),
+      ],
+      verdicts: new Map([
+        ['GOV-01', 'conforming'],
+        ['GOV-02', 'conforming'],
+        ['GOV-03', 'conforming'],
+      ]),
+    });
+
+    expect(p.requirementsTotal).toBe(3);
+    expect(p.requirementsSatisfied).toBe(1);
+    expect(p.requirementsNeedingReview).toBe(2);
+    expect(p.score).toBeCloseTo(1 / 3);
+  });
+
   it('reports a control with no evaluated verdict rather than assuming a gap', () => {
     // An unevaluated control is not a failing control. Conflating the two is how
     // three nightly runs recorded scores against zero evaluated controls.
