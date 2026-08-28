@@ -135,6 +135,9 @@ describe('FRAMEWORK_REGISTRY', () => {
     'EU-DORA',     //     "
     'soc2',        //     "
     'nist_800_53', //     "
+    'iso27701',    // 2026-08-28, docs/sql/2026-08-28e_APPLY_ME_iso27701_identity.sql
+                   // confidence 'probable', not 'exact' — the only candidate is the
+                   // 2025 edition and our slug means 2019. Q14(b) settles it.
   ]);
 
   // Offered, but with no curation row yet. They project no score until one
@@ -142,15 +145,13 @@ describe('FRAMEWORK_REGISTRY', () => {
   // exemption is visible rather than implied by a passing test, and so this
   // set shrinking is a deliberate act.
   //
-  // iso27701 is the one that should not be here. It is in DEFAULT_FRAMEWORKS,
-  // so it is pre-selected in the Run Assessment modal, and it has no identity
-  // row — the only candidate in the vendor catalogue is "ISO 27701  2025"
-  // while our slug means the 2019 edition. Asked as Q14(b) on 2026-08-28.
-  // fedramp and IEC-62304 are blocked on the same document: four FedRAMP
-  // baselines with no basis to choose among them, and no 62304 in the
-  // catalogue at all.
+  // It shrank on 2026-08-28: iso27701 moved out when it was curated as
+  // 'probable'. It was the entry that mattered, because it is in
+  // DEFAULT_FRAMEWORKS and so was pre-selected while scoring nothing.
+  //
+  // The three that remain are blocked on the vendor, not on a decision anyone
+  // here is avoiding.
   const OFFERED_WITHOUT_IDENTITY = new Set([
-    'iso27701',   // Q14(b) — edition mismatch, and pre-selected by default
     'fedramp',    // Q14(c) — four baselines, our slug names none
     'IEC-62304',  // Q14(a) — no candidate among the vendor's 272
     'TX-LEVEL-2', // unambiguous candidate exists; row simply not written yet
