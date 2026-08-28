@@ -589,3 +589,88 @@ both times cost a wrong diagnosis.
   Reachability is established by calling.
 - §D step 3 claimed the mappings upload route was gated by role. It was not,
   until `20260827`. The branch's own defect class, in its own documentation.
+
+---
+
+## §I — Q7–Q10 resolved, and one error of mine worth keeping
+
+### Q7 — the direction, confirmed
+
+The operators are **requirement-relative**: read `requirement <operator> control`.
+
+| | reads as | coverage | our contribution |
+|---|---|---|---|
+| `equal` | requirement = control | exact | satisfies |
+| `subset` | requirement ⊂ control | control covers the whole requirement | satisfies |
+| `superset` | requirement ⊃ control | control covers only part | **partial** |
+| `intersects` | requirement ∩ control | partial overlap, degree unstated | human review |
+
+`superset` is capped at 0.5 on the vendor's side because the requirement extends
+beyond the control and no amount of control maturity closes that gap. Our policy
+already matched this after their first Q7 answer; no change was needed.
+
+The vendor's own code had contradicted itself about the convention — a weight
+table printing `⊂` beside the annotation "SCF broader than req", symbol
+control-relative and words requirement-relative. Their sentence for it is worth
+keeping: *"you had no way to tell an ambiguity from a typo."*
+
+On ADR-001, which they will share as a citable document: it is **their reading of
+NIST IR 8477 applied to SCF's STRM vocabulary**, not something SCF publishes as
+audit guidance, and they asked to be cited as the authors rather than let the
+document be read as carrying an authority it does not have. Our
+`CURATION_POLICY_OWNER` stays a named person for the same reason.
+
+### Q10 — confirmed as a hardcode, plus two more they found
+
+`relationship_type: "intersects"` was hardcoded on every crosswalk row, because
+the column was `NOT NULL` and the crosswalk sheet states no operator. Their
+summary of the consequence is the one to remember: **ADR-001's weights have never
+been exercised in production.** Every row took the `intersects` branch at a
+constant 0.5, so a correct weight matrix had been computing over a column that
+carried no information.
+
+Two further instances they found without being asked:
+
+- An absent or unrecognised operator was resolved to `"intersects"` by a function
+  whose comment called it a "safe fallback". It is not a default — it asserts
+  scope overlap.
+- A control with **no mapping at all** was pushed into the compliance index as
+  `intersects` at 0.5, inventing a relationship to fill the denominator.
+
+Both removed. Their index is now computed only over relationships someone
+recorded, which is what our `unrecorded` state does on this side.
+
+### Q9 and Q8 — theirs, and owned
+
+Q9: `searchControls` fetches `limit + 1` to detect more rows, and the streaming
+loop tested `batch.length === batchSize` — 51 === 50 is false, so the first batch
+was also the last. They also recommended that endpoint to us as the way to size
+the catalogue, and said so plainly rather than folding it into a changelog.
+
+Q8: on the controls route the `offset` parameter was never read at all; the
+offset was derived from `page`. Separate defect from `/scf/frameworks`, which
+takes no pagination parameters and returns all 272 rows.
+
+### My error: I presented a docstring sample as a measurement
+
+I computed "the STRM bundle covers 6.3% of the crosswalk" from
+`4,850 + 116 + 42 = 5,008` against our measured 79,133, and sent it as
+arithmetic. The 79,133 was measured — we walked it. The 5,008 was **a sample
+recorded in a source comment**, and the vendor pointed out the same list carries
+746 leaked header rows discarded on import.
+
+So the ratio could be wrong in either direction, and I stated it as fact.
+
+That is the defect class this audit exists to catch — a number of weak provenance
+wearing the clothes of a measured one — committed by me, in a message arguing
+against exactly that. The correct form was: *"if that distribution is the real
+count, then 6.3%; it reads like a sample, so please measure it."*
+
+The vendor built the measurement instead: a dry run that writes nothing and
+reports, per framework, total mappings, how many the bundle grades, and how many
+reach `equal` or `subset`. A framework with zero graded mappings will produce no
+coverage figure.
+
+**Rule to carry:** before quoting a number, name where it came from. Measured,
+sampled, or documented are three different things, and only the first is
+evidence.
