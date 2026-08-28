@@ -238,21 +238,63 @@ We are not going to relax the rule to produce a number. A percentage derived fro
 and it would look more authoritative than the fabricated data we spent last week
 removing, because it would arrive with a policy version stamped on it.
 
+### One thing that gave us pause before asking
+
+We checked whether your own endpoints derive a graded figure from this data, on
+the theory that if they do, the grading must come from somewhere we are not
+reading. They do not, and the pattern is consistent.
+
+`GET /scf/frameworks/{iso27001}/coverage?scf_version=…` returns **counts only**:
+
+```json
+{ "requirement_count": 148, "mapped_requirement_count": 148,
+  "control_count": 51, "official_mapping_count": 316, "is_synthetic": false }
+```
+
+No percentage, no weight, no reference to relationship type.
+
+`GET /scf/cross-mapping/{iso27001}/{soc2}?scf_version=…` does return a
+percentage — but it is set overlap, not coverage:
+
+```json
+{ "overlap": { "shared_control_count": 36, "only_in_a": 15,
+               "only_in_b": 298, "overlap_percentage": 10 },
+  "interpretation": "Low…" }
+```
+
+36 of 349 controls in common. Entirely independent of `relationship_type` and of
+strength.
+
+So your whole crosswalk surface treats a mapping as a structural association
+rather than as graded coverage. Which makes us think our question may be the
+wrong one, and the honest version is:
+
 ### The questions
 
-1. Is `relationship_type` being defaulted the way `relationship_strength` was? The
-   symptom is identical — one value across every official row — and SCF's STRM
-   vocabulary is precisely `equal | subset | intersects | superset | no_relation`,
-   so a mapping step that fails to translate would land everything on the middle
-   value.
-2. If the source data does carry real relationship types, when can we expect them
-   through the API?
-3. If it genuinely is `intersects` everywhere by design, then we would like to
-   understand how ADR-001's weights are ever exercised — `equal` and `subset` at
-   1.0, `superset` capped at 0.5 — since no production row reaches any of them.
+1. **Is graded coverage available at all?** Not "is this a bug" — we no longer
+   assume it is. Is `relationship_type` intended to carry real distinctions in
+   the data you serve, or is the crosswalk associative by design, with `equal`
+   and `subset` reserved for the synthetic fixtures we found in `SYNTH-STD-1`?
+2. If it is intended to carry distinctions and does not yet: is this the same
+   importer path as the `0.500`, and when would real values reach the API?
+3. If it is associative by design, what is ADR-001's weight table applied to?
+   You described `equal` and `subset` at 1.0 and `superset` capped at 0.5, and
+   no production row reaches any of those branches. We would rather understand
+   what that table governs than guess at it — possibly it governs something
+   inside your product that the API does not expose, in which case we should
+   stop expecting to reproduce it.
 
-This is the only thing now blocking a defensible framework figure. Everything
-else on our side is built, tested and running against your data.
+Everything on our side is built, tested and running against your data. This is
+the one thing between us and a framework figure we would be willing to put in
+front of an auditor.
+
+### A smaller thing, and it helps us
+
+`coverage` reporting `control_count: 51` for ISO 27001 was news to us, in a good
+way. We had been evaluating all 1,473 catalogue controls for an ISO-only
+assessment because we had no way to know which subset mattered. Fifty-one is a
+twenty-nine-fold reduction in the work per assessment. Thank you for having that
+endpoint; we should have read it sooner.
 
 ## Q9 — the NDJSON export returns 51 of 1,473 controls and reports success
 
