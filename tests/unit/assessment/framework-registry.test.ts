@@ -114,11 +114,60 @@ describe('FRAMEWORK_REGISTRY', () => {
   // Changed 2026-08-25: "at least 9 entries" was a brittle stand-in for "the
   // registry offers things." The real intent — never offer a framework
   // without a real crosswalk — is what actually needs guarding.
-  it('is non-empty and offers only frameworks backed by a real crosswalk', () => {
+  //
+  // Changed 2026-08-28: the blocklist named five slugs because, on 2026-08-25,
+  // their only mappings were clones. That is a statement about the data, and
+  // the data changed — the vendor crosswalk was walked on 2026-08-27 and four
+  // of the five were given curated identities on 2026-08-28. A hardcoded list
+  // of ids cannot notice that, so it would have failed for a reason that had
+  // stopped being true.
+  //
+  // What is permanent is the rule underneath: our slug is only meaningful once
+  // a person has recorded which vendor framework it names. CURATED_IDENTITIES
+  // mirrors the local_code column of framework_identity_curation. It is a
+  // deliberate duplicate of database state, and it exists so that adding a row
+  // to FRAMEWORK_REGISTRY without also curating an identity fails here rather
+  // than shipping a framework that silently scores nothing.
+  const CURATED_IDENTITIES = new Set([
+    'iso27001',    // 2026-08-27, docs/sql/2026-08-28_control_spine_apply.sql
+    'BR-LGPD',     // 2026-08-28, docs/sql/2026-08-28d_APPLY_ME_framework_identities.sql
+    'EU-GDPR',     //     "
+    'EU-DORA',     //     "
+    'soc2',        //     "
+    'nist_800_53', //     "
+  ]);
+
+  // Offered, but with no curation row yet. They project no score until one
+  // exists — the honest outcome, not a defect. Listed explicitly so the
+  // exemption is visible rather than implied by a passing test, and so this
+  // set shrinking is a deliberate act.
+  //
+  // iso27701 is the one that should not be here. It is in DEFAULT_FRAMEWORKS,
+  // so it is pre-selected in the Run Assessment modal, and it has no identity
+  // row — the only candidate in the vendor catalogue is "ISO 27701  2025"
+  // while our slug means the 2019 edition. Asked as Q14(b) on 2026-08-28.
+  // fedramp and IEC-62304 are blocked on the same document: four FedRAMP
+  // baselines with no basis to choose among them, and no 62304 in the
+  // catalogue at all.
+  const OFFERED_WITHOUT_IDENTITY = new Set([
+    'iso27701',   // Q14(b) — edition mismatch, and pre-selected by default
+    'fedramp',    // Q14(c) — four baselines, our slug names none
+    'IEC-62304',  // Q14(a) — no candidate among the vendor's 272
+    'TX-LEVEL-2', // unambiguous candidate exists; row simply not written yet
+  ]);
+
+  it('offers only frameworks whose identity a person has curated', () => {
     expect(FRAMEWORK_REGISTRY.length).toBeGreaterThan(0);
-    const fabricated = new Set(['soc2', 'nist_800_53', 'HI-2013', 'EU-GDPR', 'BR-LGPD']);
     for (const fw of FRAMEWORK_REGISTRY) {
-      expect(fabricated.has(fw.id)).toBe(false);
+      if (OFFERED_WITHOUT_IDENTITY.has(fw.id)) continue;
+      expect(CURATED_IDENTITIES.has(fw.id)).toBe(true);
+    }
+  });
+
+  it('never offers a framework that is also quarantined', () => {
+    const quarantined = new Set(QUARANTINED_FRAMEWORKS.map((f) => f.id));
+    for (const fw of FRAMEWORK_REGISTRY) {
+      expect(quarantined.has(fw.id)).toBe(false);
     }
   });
 
@@ -151,27 +200,37 @@ describe('FRAMEWORK_REGISTRY', () => {
 });
 
 // ---------------------------------------------------------------------------
-// Quarantine guard (added 2026-08-25)
+// Quarantine guard (added 2026-08-25, narrowed 2026-08-28)
+//
 // A framework must not be offerable until a real crosswalk backs it. On
 // 2026-08-25, soc2/nist_800_53/HI-2013/EU-GDPR/BR-LGPD were found to be
 // prefix-renamed clones of iso27001/iso27701 — offering them meant answering
-// questions about standards with zero real mapping data. This is the guard
-// against silently re-adding one.
+// questions about standards with zero real mapping data.
+//
+// Four of those five stopped being fabricated on 2026-08-27, when the vendor
+// crosswalk was walked into scf_control_mappings, and were given curated
+// identities on 2026-08-28. The clone rows they were quarantined for still sit
+// in scf_framework_mappings_quarantine and are still not read by anything.
+//
+// HI-2013 remains. Not because its mappings are fabricated — the vendor has
+// three HIPAA frameworks and 1,028 mappings across them — but because nobody
+// has decided WHICH of the three our slug means, and a framework with no
+// curated identity must not be offered.
 // ---------------------------------------------------------------------------
 
-const FABRICATED = ['soc2', 'nist_800_53', 'HI-2013', 'EU-GDPR', 'BR-LGPD'];
+const UNCURATED = ['HI-2013'];
 
-describe('framework registry — no framework without a real crosswalk', () => {
-  it('does not offer any of the frameworks whose mappings were fabricated', () => {
+describe('framework registry — no framework without a curated identity', () => {
+  it('does not offer a framework whose identity nobody has decided', () => {
     const offered = FRAMEWORK_REGISTRY.map((f) => f.id);
-    for (const code of FABRICATED) {
+    for (const code of UNCURATED) {
       expect(offered).not.toContain(code);
     }
   });
 
-  it('does not default-select any fabricated framework in the assessment modal', () => {
+  it('does not default-select a framework whose identity nobody has decided', () => {
     const defaults = DEFAULT_FRAMEWORKS.map((f) => f.id);
-    for (const code of FABRICATED) {
+    for (const code of UNCURATED) {
       expect(defaults).not.toContain(code);
     }
   });
