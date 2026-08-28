@@ -73,6 +73,23 @@ describe('the curation policy is explicit about what counts', () => {
     expect(CURATION_POLICY_OWNER).toContain('@');
   });
 
+  it('reports an unrecorded relationship as its own state, never as intersects', () => {
+    // The vendor is replacing the hardcoded `intersects` from xlsx-importer.ts:353
+    // with values from their STRM bundle, which covers 5,008 of 79,133 mappings.
+    // So ~94% will arrive with nothing recorded, and calling that `intersects`
+    // would keep the fabrication alive under a new name — `intersects` asserts
+    // partial overlap, null asserts nothing.
+    //
+    // It is also kept apart from `needs_review`, because the two wait on
+    // different people: review is a judgement someone can make from the mapping
+    // in hand; unrecorded means nobody can until the vendor supplies it.
+    expect(contributionOf({ ...official, relationship_type: null })).toBe('unrecorded');
+    expect(contributionOf({ ...official, relationship_type: null, relationship_strength: 1 }))
+      .toBe('unrecorded');
+    expect(contributionOf({ relationship_type: null, relationship_strength: null, is_official: false }))
+      .toBe('unrecorded');
+  });
+
   it('has a rule for every relationship type the vendor defines', () => {
     // If the vendor adds a sixth type, this fails — which is the point. The
     // sync throws on an unknown type and the migration's CHECK refuses it, but

@@ -54,6 +54,18 @@ describe('crosswalk rows are stored with their provenance intact', () => {
     expect(emptyId.store).toBe(true);
   });
 
+  it('accepts an absent relationship as null, so the vendor fix cannot kill the sync', () => {
+    // The vendor is replacing the hardcoded `intersects` (xlsx-importer.ts:353)
+    // with STRM bundle values covering 5,008 of 79,133 mappings, so ~94% will
+    // arrive with nothing recorded. Rejecting that would stop the sync on its
+    // first honest row — verified before the fix: null and undefined both threw.
+    for (const absent of [null, undefined, '']) {
+      const r = classifyMapping({ ...base, relationship_type: absent as never }, 'v1');
+      expect(r.store).toBe(true);
+      expect(r.value?.relationship_type).toBeNull();
+    }
+  });
+
   it('refuses a relationship type it has never seen instead of storing it', () => {
     // The curation policy has no rule for a type it has never seen, and
     // inventing one here is how a number stops being explainable.

@@ -37,6 +37,8 @@ export const CURATION_POLICY_OWNER = 'resper@ionic.health';
 export type Contribution =
   /** The control covers the requirement. Counts toward coverage. */
   | 'satisfies'
+  /** The vendor recorded no relationship. Not ambiguity — absence. */
+  | 'unrecorded'
   /** Real but incomplete coverage. Its own state; never rolls up into satisfies. */
   | 'partial'
   /** A human must look. Never counted either way. */
@@ -45,7 +47,8 @@ export type Contribution =
   | 'excluded';
 
 export interface MappingFacts {
-  relationship_type: Relationship;
+  /** Null where the vendor has not recorded the relationship. Not `intersects`. */
+  relationship_type: Relationship | null;
   relationship_strength: number | null;
   is_official: boolean;
 }
@@ -102,6 +105,14 @@ const BY_RELATIONSHIP: Record<Relationship, Contribution> = {
  * bump — not a silent change in what a score means.
  */
 export function contributionOf(facts: MappingFacts): Contribution {
+  // Absence of a recorded relationship is its own answer, and it is reported
+  // separately from `needs_review`. Both keep a requirement out of the score,
+  // but they call for different work: `needs_review` is a judgement a person can
+  // make from the mapping in front of them, while `unrecorded` means the mapping
+  // does not say enough for anyone to judge and the vendor has to supply it.
+  // Folding them together would hide which of those a framework is waiting on.
+  if (facts.relationship_type === null) return 'unrecorded';
+
   const rule = BY_RELATIONSHIP[facts.relationship_type];
   if (rule === undefined || !RELATIONSHIP_TYPES.includes(facts.relationship_type)) {
     throw new Error(

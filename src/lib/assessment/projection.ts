@@ -27,7 +27,7 @@ export interface ProjectionInput {
   mappings: Array<{
     requirement_code: string;
     control_code: string;
-    relationship_type: Relationship;
+    relationship_type: Relationship | null;
     relationship_strength: number | null;
     is_official: boolean;
   }>;
@@ -53,6 +53,8 @@ export interface FrameworkProjection {
   requirementsSatisfied: number;
   requirementsPartial: number;
   requirementsNeedingReview: number;
+  /** Requirements whose mappings carry no recorded relationship. Vendor-side. */
+  requirementsUnrecorded: number;
   requirementsUnevaluated: number;
   requirementsGap: number;
 
@@ -68,7 +70,13 @@ export interface FrameworkProjection {
  * is met, regardless of how partially three others also relate to it. This is
  * why the resolution is a precedence order rather than a sum.
  */
-type RequirementState = 'satisfied' | 'partial' | 'needs_review' | 'unevaluated' | 'gap';
+type RequirementState =
+  | 'satisfied'
+  | 'partial'
+  | 'needs_review'
+  | 'unrecorded'
+  | 'unevaluated'
+  | 'gap';
 
 function resolveRequirement(
   rows: ProjectionInput['mappings'],
@@ -76,6 +84,7 @@ function resolveRequirement(
 ): RequirementState | 'excluded' {
   let sawPartial = false;
   let sawReview = false;
+  let sawUnrecorded = false;
   let sawUnevaluated = false;
   let sawAnyIncluded = false;
 
@@ -103,6 +112,11 @@ function resolveRequirement(
       continue;
     }
 
+    if (contribution === 'unrecorded') {
+      sawUnrecorded = true;
+      continue;
+    }
+
     if (contribution === 'partial') {
       if (verdict === 'conforming' || verdict === 'partial') sawPartial = true;
       continue;
@@ -115,7 +129,10 @@ function resolveRequirement(
 
   if (!sawAnyIncluded) return 'excluded';
   if (sawPartial) return 'partial';
+  // Review before unrecorded: a requirement with one judgeable mapping is
+  // waiting on a person here, not on the vendor.
   if (sawReview) return 'needs_review';
+  if (sawUnrecorded) return 'unrecorded';
   if (sawUnevaluated) return 'unevaluated';
   return 'gap';
 }
@@ -228,6 +245,7 @@ export function computeProjection(input: ProjectionInput): FrameworkProjection {
     satisfied: 0,
     partial: 0,
     needs_review: 0,
+    unrecorded: 0,
     unevaluated: 0,
     gap: 0,
   };
@@ -275,6 +293,7 @@ export function computeProjection(input: ProjectionInput): FrameworkProjection {
     requirementsSatisfied: counts.satisfied,
     requirementsPartial: counts.partial,
     requirementsNeedingReview: counts.needs_review,
+    requirementsUnrecorded: counts.unrecorded,
     requirementsUnevaluated: counts.unevaluated,
     requirementsGap: counts.gap,
 

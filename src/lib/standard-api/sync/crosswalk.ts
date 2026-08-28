@@ -44,6 +44,19 @@ export const RELATIONSHIP_TYPES = [
 export type Relationship = (typeof RELATIONSHIP_TYPES)[number];
 
 /**
+ * A mapping whose relationship the vendor has not recorded.
+ *
+ * Distinct from `intersects`, and the distinction matters. `intersects` asserts
+ * partial overlap; null asserts nothing. The vendor is replacing a hardcoded
+ * `intersects` — `xlsx-importer.ts:353` stamped it on every crosswalk row — with
+ * values from their STRM bundle, and that bundle holds 5,008 relationships
+ * against the 79,133 mappings the API serves. So roughly 94% will arrive null,
+ * and treating those as `intersects` would preserve the fabrication under a new
+ * name.
+ */
+export type MaybeRelationship = Relationship | null;
+
+/**
  * Not "possibly wrong" — definitively meaningless, on every official row.
  *
  * The vendor's importer converts the source's numeric 0-10 strength into an enum
@@ -65,7 +78,7 @@ export interface StoredMapping {
   framework_code: string;
   mapping_uuid: string | null;
   requirement_uuid: string | null;
-  relationship_type: Relationship;
+  relationship_type: MaybeRelationship;
   relationship_strength: number | null;
   strength_is_trustworthy: boolean;
   mapping_source: string | null;
@@ -94,10 +107,26 @@ function str(v: unknown): string | null {
  * rule for.
  */
 export function classifyMapping(m: Record<string, unknown>, scfVersionId: string): Classified {
-  const rel = m.relationship_type as Relationship;
-  if (!RELATIONSHIP_TYPES.includes(rel)) {
+  // Absent is allowed; unrecognised is not.
+  //
+  // A null relationship_type means the vendor has not recorded how this control
+  // relates to this requirement. That is a real and honest state, and it is about
+  // to become the common one: they are replacing the hardcoded `intersects` from
+  // xlsx-importer.ts:353 with values from their STRM bundle, which covers 5,008
+  // of 79,133 mappings. Rejecting null would kill the sync on its first row.
+  //
+  // A value we have never seen still throws. That guard is about a SIXTH
+  // relationship type appearing — something the curation policy would have no
+  // rule for — and it stays.
+  const raw = m.relationship_type;
+  let rel: MaybeRelationship;
+  if (raw === null || raw === undefined || raw === '') {
+    rel = null;
+  } else if (RELATIONSHIP_TYPES.includes(raw as Relationship)) {
+    rel = raw as Relationship;
+  } else {
     throw new Error(
-      `unknown relationship_type: ${String(rel)} — the curation policy has no rule for it`,
+      `unknown relationship_type: ${String(raw)} — the curation policy has no rule for it`,
     );
   }
 
