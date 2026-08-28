@@ -63,3 +63,7 @@ scratch/
 
 # git worktrees (SDD isolated workspaces)
 .worktrees/
+
+# Local agent skills and CLI scratch — never project code.
+.claude/
+supabase/.temp/
