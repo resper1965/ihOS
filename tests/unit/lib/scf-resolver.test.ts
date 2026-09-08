@@ -21,6 +21,11 @@ function mockAdminOnSpine(
     control_code: string | null;
     relationship_type: string | null;
   }>>,
+  // Every (column, value) pair passed to .eq() on the scf_control_mappings
+  // branch, in call order. Lets a test assert the version filter is actually
+  // applied, by which column, and with which value -- not just that
+  // framework_code narrowed the result.
+  eqCalls: Array<[string, string]> = [],
 ) {
   return {
     from: vi.fn((table: string) => {
@@ -39,11 +44,17 @@ function mockAdminOnSpine(
       // scf_control_mappings
       return {
         select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            eq: vi.fn((_c: string, slug: string) => ({
-              in: vi.fn(async () => ({ data: rowsBySlug[slug] ?? [], error: null })),
-            })),
-          })),
+          eq: vi.fn((c1: string, v1: string) => {
+            eqCalls.push([c1, v1]);
+            return {
+              eq: vi.fn((c2: string, slug: string) => {
+                eqCalls.push([c2, slug]);
+                return {
+                  in: vi.fn(async () => ({ data: rowsBySlug[slug] ?? [], error: null })),
+                };
+              }),
+            };
+          }),
         })),
       };
     }),
@@ -57,6 +68,7 @@ describe('resolveScfMappings on the spine', () => {
   };
 
   it('resolves through the curated identity, carrying the relationship type', async () => {
+    const eqCalls: Array<[string, string]> = [];
     const admin = mockAdminOnSpine(SLUGS, {
       'general-iso-27001-2022': [
         { requirement_code: 'A.8.26', control_code: 'TDA-02', relationship_type: 'equal' },
@@ -65,7 +77,7 @@ describe('resolveScfMappings on the spine', () => {
       'general-nist-800-53-r5-2': [
         { requirement_code: 'SI-10', control_code: 'TDA-02', relationship_type: 'subset' },
       ],
-    });
+    }, eqCalls);
 
     const result = await resolveScfMappings(admin, ['A.8.26'], ['SI-10'], { scfVersionId: 'v1' });
 
@@ -77,6 +89,31 @@ describe('resolveScfMappings on the spine', () => {
       { scfControlCode: 'TDA-02', relationshipType: 'subset' },
     ]);
     expect(result.unmappedControls).toEqual([]);
+
+    // The version filter is the top global constraint of this plan: every
+    // read of scf_control_mappings must name an scf_version_id. Assert the
+    // actual column names, not just that *some* filter narrowed the rows.
+    expect(eqCalls).toContainEqual(['scf_version_id', 'v1']);
+    expect(eqCalls).toContainEqual(['framework_code', 'general-iso-27001-2022']);
+  });
+
+  it('applies the version filter on every framework resolved, not just one', async () => {
+    // A filter wired onto only one of the two per-framework queries would
+    // still pass the test above, since that one only checks iso27001's call.
+    const eqCalls: Array<[string, string]> = [];
+    const admin = mockAdminOnSpine(SLUGS, {
+      'general-iso-27001-2022': [
+        { requirement_code: 'A.8.26', control_code: 'TDA-02', relationship_type: 'equal' },
+      ],
+      'general-nist-800-53-r5-2': [
+        { requirement_code: 'SI-10', control_code: 'TDA-02', relationship_type: 'subset' },
+      ],
+    }, eqCalls);
+
+    await resolveScfMappings(admin, ['A.8.26'], ['SI-10'], { scfVersionId: 'v1' });
+
+    const versionCalls = eqCalls.filter(([col, val]) => col === 'scf_version_id' && val === 'v1');
+    expect(versionCalls).toHaveLength(2);
   });
 
   it('drops no_relation, which is a statement that they do NOT relate', async () => {
