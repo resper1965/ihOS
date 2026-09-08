@@ -218,21 +218,11 @@ export async function projectFrameworkFromCrosswalk(
     );
   }
 
-  const { data: curated, error: curationError } = await client
-    .from('framework_identity_curation')
-    .select('vendor_framework_code, confidence')
-    .eq('local_code', localFrameworkCode)
-    .maybeSingle();
-  if (curationError) throw new Error(`framework_identity_curation: ${curationError.message}`);
-
-  const vendorCode = curated?.vendor_framework_code;
-  if (typeof vendorCode !== 'string' || vendorCode.length === 0) {
-    throw new Error(
-      `no curated vendor framework for "${localFrameworkCode}" ` +
-        `(confidence: ${String(curated?.confidence ?? 'no row')}). ` +
-        `A person must decide which of the vendor's frameworks this means.`,
-    );
-  }
+  const { resolveVendorFrameworkCode } = await import('@/lib/assessment/curation/identity');
+  const vendorCode = await resolveVendorFrameworkCode(
+    localFrameworkCode,
+    client as unknown as import('@/lib/assessment/curation/identity').CurationReader,
+  );
 
   const { data: rows, error: mappingError } = await client
     .from('scf_control_mappings')
