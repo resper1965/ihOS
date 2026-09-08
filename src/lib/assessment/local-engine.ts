@@ -61,18 +61,28 @@ export async function runLocalAssessment(
   // id could be turned into an SCF code; iterating SCF controls makes that
   // translation unnecessary. Framework requirements are joined later, by the
   // projection, from the official crosswalk.
+  // Scoped to one catalogue version. scf_controls_cache keeps every version it
+  // has ever synced — after the 2026-09-08 re-import it held 2,941 rows for
+  // 1,468 controls — so an unscoped read evaluates each control once per
+  // version, at ~16x embedding cost, and counts it twice.
+  const { getCachedScfVersionId } = await import('@/lib/standard-api/sync/catalog');
+  const scfVersionId = await getCachedScfVersionId();
+
   const { data: catalogRows, error: catalogError } = await (
     adminSupabase as unknown as {
       from: (t: string) => {
-        select: (c: string) => Promise<{
-          data: Array<Record<string, unknown>> | null;
-          error: { message: string } | null;
-        }>;
+        select: (c: string) => {
+          eq: (col: string, v: string) => Promise<{
+            data: Array<Record<string, unknown>> | null;
+            error: { message: string } | null;
+          }>;
+        };
       };
     }
   )
     .from('scf_controls_cache')
-    .select('control_code, control_title, control_description');
+    .select('control_code, control_title, control_description')
+    .eq('scf_version_id', scfVersionId);
 
   if (catalogError) {
     throw new Error(`could not read scf_controls_cache: ${catalogError.message}`);
@@ -345,7 +355,9 @@ export async function runLocalAssessment(
     };
 
     try {
-      const projection = await projectFrameworkFromCrosswalk(fwId, evaluations);
+      const projection = await projectFrameworkFromCrosswalk(fwId, evaluations, {
+        scfVersionId,
+      });
       frameworkScores.push({
         frameworkId: fwId,
         // The projection returns a ratio; FrameworkScore is 0-100.

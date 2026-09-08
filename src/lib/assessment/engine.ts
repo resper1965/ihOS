@@ -603,7 +603,11 @@ export async function runAssessment(
     // evaluation work. The zeros were stopped downstream by isScoreBacked; the
     // cause is removed here.
     try {
-      const projection = await projectFrameworkFromCrosswalk(frameworkId, evaluations);
+      // The version this run fetched its catalogue against (line ~203), not
+      // "latest" — those differ while a crosswalk walk is in flight.
+      const projection = await projectFrameworkFromCrosswalk(frameworkId, evaluations, {
+        scfVersionId: scfVersion.scf_version_id,
+      });
 
       frameworkScores.push({
         frameworkId,

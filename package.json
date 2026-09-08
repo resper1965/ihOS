@@ -19,7 +19,8 @@
     "test:e2e": "playwright test",
     "backfill:posture": "tsx src/scripts/backfill-posture.ts",
     "check:mappings": "tsx src/scripts/check-mapping-integrity.ts",
-    "gen:api-types": "bash scripts/generate-api-types.sh"
+    "gen:api-types": "bash scripts/generate-api-types.sh",
+    "probe:standard-api": "tsx scripts/probe-standard-api.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.67",

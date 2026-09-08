@@ -199,10 +199,24 @@ export async function projectFrameworkFromCrosswalk(
     controlId: string;
     combinedStatus?: 'conforming' | 'partial' | 'informal' | 'gap';
   }>,
-  deps?: { client?: ReadableClient },
+  deps?: { client?: ReadableClient; scfVersionId?: string },
 ): Promise<FrameworkProjection> {
   const { createAdminClient } = await import('@/lib/supabase/admin');
   const client = deps?.client ?? (createAdminClient() as unknown as ReadableClient);
+
+  // A version must be named. scf_control_mappings holds every version ever
+  // walked, and on 2026-09-08 that became two: the pre-STRM rows whose
+  // `intersects` was fabricated, and the corrected ones. Reading both would
+  // silently mix the defect back into its own fix, so there is no default —
+  // the caller says which catalogue it is projecting against.
+  const scfVersionId = deps?.scfVersionId ?? process.env.SCF_VERSION_ID;
+  if (typeof scfVersionId !== 'string' || scfVersionId.length === 0) {
+    throw new Error(
+      'projectFrameworkFromCrosswalk needs an scf_version_id: ' +
+        'scf_control_mappings spans catalogue versions and an unversioned read ' +
+        'mixes the fabricated crosswalk with the corrected one.',
+    );
+  }
 
   const { data: curated, error: curationError } = await client
     .from('framework_identity_curation')
@@ -223,7 +237,8 @@ export async function projectFrameworkFromCrosswalk(
   const { data: rows, error: mappingError } = await client
     .from('scf_control_mappings')
     .select('requirement_code, control_code, relationship_type, relationship_strength, is_official')
-    .eq('framework_code', vendorCode);
+    .eq('framework_code', vendorCode)
+    .eq('scf_version_id', scfVersionId);
   if (mappingError) throw new Error(`scf_control_mappings: ${mappingError.message}`);
 
   return computeProjection({

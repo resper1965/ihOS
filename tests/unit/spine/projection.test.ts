@@ -171,3 +171,63 @@ describe('a framework score is a projection that can explain itself', () => {
     expect(p.policyOwner).toContain('@');
   });
 });
+
+describe('projecting from the crosswalk reads exactly one catalogue version', () => {
+  // On 2026-09-08 the vendor re-imported the STRM bundle and minted a NEW
+  // scf_version_id (826a1f05…). The old rows (8260df81…) stayed in
+  // scf_control_mappings, and they are the ones carrying the fabricated
+  // `intersects` that the re-import removed. A read that does not name a
+  // version therefore mixes corrected rows with the exact rows the correction
+  // was for — and produces a number nobody can explain, which is the one thing
+  // this projection exists to prevent.
+  function clientRecording(calls: Array<[string, string]>, mappings: unknown[]) {
+    const filterable = (rows: unknown[]) => {
+      const self = {
+        eq(col: string, v: string) {
+          calls.push([col, v]);
+          return self;
+        },
+        maybeSingle: async () => ({
+          data: { vendor_framework_code: 'general-iso-27001-2022', confidence: 'exact' },
+          error: null,
+        }),
+        then: (resolve: (r: { data: unknown[]; error: null }) => unknown) =>
+          resolve({ data: rows, error: null }),
+      };
+      return self;
+    };
+    return {
+      from(table: string) {
+        return {
+          select: () => filterable(table === 'scf_control_mappings' ? mappings : []),
+        };
+      },
+    };
+  }
+
+  it('filters scf_control_mappings by scf_version_id', async () => {
+    const { projectFrameworkFromCrosswalk } = await import('@/lib/assessment/projection');
+    const calls: Array<[string, string]> = [];
+    await projectFrameworkFromCrosswalk(
+      'iso27001',
+      [{ controlId: 'GOV-01', combinedStatus: 'conforming' }],
+      {
+        client: clientRecording(calls, [
+          {
+            requirement_code: 'A.5.1',
+            control_code: 'GOV-01',
+            relationship_type: 'equal',
+            relationship_strength: null,
+            is_official: true,
+          },
+        ]) as never,
+        scfVersionId: '826a1f05-f065-4feb-9f44-ced8019a6701',
+      },
+    ).catch(() => undefined);
+
+    expect(calls).toContainEqual([
+      'scf_version_id',
+      '826a1f05-f065-4feb-9f44-ced8019a6701',
+    ]);
+  });
+});

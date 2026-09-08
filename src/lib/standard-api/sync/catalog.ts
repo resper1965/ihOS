@@ -75,6 +75,49 @@ export async function getLatestScfVersionId(throttle: Throttle): Promise<string>
   return id;
 }
 
+/**
+ * The catalogue version this deployment actually holds locally.
+ *
+ * Distinct from `getLatestScfVersionId`, which asks the API what the newest
+ * version is. That answer is useless to a reader of `scf_controls_cache` and
+ * `scf_control_mappings`: on 2026-09-08 the vendor minted a new version and
+ * for the hour it took to walk the crosswalk, "latest" named a version this
+ * database had almost no rows for.
+ *
+ * The spine tables never delete a version, so both questions must be asked
+ * separately: the API decides what to sync TO, `synced_at` decides what to
+ * read FROM.
+ */
+export async function getCachedScfVersionId(client?: {
+  from(t: string): {
+    select(c: string): {
+      order(c: string, o: { ascending: boolean }): {
+        limit(n: number): PromiseLike<{
+          data: Array<{ scf_version_id?: string }> | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
+  };
+}): Promise<string> {
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const db = client ?? (createAdminClient() as never);
+  const { data, error } = await db
+    .from('scf_controls_cache')
+    .select('scf_version_id')
+    .order('synced_at', { ascending: false })
+    .limit(1);
+  if (error) throw new Error(`could not read scf_controls_cache: ${error.message}`);
+  const id = data?.[0]?.scf_version_id;
+  if (typeof id !== 'string' || id.length === 0) {
+    throw new Error(
+      'scf_controls_cache is empty — run the catalogue sync before projecting ' +
+        'a framework. An empty catalogue is a setup failure, not a 0%.',
+    );
+  }
+  return id;
+}
+
 // ── Frameworks ──────────────────────────────────────────────────────────────
 
 interface VendorFramework {
