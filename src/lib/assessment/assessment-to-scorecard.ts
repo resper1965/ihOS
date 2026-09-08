@@ -41,20 +41,12 @@ export async function syncScorecard(
   const adminSupabase = createAdminClient();
 
   // Run-scoped result quality. These are properties of the ASSESSMENT RUN, not
-  // of any one framework: a control's verdict is estimated because the
-  // authoritative GRC API was unavailable during that run (see
-  // isLocalFallbackEnabled — note it returns true whenever IS_CRON is set, so
-  // automated runs estimate even when GRC_LOCAL_FALLBACK_ENABLED is unset), and
-  // that condition applies to every framework scored in the same run.
-  //
-  // They are recorded on each framework row (not only the 'all' aggregate)
-  // because the dashboard's framework list deliberately skips the aggregate
-  // (`if (code === "all") continue` in compliance-data.ts) — a warning that
-  // lives only on the aggregate would never reach the cards a user actually
-  // reads. Estimated verdicts are already excluded from control_evaluation_cache
-  // (engine.ts) and prefixed [ESTIMATED] in their auditor notes; without these
-  // fields that distinction was lost at the dashboard, which showed a plain
-  // green "Compliant" score with no indication part of it was estimated.
+  // of any one framework. `is_estimated` is now only ever a historical fact:
+  // the local fallback that produced it was removed on 2026-09-09, so no new
+  // run can set it. Rows written before that date still carry it and must
+  // still be shown — the dashboard's framework list skips the 'all' aggregate
+  // (`if (code === "all") continue` in compliance-data.ts), so a warning that
+  // lived only on the aggregate would never reach the cards a user reads.
   const runEstimatedCount = result.totalEstimated ?? 0;
   const runEvaluationErrorCount = result.totalEvaluationErrors ?? 0;
 

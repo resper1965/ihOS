@@ -104,19 +104,8 @@ STANDARD_GRC_API_KEY=standard_live_your-grc-api-key   # prefix: standard_live_ (
 # variable is what broke our assessment runs on 2026-08-26.
 # STANDARD_GRC_TENANT_ID=
 
-# Standard GRC Engine — local resiliency fallback (OPT-IN, default OFF).
-# When the authoritative GRC API is unreachable/denies scope, ihOS by default
-# surfaces a GAP/ERROR rather than estimating (Constitution Principle VIII).
-# Set to "true" ONLY to accept degraded, non-authoritative estimated results
-# (each flagged is_estimated=true and marked needs_review). Keep unset in prod.
-GRC_LOCAL_FALLBACK_ENABLED=false
-
-# Automated (cron) runs are NOT implicitly allowed to estimate. Being a cron is
-# not consent: set this to "true" only if you want scheduled sweeps to produce
-# degraded, non-authoritative results (each flagged is_estimated=true and shown
-# with an "estimated verdicts — needs review" badge on the dashboard) rather
-# than reporting a gap. Keep unset in prod unless that tradeoff is deliberate.
-GRC_CRON_FALLBACK_ENABLED=false
+# There is no local fallback. When the Standard GRC API is unreachable, ihOS
+# reports the failure and produces no figure (Constitution Principle VIII).
 
 # Vercel AI
 VERCEL_AI_GATEWAY_URL=https://gateway.ai.vercel.com/v1

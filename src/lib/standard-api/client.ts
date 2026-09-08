@@ -22,10 +22,6 @@ import type {
   CouncilData,
 } from "./types";
 import { getSecret } from "@/lib/supabase/vault";
-import { getOpenAI } from "@/lib/chat/openai";
-import { generateObject } from "ai";
-import { z } from "zod";
-import { createClient } from "@/lib/supabase/server";
 import { logger } from "@/lib/logger";
 import type { paths } from "./generated/schema";
 
@@ -164,11 +160,6 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
       // RBAC denial, insufficient scope, cross-tenant block) — NEVER degrade to
       // local estimation, which would mask a security/config problem (B3).
       // Only 5xx is a candidate for the (opt-in) resiliency fallback.
-      if (response.status >= 500) {
-        const fallback = await tryLocalFallback(endpoint, payload, `HTTP_${response.status}`);
-        if (fallback !== null) return fallback;
-      }
-
       const error: StandardApiError = json.error ?? {
         code: `HTTP_${response.status}`,
         message: response.statusText || "Unknown error",
@@ -185,19 +176,12 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
     }
 
     if (err instanceof DOMException && err.name === "AbortError") {
-      // Timeout — candidate for fallback (availability problem, not auth).
-      const fallback = await tryLocalFallback(endpoint, payload, "timeout");
-      if (fallback !== null) return fallback;
       throw new StandardApiClientError(
         `Request to ${endpoint} timed out after ${config.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms`,
         "TIMEOUT",
         408,
       );
     }
-
-    // Network error — candidate for fallback.
-    const fallback = await tryLocalFallback(endpoint, payload, err instanceof Error ? err.message : "network_error");
-    if (fallback !== null) return fallback;
 
     const message = err instanceof Error ? err.message : "Unknown network error";
     throw new StandardApiClientError(message, "NETWORK_ERROR", 0);
@@ -237,12 +221,7 @@ async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Pro
     const json = (await response.json()) as { data?: TRes; error?: StandardApiError };
 
     if (!response.ok) {
-      // 401/403 are hard auth errors — never degrade to local (B3). Only 5xx.
-      if (response.status >= 500) {
-        const fallback = await tryLocalFallback(endpoint, null, `HTTP_${response.status}`);
-        if (fallback !== null) return fallback;
-      }
-
+      // 401/403 are hard auth errors — never degrade to local (B3).
       const error: StandardApiError = json.error ?? {
         code: `HTTP_${response.status}`,
         message: response.statusText || "Unknown error",
@@ -259,17 +238,12 @@ async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Pro
     }
 
     if (err instanceof DOMException && err.name === "AbortError") {
-      const fallback = await tryLocalFallback(endpoint, null, "timeout");
-      if (fallback !== null) return fallback;
       throw new StandardApiClientError(
         `Request to ${endpoint} timed out after ${config.timeoutMs ?? DEFAULT_TIMEOUT_MS}ms`,
         "TIMEOUT",
         408,
       );
     }
-
-    const fallback = await tryLocalFallback(endpoint, null, err instanceof Error ? err.message : "network_error");
-    if (fallback !== null) return fallback;
 
     const message = err instanceof Error ? err.message : "Unknown network error";
     throw new StandardApiClientError(message, "NETWORK_ERROR", 0);
@@ -347,13 +321,7 @@ export async function council(request: CouncilRequest): Promise<CouncilData> {
  * Fetch the latest SCF version details from the GRC Engine.
  */
 export async function getLatestScfVersion(): Promise<{ scf_version_id: string; version_label: string }> {
-  try {
-    return await get<{ scf_version_id: string; version_label: string }>("/scf/versions/latest");
-  } catch (err) {
-    const fallback = await tryLocalFallback("/scf/versions/latest", null, err instanceof Error ? err.message : "unknown");
-    if (fallback) return fallback;
-    throw err;
-  }
+  return await get<{ scf_version_id: string; version_label: string }>("/scf/versions/latest");
 }
 
 /**
@@ -362,8 +330,7 @@ export async function getLatestScfVersion(): Promise<{ scf_version_id: string; v
  * `get()` already unwraps the `{ data, trace_id }` envelope, so the real API's
  * paginated list arrives here as a bare array. Normalize to `{ data, total }`
  * regardless of shape — matching getScfFrameworks — so the engine's
- * `batch.data` never silently sees `undefined` (which returned 0 controls and
- * made only the local fallback catalog work).
+ * `batch.data` never silently sees `undefined`.
  */
 export async function getScfControls(
   versionId: string,
@@ -372,24 +339,15 @@ export async function getScfControls(
 ): Promise<{ data: ScfControl[]; total?: number }> {
   const cappedPerPage = Math.min(perPage, 100);
   const endpoint = `/scf/versions/${versionId}/controls?page=${page}&per_page=${cappedPerPage}`;
-  try {
-    const result = await get<any>(endpoint);
-    return normalizeControlsResponse(result);
-  } catch (err) {
-    const fallback = await tryLocalFallback(endpoint, { versionId, page, perPage }, err instanceof Error ? err.message : "unknown");
-    if (fallback) return normalizeControlsResponse(fallback);
-    throw err;
-  }
+  const result = await get<any>(endpoint);
+  return normalizeControlsResponse(result);
 }
 
 /**
  * Normalize the SCF controls list into `{ data, total }` regardless of the
  * response shape after the `{ data, trace_id }` envelope has been unwrapped
  * (bare array, `{ data }`, `{ items }`, or `{ controls }`). The real API
- * returns `{ data, pagination }` per the vendor's spec, but the local
- * fallback (tryStaticCatalogFallback) fabricates a different shape, so this
- * still has two real inputs to reconcile — keep the guessing. Exported for
- * tests.
+ * returns `{ data, pagination }` per the vendor's spec. Exported for tests.
  */
 export function normalizeControlsResponse(result: any): { data: ScfControl[]; total?: number } {
   if (Array.isArray(result)) return { data: result, total: result.length };
@@ -406,399 +364,5 @@ export function normalizeControlsResponse(result: any): { data: ScfControl[]; to
 export async function getScfFrameworks(): Promise<any[]> {
   const result = await get<any[] | { data: any[] }>("/scf/frameworks", { revalidate: 86400 });
   return Array.isArray(result) ? result : result.data || [];
-}
-
-// ---------------------------------------------------------------------------
-// GRC API Resiliency Local Fallback Engines
-// ---------------------------------------------------------------------------
-
-/**
- * Whether the local resiliency fallback is allowed to substitute a result when
- * the authoritative Standard GRC Engine API is unreachable or denies scope.
- *
- * OPT-IN (fail-closed by default). Per Constitution Principle VIII, we do NOT
- * silently estimate/fabricate compliance evaluations. Set
- * `GRC_LOCAL_FALLBACK_ENABLED=true` to explicitly accept degraded/estimated
- * results (each is flagged `is_estimated: true`). `GRC_CRON_FALLBACK_ENABLED=true`
- * is the equivalent opt-in for automated (IS_CRON) runs — being a cron is not by
- * itself consent to estimate. The legacy `GRC_FALLBACK_DISABLED=true` kill switch
- * is still honored as a hard-off over both.
- */
-export function isLocalFallbackEnabled(): boolean {
-  if (process.env.GRC_FALLBACK_DISABLED === "true") return false;
-  // Automated runs may prefer degraded-but-flagged results over an empty
-  // sweep, but that is a deliberate posture, not a side effect of being a
-  // cron. IS_CRON alone must NOT enable estimation: it is set for unrelated
-  // reasons (RLS client selection, cookie handling) and until commit 4a4d6f8
-  // was never unset, so piggybacking on it silently disabled the fail-closed
-  // default for ordinary requests in warm instances too.
-  if (process.env.IS_CRON === "true") {
-    return process.env.GRC_CRON_FALLBACK_ENABLED === "true";
-  }
-  return process.env.GRC_LOCAL_FALLBACK_ENABLED === "true";
-}
-
-// Endpoints whose fallback is a deterministic computation over REAL persisted
-// data (evidence_evaluations, scf_framework_mappings) — degraded but grounded.
-// Everything else (LLM judgment, hardcoded scores) is a stronger concern.
-const GROUNDED_FALLBACK_ENDPOINTS = new Set([
-  "/intelligence/compliance-score",
-  "/intelligence/cross-coverage",
-  "/intelligence/blast-radius",
-]);
-
-async function tryLocalFallback(endpoint: string, payload: any, reason: string): Promise<any | null> {
-  const cleanEndpoint = endpoint.split("?")[0];
-
-  // Everything is fail-closed by default — including the SCF catalog. The
-  // Standard API is the SOURCE OF TRUTH for controls/frameworks; serving a
-  // hardcoded stale subset during an outage would silently corrupt every
-  // downstream assessment (worse than a service estimate). So an outage
-  // surfaces as an error unless the operator explicitly opts into degraded
-  // mode via GRC_LOCAL_FALLBACK_ENABLED.
-  if (!isLocalFallbackEnabled()) {
-    logger.warn("Standard GRC API unavailable and local fallback is DISABLED — surfacing error instead of estimating/serving stale truth", {
-      context: "standard-api",
-      meta: { endpoint: cleanEndpoint, reason },
-    });
-    return null;
-  }
-
-  // Opt-in degraded mode: SCF catalog reference data (still a best-effort
-  // stand-in for the authoritative catalog — logged as such).
-  const staticFallback = tryStaticCatalogFallback(cleanEndpoint);
-  if (staticFallback !== null) {
-    logger.error("Serving STALE hardcoded SCF catalog from local fallback (source of truth unavailable)", {
-      context: "standard-api",
-      meta: { endpoint: cleanEndpoint, reason },
-    });
-    return staticFallback;
-  }
-
-  // Fallback is explicitly enabled: log that we are serving an ESTIMATED result.
-  const grounded = GROUNDED_FALLBACK_ENDPOINTS.has(cleanEndpoint);
-  const note = `Estimated locally (${reason}) — Standard GRC Engine API was unavailable. ${
-    grounded ? "Computed from persisted evidence/mappings." : "Non-authoritative approximation."
-  }`;
-  if (grounded) {
-    logger.warn("Serving ESTIMATED (grounded) GRC result from local fallback", {
-      context: "standard-api",
-      meta: { endpoint: cleanEndpoint, reason },
-    });
-  } else {
-    // LLM-judged / heuristic results are the true fabrication risk — Sentry error.
-    logger.error("Serving ESTIMATED (non-authoritative) GRC result from local fallback", {
-      context: "standard-api",
-      meta: { endpoint: cleanEndpoint, reason },
-    });
-  }
-
-  switch (cleanEndpoint) {
-    case "/gap/evaluate-evidence":
-      return withEstimatedMarker(await localEvaluateEvidence(payload), note);
-    case "/intelligence/compliance-score":
-      return withEstimatedMarker(await localComplianceScore(payload), note);
-    case "/intelligence/cross-coverage":
-      return withEstimatedMarker(await localCrossCoverage(payload), note);
-    case "/intelligence/roi-path":
-      return withEstimatedMarker(await localRoiPath(payload), note);
-    case "/intelligence/blast-radius":
-      return withEstimatedMarker(await localBlastRadius(payload), note);
-    default:
-      return null;
-  }
-}
-
-/** Reference data (not evaluations) — always safe to serve on outage. */
-function tryStaticCatalogFallback(cleanEndpoint: string): any | null {
-  switch (cleanEndpoint) {
-    case "/scf/frameworks":
-      return [
-        { framework_code: "iso27001", framework_name: "ISO/IEC 27001:2022" },
-        { framework_code: "soc2", framework_name: "SOC 2 Type II" },
-        { framework_code: "hipaa", framework_name: "HIPAA" },
-        { framework_code: "nist_800_53", framework_name: "NIST 800-53" },
-        { framework_code: "iso27701", framework_name: "ISO/IEC 27701:2019" },
-        { framework_code: "fedramp", framework_name: "FedRAMP" }
-      ];
-    case "/scf/versions/latest":
-      return { scf_version_id: "2024.1", version_label: "SCF 2024.1" };
-    default:
-      if (cleanEndpoint.startsWith("/scf/versions/") && cleanEndpoint.endsWith("/controls")) {
-        return {
-          data: [
-            {
-              control_id: "A.5.1",
-              control_name: "Policies for information security",
-              description: "Policies for information security shall be defined, approved, and published.",
-              domain: "GOV",
-            },
-            {
-              control_id: "A.5.15",
-              control_name: "Access control",
-              description: "Access to physical and logical assets shall be restricted based on business requirements.",
-              domain: "AST",
-            }
-          ],
-          total: 2
-        };
-      }
-      return null;
-  }
-}
-
-/** Stamp an estimation marker onto a fallback result object. */
-function withEstimatedMarker<T extends object>(data: T, note: string): T & { is_estimated: true; estimation_note: string } {
-  return { ...data, is_estimated: true as const, estimation_note: note };
-}
-
-async function localEvaluateEvidence(
-  request: EvaluateEvidenceRequest
-): Promise<EvaluateEvidenceData> {
-  console.log("[GRC Fallback] Running local evaluate-evidence via OpenAI...");
-  try {
-    const openai = await getOpenAI();
-    const result = await generateObject({
-      model: openai("gpt-4o-mini"),
-      schema: z.object({
-        is_compliant: z.boolean(),
-        confidence_score: z.number().min(0).max(100),
-        missing_elements: z.array(z.string()),
-        auditor_notes: z.string(),
-      }),
-      system: `You are an expert GRC (Governance, Risk and Compliance) Auditor.
-Your task is to evaluate if the provided evidence description satisfies the control requirement.
-Assess compliance status honestly based on the evidence details:
-- is_compliant: true only if the evidence description explicitly shows that the control requirements are implemented.
-- confidence_score: a rating from 0 to 100 based on evidence sufficiency and detail.
-- missing_elements: bullet points of compliance criteria that are missing or not verified.
-- auditor_notes: explanation of compliance status and what is missing if non-compliant.`,
-      prompt: `Control Requirement:\n${request.controlRequirement}\n\nEvidence Description:\n${request.evidenceDescription}`,
-    });
-
-    return {
-      is_compliant: result.object.is_compliant,
-      confidence_score: result.object.confidence_score,
-      missing_elements: result.object.missing_elements,
-      auditor_notes: result.object.auditor_notes,
-    };
-  } catch (err) {
-    console.error("[GRC Fallback] Local evaluate-evidence failed:", err);
-    return {
-      is_compliant: false,
-      confidence_score: 0,
-      missing_elements: ["Error running fallback evaluation"],
-      auditor_notes: `Fallback evaluation failed: ${err instanceof Error ? err.message : "Unknown error"}`,
-    };
-  }
-}
-
-async function localComplianceScore(
-  request: ComplianceScoreRequest
-): Promise<ComplianceScoreData> {
-  console.log("[GRC Fallback] Running local compliance-score computation...");
-  try {
-    const supabase = await createClient();
-    
-    // Fetch evidence evaluations
-    const { data: evals } = await supabase
-      .from("evidence_evaluations")
-      .select("control_code, is_compliant, confidence_score");
-
-    const frameworkCode = request.framework_code || request.regulation_id || "iso27001";
-    
-    // Fetch total required controls from mappings
-    const { data: mappings } = await supabase
-      .from("scf_framework_mappings")
-      .select("scf_control_code")
-      .eq("framework_code", frameworkCode);
-
-    const totalControls = mappings?.length || 0;
-    
-    // Only count implemented controls that actually belong to this framework
-    const frameworkControlIds = new Set(mappings?.map((m: any) => m.scf_control_code) || []);
-    
-    let implementedCount = 0;
-    if (evals && frameworkControlIds.size > 0) {
-      implementedCount = evals.filter((e: any) => e.is_compliant && frameworkControlIds.has(e.control_code)).length;
-    }
-
-    const score = totalControls > 0 ? Math.round((implementedCount / totalControls) * 100) : 0;
-
-    return {
-      framework_code: frameworkCode,
-      regulation_id: frameworkCode,
-      score,
-      overall_score: score,
-      scf_controls_implemented_count: implementedCount,
-      total_required_controls: totalControls,
-      assessed_at: new Date().toISOString(),
-      message: "Computed locally via active evidence evaluations",
-    };
-  } catch (err) {
-    // No grounded answer exists when the evaluation/mapping read fails, and a
-    // compliance score is exactly the kind of claim that must never be invented
-    // (Constitution Principle VIII — same reason createMockThreatModel was
-    // deleted in specs/001 T030). Throw so the caller reports a gap; the
-    // agent tool at src/lib/agents/tools/index.ts already handles this.
-    console.error("[GRC Fallback] Local compliance score failed:", err);
-    throw err;
-  }
-}
-
-async function localCrossCoverage(
-  request: CrossCoverageRequest
-): Promise<CrossCoverageData> {
-  console.log("[GRC Fallback] Running local cross-coverage analysis...");
-  try {
-    const supabase = await createClient();
-    const { data: mappings } = await supabase
-      .from("scf_framework_mappings")
-      .select("framework_code, scf_control_code")
-      .in("framework_code", [request.source_framework, request.target_framework]);
-
-    const sourceControls = new Set<string>(
-      mappings
-        ?.filter((m: any) => m.framework_code === request.source_framework)
-        .map((m: any) => m.scf_control_code) || []
-    );
-
-    const targetControls = new Set<string>(
-      mappings
-        ?.filter((m: any) => m.framework_code === request.target_framework)
-        .map((m: any) => m.scf_control_code) || []
-    );
-
-    const intersection = new Set<string>(
-      Array.from(sourceControls).filter((x) => targetControls.has(x))
-    );
-
-
-    const overlapPercentage = targetControls.size > 0 
-      ? Math.round((intersection.size / targetControls.size) * 100) 
-      : 0;
-
-    return {
-      source_framework: request.source_framework,
-      target_framework: request.target_framework,
-      overlap_percentage: overlapPercentage,
-      coverage_percentage: overlapPercentage,
-      mapped_controls: Array.from(intersection).map(code => ({
-        source_control_id: code,
-        target_control_ids: [code],
-        coverage_status: "full",
-        relationship: "Exact match in Secure Controls Framework (SCF)"
-      })),
-      gaps: Array.from(targetControls).filter(code => !sourceControls.has(code)).map(code => ({
-        target_control_id: code,
-        target_control_name: `Control ${code}`
-      }))
-    };
-  } catch (err) {
-    // No grounded answer exists when the mapping read fails, and a coverage
-    // analysis is exactly the kind of claim that must never be invented
-    // (Constitution Principle VIII — same reason createMockThreatModel was
-    // deleted in specs/001 T030). Throw so the caller reports a gap; the
-    // agent tool at src/lib/agents/tools/index.ts already handles this.
-    console.error("[GRC Fallback] Local cross coverage failed:", err);
-    throw err instanceof Error
-      ? err
-      : new Error("Local cross-coverage failed and no grounded result is available");
-  }
-}
-
-async function localRoiPath(
-  request: RoiPathRequest
-): Promise<RoiPathData> {
-  console.log("[GRC Fallback] Running local ROI path calculation...");
-  try {
-    const supabase = await createClient();
-    const targetFramework = request.target_framework || "iso27001";
-    
-    const { data: mappings } = await supabase
-      .from("scf_framework_mappings")
-      .select("scf_control_code")
-      .eq("framework_code", targetFramework);
-
-    const { data: evals } = await supabase
-      .from("evidence_evaluations")
-      .select("control_code")
-      .eq("is_compliant", true);
-
-    const compliant = new Set(evals?.map((e: any) => e.control_code) || []);
-    const missing = (mappings || [])
-      .map((m: any) => m.scf_control_code)
-      .filter((code: string) => !compliant.has(code));
-
-    const topN = request.top_n || 5;
-    // No ROI score: the local fallback has no cost, coverage or impact data to
-    // derive one from, and `95 - idx * 4` derived it from the control's position
-    // in an arbitrarily-ordered list — the same defect as the cron's
-    // `60 + (name.length * 3) % 40`. The ordering below is still useful (these
-    // are the unimplemented controls) but it is not a ranking, and must not be
-    // presented as one.
-    const pathItems = missing.slice(0, topN).map((code: string) => ({
-      control_id: code,
-      roi_score: null,
-      key_mitigations: [`Implement requirement for ${code}`]
-    }));
-
-    return {
-      target_framework: targetFramework,
-      top_n_requested: topN,
-      total_missing: missing.length,
-      roi_path: pathItems,
-      summary: `Localized ROI optimization calculated ${missing.length} missing controls.`
-    };
-  } catch (err) {
-    console.error("[GRC Fallback] Local ROI path failed:", err);
-    return {
-      total_missing: 0,
-      roi_path: []
-    };
-  }
-}
-
-async function localBlastRadius(
-  request: BlastRadiusRequest
-): Promise<BlastRadiusData> {
-  console.log("[GRC Fallback] Running local blast radius analysis...");
-  try {
-    const supabase = await createClient();
-    const { data: mappings } = await supabase
-      .from("scf_framework_mappings")
-      .select("framework_code, scf_control_code")
-      .eq("scf_control_code", request.control_id);
-
-    const affected: Record<string, string[]> = {};
-    (mappings || []).forEach((m: any) => {
-      if (!affected[m.framework_code]) {
-        affected[m.framework_code] = [];
-      }
-      affected[m.framework_code].push(m.scf_control_code);
-    });
-
-    const affectedFrameworks = Object.entries(affected).map(([code, controls]) => ({
-      framework_code: code,
-      affected_controls: controls,
-      risk_level: "high" as const
-    }));
-
-    return {
-      control_id: request.control_id,
-      affected_frameworks: affectedFrameworks,
-      // `|| 1` reported one affected control when the mapping read found none,
-      // contradicting the `|| 0` in the summary string built from the same array.
-      total_affected_controls: mappings?.length ?? 0,
-      risk_summary: `Failure of ${request.control_id} impacts ${mappings?.length || 0} regulatory mappings.`
-    };
-  } catch (err) {
-    console.error("[GRC Fallback] Local blast radius failed:", err);
-    return {
-      control_id: request.control_id,
-      affected_frameworks: [],
-      total_affected_controls: 0
-    };
-  }
 }
 
