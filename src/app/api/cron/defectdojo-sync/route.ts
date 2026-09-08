@@ -4,7 +4,8 @@
 // This is the ANALYTICAL ("observed moment") posture feed. Each run:
 //   1. Pulls active findings per linked DefectDojo product
 //      (defectdojo_product_links; falls back to DEFECTDOJO_PRODUCT_ID).
-//   2. Resolves each finding onto the SCF spine via scf_framework_mappings
+//   2. Resolves each finding onto the SCF spine via scf_control_mappings,
+//      version-scoped, reached through a curated vendor framework identity
 //      (fail-closed: unmapped findings are reported, never guessed).
 //   3. Upserts defectdojo_findings and rebuilds runtime_control_signals.
 //   4. For SCF controls now observed VIOLATED whose documental verdict is
@@ -171,7 +172,8 @@ export async function GET(req: Request) {
     for (const { target, findings } of fetched) {
       for (const finding of findings) {
         const mapped = mappedByFindingId.get(finding.id)!;
-        const scfControls = scfControlsForFinding(resolution, mapped.controlCodes, mapped.nistControls);
+        const scfLinks = scfControlsForFinding(resolution, mapped.controlCodes, mapped.nistControls);
+        const scfControls = scfLinks.map((link) => link.scfControlCode);
         if (scfControls.length === 0) unmappedFindings++;
 
         upsertRows.push({

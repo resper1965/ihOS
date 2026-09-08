@@ -9,100 +9,133 @@ import {
 } from '@/lib/integrations/defectdojo/scf-resolver';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-/** Chainable admin mock whose final `.in()` resolves per framework_code. */
-function mockAdminWithMappings(
-  rowsByFramework: Record<string, Array<{ target_control_id: string; scf_control_code: string | null }>>,
+/**
+ * Admin mock for the spine shape: framework_identity_curation resolves a local
+ * code to a slug, then scf_control_mappings is read version-scoped,
+ * framework-scoped and requirement-scoped.
+ */
+function mockAdminOnSpine(
+  slugByLocal: Record<string, string | null>,
+  rowsBySlug: Record<string, Array<{
+    requirement_code: string;
+    control_code: string | null;
+    relationship_type: string | null;
+  }>>,
 ) {
   return {
-    from: vi.fn(() => ({
-      select: vi.fn(() => ({
-        eq: vi.fn((_col: string, framework: string) => ({
-          in: vi.fn(async () => ({ data: rowsByFramework[framework] ?? [], error: null })),
+    from: vi.fn((table: string) => {
+      if (table === 'framework_identity_curation') {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn((_c: string, local: string) => ({
+              maybeSingle: vi.fn(async () => ({
+                data: { vendor_framework_code: slugByLocal[local] ?? null, confidence: 'exact' },
+                error: null,
+              })),
+            })),
+          })),
+        };
+      }
+      // scf_control_mappings
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            eq: vi.fn((_c: string, slug: string) => ({
+              in: vi.fn(async () => ({ data: rowsBySlug[slug] ?? [], error: null })),
+            })),
+          })),
         })),
-      })),
-    })),
+      };
+    }),
   } as unknown as SupabaseClient;
 }
 
-describe('resolveScfMappings', () => {
-  it('resolves ISO and NIST controls to SCF codes from scf_framework_mappings', async () => {
-    const admin = mockAdminWithMappings({
-      iso27001: [
-        { target_control_id: 'A.8.26', scf_control_code: 'TDA-02' },
-        { target_control_id: 'A.8.26', scf_control_code: 'TDA-06' },
+describe('resolveScfMappings on the spine', () => {
+  const SLUGS = {
+    iso27001: 'general-iso-27001-2022',
+    nist_800_53: 'general-nist-800-53-r5-2',
+  };
+
+  it('resolves through the curated identity, carrying the relationship type', async () => {
+    const admin = mockAdminOnSpine(SLUGS, {
+      'general-iso-27001-2022': [
+        { requirement_code: 'A.8.26', control_code: 'TDA-02', relationship_type: 'equal' },
+        { requirement_code: 'A.8.26', control_code: 'TDA-06', relationship_type: 'intersects' },
       ],
-      nist_800_53: [
-        { target_control_id: 'SI-10', scf_control_code: 'TDA-02' },
+      'general-nist-800-53-r5-2': [
+        { requirement_code: 'SI-10', control_code: 'TDA-02', relationship_type: 'subset' },
       ],
     });
 
-    const result = await resolveScfMappings(admin, ['A.8.26'], ['SI-10']);
+    const result = await resolveScfMappings(admin, ['A.8.26'], ['SI-10'], { scfVersionId: 'v1' });
 
-    expect(result.byTargetControl.get('A.8.26')).toEqual(['TDA-02', 'TDA-06']);
-    expect(result.byTargetControl.get('SI-10')).toEqual(['TDA-02']);
+    expect(result.byTargetControl.get('A.8.26')).toEqual([
+      { scfControlCode: 'TDA-02', relationshipType: 'equal' },
+      { scfControlCode: 'TDA-06', relationshipType: 'intersects' },
+    ]);
+    expect(result.byTargetControl.get('SI-10')).toEqual([
+      { scfControlCode: 'TDA-02', relationshipType: 'subset' },
+    ]);
     expect(result.unmappedControls).toEqual([]);
   });
 
-  it('fails closed: unmapped controls are reported, never guessed', async () => {
-    const admin = mockAdminWithMappings({
-      iso27001: [{ target_control_id: 'A.8.26', scf_control_code: 'TDA-02' }],
+  it('drops no_relation, which is a statement that they do NOT relate', async () => {
+    const admin = mockAdminOnSpine(SLUGS, {
+      'general-iso-27001-2022': [
+        { requirement_code: 'A.8.26', control_code: 'TDA-02', relationship_type: 'no_relation' },
+      ],
     });
 
-    const result = await resolveScfMappings(admin, ['A.8.26', 'A.5.17'], ['IA-5']);
+    const result = await resolveScfMappings(admin, ['A.8.26'], [], { scfVersionId: 'v1' });
 
-    expect(result.byTargetControl.has('A.5.17')).toBe(false);
-    expect(result.byTargetControl.has('IA-5')).toBe(false);
-    expect(result.unmappedControls.sort()).toEqual(['A.5.17', 'IA-5']);
+    expect(result.byTargetControl.has('A.8.26')).toBe(false);
+    expect(result.unmappedControls).toEqual(['A.8.26']);
   });
 
-  it('skips NULL scf_control_code rows and empty inputs', async () => {
-    const admin = mockAdminWithMappings({
-      iso27001: [{ target_control_id: 'A.8.26', scf_control_code: null }],
+  it('keeps a null relationship, marked as unrecorded rather than dropped', async () => {
+    // The vendor records no relationship for 22% of the bundle. That is an
+    // honest absence, and it is NOT the same as no_relation.
+    const admin = mockAdminOnSpine(SLUGS, {
+      'general-iso-27001-2022': [
+        { requirement_code: 'A.8.26', control_code: 'TDA-02', relationship_type: null },
+      ],
     });
 
-    const result = await resolveScfMappings(admin, ['A.8.26'], []);
-    expect(result.byTargetControl.size).toBe(0);
-    expect(result.unmappedControls).toEqual(['A.8.26']);
+    const result = await resolveScfMappings(admin, ['A.8.26'], [], { scfVersionId: 'v1' });
 
-    const empty = await resolveScfMappings(admin, [], []);
-    expect(empty.byTargetControl.size).toBe(0);
-    expect(empty.unmappedControls).toEqual([]);
+    expect(result.byTargetControl.get('A.8.26')).toEqual([
+      { scfControlCode: 'TDA-02', relationshipType: null },
+    ]);
   });
 
-  it('degrades to unmapped (not a throw) when the mapping query errors', async () => {
-    const admin = {
-      from: vi.fn(() => ({
-        select: vi.fn(() => ({
-          eq: vi.fn(() => ({
-            in: vi.fn(async () => ({ data: null, error: { message: 'relation missing' } })),
-          })),
-        })),
-      })),
-    } as unknown as SupabaseClient;
+  it('degrades to unmapped when a framework has no curated identity', async () => {
+    // Not a throw: one framework without an identity must not stop the other
+    // framework's findings from resolving.
+    const admin = mockAdminOnSpine({ iso27001: SLUGS.iso27001, nist_800_53: null }, {
+      'general-iso-27001-2022': [
+        { requirement_code: 'A.8.26', control_code: 'TDA-02', relationship_type: 'equal' },
+      ],
+    });
 
-    const result = await resolveScfMappings(admin, ['A.8.26'], []);
-    expect(result.byTargetControl.size).toBe(0);
-    expect(result.unmappedControls).toEqual(['A.8.26']);
+    const result = await resolveScfMappings(admin, ['A.8.26'], ['SI-10'], { scfVersionId: 'v1' });
+
+    expect(result.byTargetControl.has('A.8.26')).toBe(true);
+    expect(result.unmappedControls).toEqual(['SI-10']);
   });
 });
 
 describe('scfControlsForFinding', () => {
-  it('unions and deduplicates SCF codes across the finding\'s ISO and NIST controls', () => {
+  it('dedupes by control, keeping the strongest relationship', () => {
     const resolution = {
       byTargetControl: new Map([
-        ['A.8.26', ['TDA-02', 'TDA-06']],
-        ['SI-10', ['TDA-02']],
-        ['IA-2', ['IAC-01']],
+        ['A.8.26', [{ scfControlCode: 'TDA-02', relationshipType: 'intersects' as const }]],
+        ['SI-10', [{ scfControlCode: 'TDA-02', relationshipType: 'equal' as const }]],
       ]),
       unmappedControls: [],
     };
 
-    const codes = scfControlsForFinding(resolution, ['A.8.26'], ['SI-10', 'IA-2']);
-    expect(codes).toEqual(['IAC-01', 'TDA-02', 'TDA-06']);
-  });
-
-  it('returns empty for a fully unmapped finding', () => {
-    const resolution = { byTargetControl: new Map<string, string[]>(), unmappedControls: ['A.5.17'] };
-    expect(scfControlsForFinding(resolution, ['A.5.17'], [])).toEqual([]);
+    expect(scfControlsForFinding(resolution, ['A.8.26'], ['SI-10'])).toEqual([
+      { scfControlCode: 'TDA-02', relationshipType: 'equal' },
+    ]);
   });
 });
