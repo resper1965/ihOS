@@ -198,9 +198,10 @@ export async function GET(req: Request) {
           synced_at: now,
         });
 
-        for (const scfCode of scfControls) {
+        for (const link of scfLinks) {
           signalRows.push({
-            scf_control_code: scfCode,
+            scf_control_code: link.scfControlCode,
+            relationship_type: link.relationshipType,
             product_version_id: target.productVersionId,
             source: 'defectdojo',
             source_ref: String(finding.id),
