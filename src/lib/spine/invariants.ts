@@ -12,6 +12,7 @@
 
 import { FRAMEWORK_REGISTRY } from '@/lib/assessment/framework-registry';
 import { resolveVendorFrameworkCode } from '@/lib/assessment/curation/identity';
+import { CATALOGUE_BASELINE } from '@/lib/spine/baseline';
 
 export interface InvariantFailure {
   framework: string;
@@ -133,6 +134,114 @@ export async function checkCurationVersionCurrent(
         `"${String(row.confidence ?? 'unknown')}". A person must reconfirm which vendor ` +
         `framework this local code means in the new catalogue.`,
     });
+  }
+
+  return failures;
+}
+
+export interface CountInvariantFailure {
+  framework: string;
+  reason: string;
+}
+
+/**
+ * Whether the catalogue still holds what it held when someone last measured.
+ *
+ * checkOfferedFrameworksResolve asks a binary question — does this framework
+ * match any row at all — and soc2 falling from 1,478 rows to 12 answers yes
+ * while the percentage on the screen moves. This check compares against a
+ * number a person wrote down.
+ *
+ * Counts are exact. Never count by reading pages: PostgREST gives no stable row
+ * order between two range() calls without .order(), so an unordered paged read
+ * skips and repeats rows. That is not hypothetical — it reported TX-LEVEL-2 at
+ * zero while this was being designed, against a true count of 366.
+ *
+ * When the catalogue version has moved, every count is skipped and the skip is
+ * the single failure returned. A count taken against a different catalogue is
+ * not a measurement of anything, and eight or nine of them would bury the one
+ * fact worth reading: the catalogue moved.
+ */
+export async function checkMappingCountsStable(
+  client: unknown,
+  scfVersionId: string,
+  baseline: typeof CATALOGUE_BASELINE = CATALOGUE_BASELINE,
+): Promise<CountInvariantFailure[]> {
+  if (baseline.scfVersionId !== scfVersionId) {
+    return [
+      {
+        framework: '(catalogue)',
+        reason:
+          `count checks skipped: the baseline was measured against catalogue version ` +
+          `${baseline.scfVersionId}, and the version in force is ${scfVersionId}. ` +
+          `Re-measure with exact counts and commit the new numbers in ` +
+          `src/lib/spine/baseline.ts, stating what moved.`,
+      },
+    ];
+  }
+
+  const db = client as {
+    from: (t: string) => {
+      select: (c: string, o?: unknown) => {
+        eq: (c: string, v: string) => {
+          eq: (c: string, v: string) => Promise<{ count: number | null; error: { message: string } | null }>;
+        } & PromiseLike<{ count: number | null; error: { message: string } | null }>;
+      };
+    };
+  };
+
+  const failures: CountInvariantFailure[] = [];
+
+  const totalQuery = await db
+    .from('scf_control_mappings')
+    .select('*', { count: 'exact', head: true })
+    .eq('scf_version_id', scfVersionId);
+
+  if (totalQuery.error) {
+    failures.push({ framework: '(catalogue)', reason: `total count failed: ${totalQuery.error.message}` });
+  } else if ((totalQuery.count ?? 0) !== baseline.totalMappings) {
+    failures.push({
+      framework: '(catalogue)',
+      reason:
+        `catalogue holds ${totalQuery.count ?? 0} mapping rows in version ${scfVersionId}; ` +
+        `the baseline records ${baseline.totalMappings}. Either the vendor re-imported or ` +
+        `our walk is incomplete, and those call for different work.`,
+    });
+  }
+
+  for (const [localCode, expected] of Object.entries(baseline.byFramework)) {
+    let slug: string;
+    try {
+      slug = await resolveVendorFrameworkCode(localCode, client as never);
+    } catch (err) {
+      failures.push({
+        framework: localCode,
+        reason: `no curated vendor identity: ${err instanceof Error ? err.message : String(err)}`,
+      });
+      continue;
+    }
+
+    const { count, error } = await db
+      .from('scf_control_mappings')
+      .select('*', { count: 'exact', head: true })
+      .eq('scf_version_id', scfVersionId)
+      .eq('framework_code', slug);
+
+    if (error) {
+      failures.push({ framework: localCode, reason: `count failed for "${slug}": ${error.message}` });
+      continue;
+    }
+
+    const observed = count ?? 0;
+    if (observed !== expected) {
+      failures.push({
+        framework: localCode,
+        reason:
+          `"${slug}" holds ${observed} mapping rows in version ${scfVersionId}; the baseline ` +
+          `records ${expected}. Any figure projected for ${localCode} has moved by the same ` +
+          `amount, silently.`,
+      });
+    }
   }
 
   return failures;

@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   checkOfferedFrameworksResolve,
   checkCurationVersionCurrent,
+  checkMappingCountsStable,
   KNOWN_UNCURATED,
 } from '@/lib/spine/invariants';
 
@@ -168,5 +169,123 @@ describe('a curated identity decided against an older catalogue', () => {
     );
     expect(failures).toHaveLength(1);
     expect(failures[0].reason).toContain('relation does not exist');
+  });
+});
+
+/**
+ * A client for the count check. `slugs` maps local_code to curated slug;
+ * `counts` maps a slug to its exact row count. The version total is the sum
+ * unless `total` is given.
+ */
+function countingClient(
+  slugs: Record<string, string>,
+  counts: Record<string, number>,
+  total?: number,
+) {
+  return {
+    from: (table: string) => ({
+      select: (_cols: string, _opts?: unknown) => ({
+        eq: (_col: string, v1: string) => {
+          if (table === 'framework_identity_curation') {
+            return {
+              maybeSingle: async () => ({
+                data: { vendor_framework_code: slugs[v1] ?? null, confidence: 'exact' },
+                error: null,
+              }),
+            };
+          }
+          // scf_control_mappings: .eq(version).eq(framework_code) counts one
+          // framework; .eq(version) awaited directly counts the whole version.
+          const versionOnly = {
+            count: total ?? Object.values(counts).reduce((a, b) => a + b, 0),
+            error: null as { message: string } | null,
+          };
+          return {
+            eq: async (_c2: string, slug: string) => ({
+              count: counts[slug] ?? 0,
+              error: null,
+            }),
+            then: (resolve: (v: typeof versionOnly) => unknown) => resolve(versionOnly),
+          };
+        },
+      }),
+    }),
+  };
+}
+
+const BASE = {
+  scfVersionId: 'v-current',
+  totalMappings: 396,
+  byFramework: { iso27001: 316, soc2: 80 } as Record<string, number>,
+};
+
+describe('a mapping count that moves without reaching zero', () => {
+  it('passes when every count matches the baseline', async () => {
+    const failures = await checkMappingCountsStable(
+      countingClient(
+        { iso27001: 'general-iso-27001-2022', soc2: 'general-aicpa-tsc-2017' },
+        { 'general-iso-27001-2022': 316, 'general-aicpa-tsc-2017': 80 },
+      ),
+      'v-current',
+      BASE,
+    );
+    expect(failures).toEqual([]);
+  });
+
+  it('fails a framework whose count moved, naming both numbers', async () => {
+    // The gap this check exists for: checkOfferedFrameworksResolve is binary,
+    // so 1,478 rows falling to 12 passes it while the published percentage
+    // changes underneath.
+    const failures = await checkMappingCountsStable(
+      countingClient(
+        { iso27001: 'general-iso-27001-2022', soc2: 'general-aicpa-tsc-2017' },
+        { 'general-iso-27001-2022': 12, 'general-aicpa-tsc-2017': 80 },
+        396,
+      ),
+      'v-current',
+      BASE,
+    );
+    expect(failures).toHaveLength(1);
+    expect(failures[0].framework).toBe('iso27001');
+    expect(failures[0].reason).toContain('316');
+    expect(failures[0].reason).toContain('12');
+  });
+
+  it('fails when the catalogue total moved even if every framework held', async () => {
+    const failures = await checkMappingCountsStable(
+      countingClient(
+        { iso27001: 'general-iso-27001-2022', soc2: 'general-aicpa-tsc-2017' },
+        { 'general-iso-27001-2022': 316, 'general-aicpa-tsc-2017': 80 },
+        70000,
+      ),
+      'v-current',
+      BASE,
+    );
+    expect(failures).toHaveLength(1);
+    expect(failures[0].framework).toBe('(catalogue)');
+    expect(failures[0].reason).toContain('70000');
+  });
+
+  it('skips every count when the catalogue version has moved, and says so', async () => {
+    // Spec §7. Counts taken against a different catalogue measure nothing, and
+    // nine arithmetic failures would bury the one fact that matters.
+    const failures = await checkMappingCountsStable(
+      countingClient({ iso27001: 'general-iso-27001-2022' }, { 'general-iso-27001-2022': 999 }),
+      'v-moved',
+      BASE,
+    );
+    expect(failures).toHaveLength(1);
+    expect(failures[0].reason).toMatch(/skipped/i);
+    expect(failures[0].reason).toContain('v-current');
+    expect(failures[0].reason).toContain('v-moved');
+  });
+
+  it('turns an uncurated local code into one failure instead of throwing', async () => {
+    const failures = await checkMappingCountsStable(
+      countingClient({ soc2: 'general-aicpa-tsc-2017' }, { 'general-aicpa-tsc-2017': 80 }, 396),
+      'v-current',
+      BASE,
+    );
+    expect(failures.some((f) => f.framework === 'iso27001')).toBe(true);
   });
 });
