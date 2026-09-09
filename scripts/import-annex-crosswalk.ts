@@ -46,12 +46,14 @@ async function main() {
   // .limit() does not lift it. The legacy table holds 10,074.
   //
   // .order() alongside .range(): without a deterministic order, Postgres gives
-  // no guarantee of stable row order between two range() requests -- page 2
-  // could repeat a row from page 1 and skip another, and nothing in the
-  // "to import: N rows" summary below would tell the difference. target_control_id
-  // alone is not unique (~21 rows share every one of the 125 distinct ids), so a
-  // second key -- the only other column in this select -- is needed to reach a
-  // total order.
+  // no guarantee of stable row order between two range() requests -- a page
+  // boundary landing inside a tie can silently repeat OR skip a row, and
+  // nothing in the "to import: N rows" summary below would tell the
+  // difference (a skip would just read as one fewer legacy row). The unique
+  // constraint is (framework_code, target_control_id, scf_control_code); the
+  // first two of those keys still tie on framework_code alone, so all three
+  // are ordered here even though only two are selected -- a column need not
+  // be selected to be ordered by.
   const legacy: LegacyRow[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await db
@@ -59,6 +61,7 @@ async function main() {
       .select('target_control_id, scf_control_code')
       .order('target_control_id')
       .order('scf_control_code')
+      .order('framework_code')
       .range(from, from + PAGE - 1);
     if (error) throw new Error(`read scf_framework_mappings: ${error.message}`);
     const rows = data ?? [];
