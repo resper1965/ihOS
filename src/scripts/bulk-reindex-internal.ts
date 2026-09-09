@@ -20,6 +20,24 @@ import { extractText } from '../lib/chat/document-extractor';
 import { deleteControlProvenance } from '../lib/chat/control-provenance';
 import { runPostIngestPipeline } from '../lib/chat/post-ingest-pipeline';
 
+/**
+ * O mime do formato que o documento realmente tem.
+ *
+ * Um formato ausente ou desconhecido nao vira 'text/plain' aqui: devolver algo
+ * generico e o que fazia resolveFileType aceitar uma planilha como texto. O
+ * extrator recusa o que nao sabe ler, e este mapa nao tenta ajuda-lo a enganar.
+ */
+function mimeFor(format: string | null | undefined): string {
+  switch (format) {
+    case 'pdf': return 'application/pdf';
+    case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'txt': return 'text/plain';
+    case 'md': return 'text/markdown';
+    case 'csv': return 'text/csv';
+    default: return 'application/octet-stream';
+  }
+}
+
 async function runBulkReindexInternal() {
   const admin = createAdminClient();
   
@@ -52,10 +70,18 @@ async function runBulkReindexInternal() {
       }
 
       // 3. Extrair Texto
+      //
+      // O mime vem do formato real, nao de um "text/plain" para tudo que nao e
+      // PDF. Aquela heuristica fazia resolveFileType responder 'txt' para uma
+      // planilha, e o extrator lia o zip como UTF-8: 22 documentos entraram
+      // assim, com contagem de chunks para texto que nunca foi texto.
       const arrayBuffer = await fileData.arrayBuffer();
-      const mimeType = doc.file_format === 'pdf' ? 'application/pdf' : 'text/plain';
-      const file = new File([arrayBuffer], doc.filename, { type: mimeType });
-      const text = await extractText(file, doc.file_format || 'txt');
+      // Mesmo quirk de tipagem do resto do arquivo: o .select('*') com .neq()
+      // colapsa o tipo da linha e toda leitura de coluna e rejeitada.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const format = (doc as any).file_format as string | null;
+      const file = new File([arrayBuffer], doc.filename, { type: mimeFor(format) });
+      const text = await extractText(file, format || 'txt');
 
       // 4. Limpeza (Proveniência Antiga + Cache)
       await deleteControlProvenance(admin, doc.id);
@@ -68,11 +94,22 @@ async function runBulkReindexInternal() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (admin as any).from('control_evaluation_cache').delete().eq('product_version_id', doc.product_version_id);
       }
-      await admin.from('document_chunks').delete().eq('document_id', doc.id);
-
       // 5. Chunking & Embeddings
+      //
+      // Antes do delete, de proposito. Este script apagava os chunks aqui e so
+      // depois tentava produzir os novos; quando a extracao ou o embedding
+      // falhava, o catch la embaixo engolia o erro, o laco seguia, e o
+      // documento ficava sem nenhum chunk enquanto total_chunks continuava
+      // dizendo o numero da ultima ingestao boa. Produzir primeiro e apagar
+      // depois torna esse estado impossivel.
       const chunks = chunkComplianceDocument(text);
+      if (chunks.length === 0) {
+        console.error(`  ❌ Extracao devolveu texto sem nenhum chunk — pulando, chunks antigos intactos.`);
+        continue;
+      }
       const embeddings = await generateEmbeddings(chunks.map(c => c.content));
+
+      await admin.from('document_chunks').delete().eq('document_id', doc.id);
 
       // 6. Insert Chunks
       const chunkRows = chunks.map((c, i) => ({
@@ -86,6 +123,19 @@ async function runBulkReindexInternal() {
 
       const { error: insertError } = await admin.from('document_chunks').insert(chunkRows as any);
       if (insertError) throw insertError;
+
+      // total_chunks so e escrito aqui, depois de o insert ter dado certo.
+      // Este script nunca tocava nesse campo, entao um documento reindexado
+      // ficava com a contagem da ingestao anterior — que e como 22 linhas
+      // passaram a anunciar 834 chunks que nao existiam.
+      // Mesmo quirk de tipagem ja documentado acima no delete de
+      // control_evaluation_cache: a cadeia .update().eq() colapsa para
+      // SelectQueryError e o 'id' e rejeitado apesar de ser coluna real.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      await (admin as any)
+        .from('compliance_documents')
+        .update({ total_chunks: chunkRows.length })
+        .eq('id', doc.id);
 
       // 7. Post-Ingest Pipeline (O Novo Cérebro GRC)
       console.log(`  🧠 Running Post-Ingest (SCF Stage 1 + Stage 2)...`);

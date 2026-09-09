@@ -20,7 +20,22 @@ const EXTENSION_MAP: Record<string, string> = {
   '.docx': 'docx',
 };
 
+/**
+ * Extensions we know we cannot read, checked before the MIME type.
+ *
+ * A caller can lie about the MIME — src/scripts/bulk-reindex-internal.ts
+ * declared every non-PDF as text/plain, so this function answered 'txt' for a
+ * spreadsheet and the extractor happily read the zip as UTF-8. The extension is
+ * the one thing the caller did not invent, so it settles the question first.
+ */
+const REFUSED_EXTENSIONS = new Set([
+  '.xlsx', '.xls', '.xlsm', '.pptx', '.ppt', '.doc', '.zip', '.rtf', '.odt', '.ods',
+]);
+
 export function resolveFileType(file: File): string | null {
+  const extension = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
+  if (REFUSED_EXTENSIONS.has(extension)) return null;
+
   // Try MIME type first
   const fromMime = ACCEPTED_TYPES.get(file.type);
   if (fromMime) return fromMime;
@@ -55,6 +70,25 @@ export async function extractText(file: File, fileType: string): Promise<string>
     return result.value;
   }
 
-  // txt, md, csv — read as UTF-8
-  return await file.text();
+  if (fileType === 'txt' || fileType === 'md' || fileType === 'csv') {
+    return await file.text();
+  }
+
+  // Anything else is refused, out loud.
+  //
+  // This used to fall through to file.text() for every unrecognised format,
+  // which silently turned a binary into mojibake. Measured 2026-09-09 against a
+  // real .xlsx Statement of Applicability: 45,276 characters returned, 38% of
+  // them printable, beginning with the zip header PK\x03\x04 and
+  // [Content_Types].xml. Nothing threw, so every caller believed it held a
+  // document. 22 spreadsheets reached the database that way and every screen
+  // reported chunk counts for text that was never text.
+  //
+  // Two callers pass `doc.file_format` straight through with no guard —
+  // src/scripts/bulk-reindex-internal.ts and the reindex route — so this throw
+  // is the only thing standing between an unreadable format and the index.
+  throw new Error(
+    `Cannot extract text from "${file.name}": no reader for format "${fileType}". ` +
+      `Supported: pdf, docx, txt, md, csv.`,
+  );
 }
