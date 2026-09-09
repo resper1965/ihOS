@@ -341,8 +341,58 @@ async function main() {
 
   const lostSections: string[] = [];
 
+  // A.-prefix concentration check (spec 7's stop condition): the baseline
+  // share must be measured over the FULL old-table id set for the framework,
+  // never assumed from the lost set alone -- assuming it is the same defect
+  // class as the fabricated rows this whole project removes.
+  function aPrefixStats(ids: string[]): { total: number; aPrefixed: number; pct: number } {
+    const total = ids.length;
+    const aPrefixed = ids.filter((id) => id.startsWith('A.')).length;
+    return { total, aPrefixed, pct: total === 0 ? 0 : (aPrefixed / total) * 100 };
+  }
+
+  function emitAPrefixComparison(baseline: ReturnType<typeof aPrefixStats>, lost: ReturnType<typeof aPrefixStats>): void {
+    console.log('| | total | comecam com `A.` | % |');
+    console.log('|---|---|---|---|');
+    console.log(`| requisitos na tabela velha (base) | ${baseline.total} | ${baseline.aPrefixed} | ${baseline.pct.toFixed(1)}% |`);
+    console.log(`| ids perdidos | ${lost.total} | ${lost.aPrefixed} | ${lost.pct.toFixed(1)}% |\n`);
+
+    if (lost.total === 0) {
+      console.log('Nenhum id perdido -- comparacao nao se aplica.\n');
+      return;
+    }
+    const diff = lost.pct - baseline.pct;
+    const overRepresented = diff > 0.05; // guard against float noise at ~equal shares
+    const sign = diff >= 0 ? '+' : '';
+    console.log(
+      `Entre os ids perdidos, ${lost.pct.toFixed(1)}% comecam com \`A.\`, contra ${baseline.pct.toFixed(1)}% ` +
+        `na tabela velha inteira -- diferenca de ${sign}${diff.toFixed(1)} pontos percentuais.`,
+    );
+    if (overRepresented && lost.aPrefixed / lost.total > 0.5) {
+      console.log(
+        '\n**ATENCAO -- ISSO PARA O PROJETO**: os ids `A.`-prefixados (Annex A) estao ' +
+          'SOBRE-REPRESENTADOS entre os perdidos E formam a maioria deles. Por spec 7, ' +
+          'isso e o sinal de que Annex A pode ser um framework de vendor SEPARADO, o que ' +
+          'reabre o desenho e nao deve ser contornado alargando um matcher ou curando um ' +
+          'segundo codigo local como sinonimo.\n',
+      );
+    } else if (overRepresented) {
+      console.log(
+        '\nSobre-representados em relacao a base, mas nao formam maioria dos perdidos -- ' +
+          'nao caracteriza a concentracao que a spec 7 trata como sinal de parar.\n',
+      );
+    } else {
+      console.log(
+        '\nProporcional a base (nao sobre-representado) -- nao caracteriza a concentracao ' +
+          'que a spec 7 trata como sinal de parar.\n',
+      );
+    }
+  }
+
   for (const local of frameworksInOldTable) {
     const antes = idsByFramework.get(local) ?? new Set<string>();
+    const antesArr = [...antes];
+    const baselineStats = aPrefixStats(antesArr);
     const resolution = await resolveWithFallback(local, db, fallbackPairs);
 
     console.log(`### \`${local}\`\n`);
@@ -358,10 +408,14 @@ async function main() {
       console.log(`| requisitos na espinha | 0 |`);
       console.log(`| **deixam de resolver** | **${antes.size}** |`);
       console.log(`| passam a resolver (novos) | 0 |\n`);
+      // Every old id is lost by definition here, so the lost set IS the base
+      // set -- the comparison is trivially equal, stated explicitly rather
+      // than silently skipped.
+      emitAPrefixComparison(baselineStats, baselineStats);
       lostSections.push(
         `### \`${local}\`\n\nSem identidade curada -- todos os ${antes.size} ids listados abaixo.\n\n` +
           '| id | ausente do crosswalk / vocabulario | nota |\n|---|---|---|\n' +
-          [...antes].sort().map((id) => `| \`${id}\` | | |`).join('\n') +
+          antesArr.sort().map((id) => `| \`${id}\` | | |`).join('\n') +
           '\n',
       );
       continue;
@@ -370,7 +424,7 @@ async function main() {
     const novaCodes = await readAllSpineRequirementCodes(db, scfVersionId, resolution.slug);
     const depois = new Set(novaCodes);
 
-    const perdidos = [...antes].filter((id) => !depois.has(id)).sort();
+    const perdidos = antesArr.filter((id) => !depois.has(id)).sort();
     const ganhos = [...depois].filter((id) => !antes.has(id)).length;
 
     console.log(`Slug curado: \`${resolution.slug}\` (fonte: ${resolution.source})\n`);
@@ -381,18 +435,11 @@ async function main() {
     console.log(`| **deixam de resolver** | **${perdidos.length}** |`);
     console.log(`| passam a resolver (novos) | ${ganhos} |\n`);
 
+    const lostStats = aPrefixStats(perdidos);
+    console.log('**Verificacao de concentracao em `A.` (Annex A) -- spec 7:**\n');
+    emitAPrefixComparison(baselineStats, lostStats);
+
     if (perdidos.length > 0) {
-      const aPrefixed = perdidos.filter((id) => id.startsWith('A.')).length;
-      if (aPrefixed / perdidos.length > 0.5) {
-        console.log(
-          `**ATENCAO**: ${aPrefixed} de ${perdidos.length} ids perdidos (${Math.round(
-            (aPrefixed / perdidos.length) * 100,
-          )}%) comecam com \`A.\` -- o padrao dos Annex A do ISO 27001. Por spec 7, isso e ` +
-            'o sinal de que Annex A pode ser um framework de vendor SEPARADO, o que reabre o ' +
-            'desenho e nao deve ser contornado alargando um matcher ou curando um segundo ' +
-            'codigo local como sinonimo.\n',
-        );
-      }
       lostSections.push(
         `### \`${local}\` (${resolution.slug})\n\n` +
           '| id | ausente do crosswalk / vocabulario | nota |\n|---|---|---|\n' +

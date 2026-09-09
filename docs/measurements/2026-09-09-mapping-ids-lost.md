@@ -51,6 +51,17 @@ Slug curado: `general-iso-27001-2022` (fonte: banco tem frase antiga -- usando a
 | **deixam de resolver** | **377** |
 | passam a resolver (novos) | 130 |
 
+**Verificacao de concentracao em `A.` (Annex A) -- spec 7:**
+
+| | total | comecam com `A.` | % |
+|---|---|---|---|
+| requisitos na tabela velha (base) | 395 | 116 | 29.4% |
+| ids perdidos | 377 | 116 | 30.8% |
+
+Entre os ids perdidos, 30.8% comecam com `A.`, contra 29.4% na tabela velha inteira -- diferenca de +1.4 pontos percentuais.
+
+Sobre-representados em relacao a base, mas nao formam maioria dos perdidos -- nao caracteriza a concentracao que a spec 7 trata como sinal de parar.
+
 ### `iso27701`
 
 Slug curado: `general-iso-27701-2025` (fonte: banco tem frase antiga -- usando arquivo pendente)
@@ -61,6 +72,17 @@ Slug curado: `general-iso-27701-2025` (fonte: banco tem frase antiga -- usando a
 | requisitos na espinha | 90 |
 | **deixam de resolver** | **302** |
 | passam a resolver (novos) | 72 |
+
+**Verificacao de concentracao em `A.` (Annex A) -- spec 7:**
+
+| | total | comecam com `A.` | % |
+|---|---|---|---|
+| requisitos na tabela velha (base) | 320 | 124 | 38.8% |
+| ids perdidos | 302 | 124 | 41.1% |
+
+Entre os ids perdidos, 41.1% comecam com `A.`, contra 38.8% na tabela velha inteira -- diferenca de +2.3 pontos percentuais.
+
+Sobre-representados em relacao a base, mas nao formam maioria dos perdidos -- nao caracteriza a concentracao que a spec 7 trata como sinal de parar.
 
 ## Ids perdidos
 
