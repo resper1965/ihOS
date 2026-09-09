@@ -56,3 +56,22 @@ export function checkSoaSource(
 
   return problems;
 }
+
+/**
+ * True when a Postgres/PostgREST error means "this relation doesn't exist" --
+ * the normal shape of the very first import, before a person has applied the
+ * soa_entries migration. Anything else (RLS denial, a renamed column, a
+ * timeout, a dropped connection) is a real failure and must stop the run: a
+ * hash guard that reads an unrelated error as "no hash recorded" would let a
+ * changed file overwrite a prior import silently, which is worse than no
+ * guard at all.
+ *
+ * PGRST205 is PostgREST's code for "table not found in the schema cache".
+ * The message match is a fallback for whichever client shape doesn't surface
+ * `code` (some paths only carry the text).
+ */
+export function isMissingRelationError(error: { message: string; code?: string } | null): boolean {
+  if (!error) return false;
+  if (error.code === 'PGRST205') return true;
+  return /could not find the table/i.test(error.message);
+}

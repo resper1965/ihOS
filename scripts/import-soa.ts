@@ -20,7 +20,7 @@ const BATCH = 200;
 async function main() {
   const XLSX = await import('xlsx');
   const { parseSoaSheet, CONTROL_SHEETS, sameSheetName } = await import('../src/lib/soa/parse');
-  const { checkSoaSource, SOA_DOCUMENT_ID } = await import('../src/lib/soa/source');
+  const { checkSoaSource, isMissingRelationError, SOA_DOCUMENT_ID } = await import('../src/lib/soa/source');
   const { createAdminClient } = await import('../src/lib/supabase/admin');
   const db = createAdminClient() as never as {
     from: (t: string) => {
@@ -28,10 +28,14 @@ async function main() {
         eq: (col: string, v: unknown) => {
           maybeSingle: () => Promise<{ data: Record<string, unknown> | null; error: { message: string } | null }>;
           order: (col: string) => {
+            range: (from: number, to: number) => Promise<{ data: Array<Record<string, unknown>> | null; error: { message: string; code?: string } | null }>;
+          };
+        };
+        neq: (col: string, v: unknown) => {
+          order: (col: string) => {
             range: (from: number, to: number) => Promise<{ data: Array<Record<string, unknown>> | null; error: { message: string } | null }>;
           };
         };
-        neq: (col: string, v: unknown) => PromiseLike<{ data: Array<Record<string, unknown>> | null; error: { message: string } | null }>;
       };
       upsert: (rows: Array<Record<string, unknown>>, o: { onConflict: string }) => Promise<{ error: { message: string } | null }>;
     };
@@ -58,14 +62,29 @@ async function main() {
   const sha256 = createHash('sha256').update(buffer).digest('hex');
   console.log(`file: ${buffer.length} bytes, sha256 ${sha256.slice(0, 16)}…`);
 
-  const { data: others, error: othersError } = await db
-    .from('compliance_documents')
-    .select('id, year, doc_type')
-    .neq('id', SOA_DOCUMENT_ID);
-  if (othersError) throw new Error(`compliance_documents: ${othersError.message}`);
-  const otherSoa = (others ?? [])
-    .filter((r) => String(r.doc_type) === 'soa')
-    .map((r) => ({ id: Number(r.id), year: r.year === null ? null : Number(r.year) }));
+  // compliance_documents holds every compliance document, not only the SoAs --
+  // 198 rows today, past the 1,000-row cap supabase-js applies to an unbounded
+  // select() (.limit() does not lift it). Paged with .range() under a total
+  // order (id, the primary key, so no ties): the exact pattern this project's
+  // Global Constraints call out, because Guard 2 exists to catch a later-year
+  // SoA and a truncated, unordered page could drop it from view.
+  const otherSoa: Array<{ id: number; year: number | null }> = [];
+  for (let from = 0; ; from += 1000) {
+    const { data: page, error: pageError } = await db
+      .from('compliance_documents')
+      .select('id, year, doc_type')
+      .neq('id', SOA_DOCUMENT_ID)
+      .order('id')
+      .range(from, from + 999);
+    if (pageError) throw new Error(`compliance_documents: ${pageError.message}`);
+    const rows = page ?? [];
+    for (const r of rows) {
+      if (String(r.doc_type) === 'soa') {
+        otherSoa.push({ id: Number(r.id), year: r.year === null ? null : Number(r.year) });
+      }
+    }
+    if (rows.length < 1000) break;
+  }
 
   // The recorded hash lives on the rows this script wrote last time.
   // One row is enough: every row of an import carries the same hash. NOT
@@ -73,30 +92,28 @@ async function main() {
   // first import there are 142.
   //
   // A missing soa_entries table (the normal state before the migration is
-  // applied) surfaces here as a query error, not as an empty result — Postgres
-  // reports "relation does not exist" rather than returning zero rows. That is
-  // treated the same as "no hash recorded yet" (recorded stays null, and the
-  // reason is printed) precisely because the first import always starts from
-  // no table. A real hash mismatch is a different code path entirely: it only
-  // fires once `prior` has a row with a source_sha256 that disagrees with the
-  // freshly computed one, which requires the table and a previous import to
-  // exist. So this catch can never mask that case — there is nothing to catch
-  // once the table is there.
-  let recorded: string | null = null;
-  try {
-    const { data: prior, error: priorError } = await db
-      .from('soa_entries')
-      .select('source_sha256')
-      .eq('document_id', SOA_DOCUMENT_ID)
-      .order('annex_code')
-      .range(0, 0);
-    if (priorError) throw new Error(priorError.message);
+  // applied) surfaces here as a query error, not as an empty result. That is
+  // the ONLY error treated as "no hash recorded yet" -- isMissingRelationError
+  // discriminates it from everything else (RLS denial, a renamed column, a
+  // timeout). Swallowing any error here would be worse than no guard: if
+  // soa_entries already holds 142 rows and the file has genuinely changed, an
+  // unrelated read failure must stop the run, not silently let a changed file
+  // overwrite the prior import.
+  const { data: prior, error: priorError } = await db
+    .from('soa_entries')
+    .select('source_sha256')
+    .eq('document_id', SOA_DOCUMENT_ID)
+    .order('annex_code')
+    .range(0, 0);
+  let recorded: string | null;
+  if (priorError) {
+    if (!isMissingRelationError(priorError)) {
+      throw new Error(`soa_entries: ${priorError.message}`);
+    }
+    console.log(`no prior hash recorded (${priorError.message}) — treating this as a first import.`);
+    recorded = null;
+  } else {
     recorded = (prior ?? [])[0]?.source_sha256 as string | undefined ?? null;
-  } catch (e) {
-    console.log(
-      `no prior hash recorded (${e instanceof Error ? e.message : String(e)}) — ` +
-        `treating this as a first import.`,
-    );
   }
 
   const problems = checkSoaSource(

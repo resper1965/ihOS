@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkSoaSource, SOA_DOCUMENT_ID } from '@/lib/soa/source';
+import { checkSoaSource, isMissingRelationError, SOA_DOCUMENT_ID } from '@/lib/soa/source';
 
 describe('the hardcoded SoA document fails loudly rather than going stale', () => {
   it('names document 392', () => {
@@ -52,5 +52,29 @@ describe('the hardcoded SoA document fails loudly rather than going stale', () =
       'def',
     );
     expect(problems).toHaveLength(2);
+  });
+});
+
+describe('isMissingRelationError distinguishes "no table yet" from a real failure', () => {
+  it('treats a PGRST205 (relation not found) error as first-import, not a failure', () => {
+    expect(
+      isMissingRelationError({
+        code: 'PGRST205',
+        message: "Could not find the table 'public.soa_entries' in the schema cache",
+      }),
+    ).toBe(true);
+  });
+
+  it('treats the bare "could not find the table" message as first-import too', () => {
+    expect(isMissingRelationError({ message: 'could not find the table public.soa_entries' })).toBe(true);
+  });
+
+  it('does not treat an unrelated error as first-import -- it must stop the run', () => {
+    expect(isMissingRelationError({ code: '42501', message: 'permission denied for table soa_entries' })).toBe(false);
+    expect(isMissingRelationError({ message: 'timeout' })).toBe(false);
+  });
+
+  it('does not treat "no error" as a missing relation', () => {
+    expect(isMissingRelationError(null)).toBe(false);
   });
 });
