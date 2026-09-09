@@ -84,6 +84,43 @@ _Nenhuma submissão até o momento. Seja o primeiro!_
 
 ---
 
+## Riscos aceitos
+
+Vulnerabilidades conhecidas que a Ionic decidiu conviver, com a razão e a
+mitigação. Um risco aceito sem mitigação guardada vira risco esquecido, então
+cada entrada aponta o teste que impede a mitigação de sumir sozinha.
+
+### `xlsx` (SheetJS) — ReDoS e prototype pollution
+
+**Decidido em 2026-09-09.** Duas advisories abertas: ReDoS
+([GHSA-5pgg-2g8v-p4x9](https://github.com/advisories/GHSA-5pgg-2g8v-p4x9),
+corrigida em 0.20.2) e prototype pollution (corrigida em 0.19.3). O projeto usa
+`xlsx@0.18.5`.
+
+**Não há correção no npm.** O SheetJS deixou o registro depois da 0.18.5; a
+linha corrigida existe apenas no CDN do fornecedor. Instalar de lá tira a
+dependência do registro npm, da cobertura do `npm audit` e da procedência que
+ele oferece — uma troca de cadeia de suprimento que o projeto optou por não
+fazer.
+
+**Exposição.** Das quatro utilizações de `xlsx` no código, três apenas
+*escrevem* planilha (exportação de threat model, de relatório de conformidade e
+de questionário preenchido) e não tocam entrada externa. A única que *lê*
+arquivo de terceiro é `POST /api/chat/parse-questionnaire`, que recebe o
+questionário enviado por um cliente.
+
+**Mitigação.** Essa rota exige sessão autenticada e devolve 401 sem ela
+(`src/app/api/chat/parse-questionnaire/route.ts`). O cenário residual é um
+usuário já autenticado enviando um arquivo malicioso — não um anônimo.
+
+**Guarda.** `tests/api/questionnaire.test.ts`, caso
+*"returns 401 when unauthenticated"*. Se alguém remover o gate, a suíte quebra.
+
+**Revisão.** Reavaliar se o SheetJS voltar ao npm, se surgir advisory explorável
+sem autenticação, ou se a rota deixar de ser autenticada.
+
+---
+
 ## Contato
 
 📧 **security@ionichealth.com**
