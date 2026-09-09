@@ -22,7 +22,7 @@ import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createDefectDojoClient, type DDFinding } from '@/lib/integrations/defectdojo/client';
 import { mapFindingToControls } from '@/lib/integrations/defectdojo/mapper';
-import { resolveScfMappings, scfControlsForFinding } from '@/lib/integrations/defectdojo/scf-resolver';
+import { resolveScfMappings, scfControlsForFinding, buildSignalRow } from '@/lib/integrations/defectdojo/scf-resolver';
 import { summarizeSignals, type RuntimeSignal } from '@/lib/posture/observed-status';
 import { routeNotification } from '@/lib/integrations/notification-router';
 import { createAdminClient } from '@/lib/supabase/admin';
@@ -199,21 +199,7 @@ export async function GET(req: Request) {
         });
 
         for (const link of scfLinks) {
-          signalRows.push({
-            scf_control_code: link.scfControlCode,
-            relationship_type: link.relationshipType,
-            product_version_id: target.productVersionId,
-            source: 'defectdojo',
-            source_ref: String(finding.id),
-            title: finding.title,
-            severity: finding.severity,
-            active: finding.active,
-            verified: finding.verified,
-            risk_accepted: finding.risk_accepted,
-            is_mitigated: finding.is_mitigated,
-            observed_at: finding.created,
-            synced_at: now,
-          });
+          signalRows.push(buildSignalRow(finding, link, target.productVersionId, now));
         }
       }
     }
@@ -256,16 +242,28 @@ export async function GET(req: Request) {
     // Upsert FIRST, then remove only rows this run did not refresh: a failed
     // write never leaves the analytical axis empty (which would read as a
     // falsely clean posture). Stale cleanup is skipped on truncated feeds.
+    //
+    // The empty-slice clear below is gated on `allFindings.length === 0`
+    // (no active findings from DefectDojo at all), NEVER on `signalRows`
+    // being empty. `signalRows` is empty both when there are truly no
+    // findings AND when findings exist but every one of them failed to
+    // resolve to an SCF control (curated framework identity missing, or its
+    // SQL not applied yet). Those two states are not the same: the first
+    // means posture is clean, the second means the resolver is broken. If
+    // this ever clears on `signalRows.length === 0` again, a broken
+    // resolver will wipe the entire observed-posture axis and report
+    // success — do not reintroduce that.
     let signalsRebuilt = false;
+    let signalsMappingBroken = false;
     {
       if (signalRows.length > 0) {
         const { error: upsertSignalsError } = await supabase
           .from('runtime_control_signals')
           .upsert(signalRows, { onConflict: 'source,source_ref,scf_control_code' });
         if (upsertSignalsError) {
-          // Table may not exist yet (migration pending) — findings are still
-          // synced above; the observed axis just stays as it was.
-          logger.warn('runtime_control_signals upsert skipped (apply 20260707000001)', {
+          // Table/column may not exist yet (migrations pending) — findings
+          // are still synced above; the observed axis just stays as it was.
+          logger.warn('runtime_control_signals upsert skipped (apply 20260707000001 then 20260909000001)', {
             context: 'cron/defectdojo-sync',
             meta: { error: upsertSignalsError.message },
           });
@@ -284,20 +282,40 @@ export async function GET(req: Request) {
             signalsRebuilt = true;
           }
         }
-      } else if (feedComplete) {
+      } else if (allFindings.length === 0) {
         // No active findings at all — clearing the slice IS the correct state.
-        const { error: clearError } = await supabase
-          .from('runtime_control_signals')
-          .delete()
-          .eq('source', 'defectdojo');
-        if (clearError) {
-          logger.warn('runtime_control_signals clear skipped (apply 20260707000001)', {
-            context: 'cron/defectdojo-sync',
-            meta: { error: clearError.message },
-          });
-        } else {
-          signalsRebuilt = true;
+        if (feedComplete) {
+          const { error: clearError } = await supabase
+            .from('runtime_control_signals')
+            .delete()
+            .eq('source', 'defectdojo');
+          if (clearError) {
+            logger.warn('runtime_control_signals clear skipped (apply 20260707000001)', {
+              context: 'cron/defectdojo-sync',
+              meta: { error: clearError.message },
+            });
+          } else {
+            signalsRebuilt = true;
+          }
         }
+      } else {
+        // Findings exist but NONE resolved to an SCF control. This is not
+        // "clean posture" — it means the resolver is broken (e.g. the
+        // curated vendor framework identity or scf_control_mappings SQL is
+        // not applied yet). Clearing here would erase real observed
+        // findings and report success. Leave the existing signals alone
+        // and surface the break instead.
+        signalsMappingBroken = true;
+        logger.warn(
+          'DefectDojo findings exist but none resolved to an SCF control — resolver broken, leaving runtime_control_signals untouched',
+          {
+            context: 'cron/defectdojo-sync',
+            meta: {
+              total_findings: allFindings.length,
+              unmapped_framework_controls: resolution.unmappedControls,
+            },
+          },
+        );
       }
     }
 
@@ -392,6 +410,7 @@ export async function GET(req: Request) {
       scf: {
         signals_written: signalRows.length,
         signals_rebuilt: signalsRebuilt,
+        signals_mapping_broken: signalsMappingBroken,
         unmapped_findings: unmappedFindings,
         unmapped_framework_controls: resolution.unmappedControls,
       },

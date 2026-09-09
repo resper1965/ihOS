@@ -9,6 +9,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { logger } from '@/lib/logger';
+import type { DDFinding } from './client';
 
 /** Our local framework codes. The vendor slug is resolved through curation. */
 const ISO_FRAMEWORK_CODE = 'iso27001';
@@ -145,4 +146,33 @@ export function scfControlsForFinding(
   return [...strongest.values()].sort((a, b) =>
     a.scfControlCode.localeCompare(b.scfControlCode),
   );
+}
+
+/**
+ * Shapes one runtime_control_signals row for a finding/SCF-link pair.
+ * Pulled out of the cron route so the hand-off from `link.relationshipType`
+ * into the persisted row is unit-testable without standing up the whole
+ * DefectDojo/Supabase-mocked GET handler.
+ */
+export function buildSignalRow(
+  finding: DDFinding,
+  link: ScfLink,
+  productVersionId: string | null,
+  syncedAt: string,
+): Record<string, unknown> {
+  return {
+    scf_control_code: link.scfControlCode,
+    relationship_type: link.relationshipType,
+    product_version_id: productVersionId,
+    source: 'defectdojo',
+    source_ref: String(finding.id),
+    title: finding.title,
+    severity: finding.severity,
+    active: finding.active,
+    verified: finding.verified,
+    risk_accepted: finding.risk_accepted,
+    is_mitigated: finding.is_mitigated,
+    observed_at: finding.created,
+    synced_at: syncedAt,
+  };
 }

@@ -6,8 +6,10 @@ import { describe, it, expect, vi } from 'vitest';
 import {
   resolveScfMappings,
   scfControlsForFinding,
+  buildSignalRow,
 } from '@/lib/integrations/defectdojo/scf-resolver';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import type { DDFinding } from '@/lib/integrations/defectdojo/client';
 
 /**
  * Admin mock for the spine shape: framework_identity_curation resolves a local
@@ -174,5 +176,67 @@ describe('scfControlsForFinding', () => {
     expect(scfControlsForFinding(resolution, ['A.8.26'], ['SI-10'])).toEqual([
       { scfControlCode: 'TDA-02', relationshipType: 'equal' },
     ]);
+  });
+});
+
+describe('buildSignalRow — the cron route hand-off into runtime_control_signals', () => {
+  // Regression for the 2026-09-09 review: the cron route used to build this
+  // row inline, where nothing asserted that `link.relationshipType` actually
+  // reached the persisted `relationship_type` column.
+  const finding: DDFinding = {
+    id: 42,
+    title: 'Outdated TLS version',
+    description: 'desc',
+    severity: 'High',
+    active: true,
+    verified: true,
+    is_mitigated: false,
+    mitigation: null,
+    cwe: null,
+    cvssv3: null,
+    risk_accepted: false,
+    test: 1,
+    created: '2026-09-01T00:00:00Z',
+    sla_days_remaining: 10,
+  };
+
+  it('carries the link relationship type into relationship_type', () => {
+    const row = buildSignalRow(
+      finding,
+      { scfControlCode: 'TDA-02', relationshipType: 'subset' },
+      'v1',
+      '2026-09-09T00:00:00Z',
+    );
+
+    expect(row.relationship_type).toBe('subset');
+    expect(row.scf_control_code).toBe('TDA-02');
+  });
+
+  it('keeps a null relationship as null rather than dropping or coercing it', () => {
+    const row = buildSignalRow(finding, { scfControlCode: 'TDA-02', relationshipType: null }, 'v1', 'now');
+    expect(row.relationship_type).toBeNull();
+  });
+
+  it('carries the rest of the finding fields the dashboard reads', () => {
+    const row = buildSignalRow(
+      finding,
+      { scfControlCode: 'TDA-02', relationshipType: 'equal' },
+      'v2',
+      '2026-09-09T00:00:00Z',
+    );
+
+    expect(row).toMatchObject({
+      source: 'defectdojo',
+      source_ref: '42',
+      product_version_id: 'v2',
+      title: finding.title,
+      severity: 'High',
+      active: true,
+      verified: true,
+      risk_accepted: false,
+      is_mitigated: false,
+      observed_at: finding.created,
+      synced_at: '2026-09-09T00:00:00Z',
+    });
   });
 });

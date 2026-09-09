@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { checkOfferedFrameworksResolve } from '@/lib/spine/invariants';
+import { checkOfferedFrameworksResolve, KNOWN_UNCURATED } from '@/lib/spine/invariants';
 
 /**
  * `counts` maps a vendor slug to how many mapping rows it has.
@@ -64,11 +64,42 @@ describe('every offered framework resolves to real mappings', () => {
   });
 
   it('honours the exemption set, so a known gap is not noise', async () => {
+    // Everything except fedramp/IEC-62304 has a real curated slug with rows,
+    // so those 8 frameworks pass on their own merits. fedramp is exempted
+    // despite having no curated identity — the exemption must suppress it.
+    // IEC-62304 is left un-exempt with the same missing identity, so if the
+    // exemption set did nothing (the loop body simply never ran), this would
+    // still show zero failures and the test would not catch it.
+    const curatedIds = ['iso27001', 'iso27701', 'TX-LEVEL-2', 'BR-LGPD', 'EU-GDPR', 'EU-DORA', 'soc2', 'nist_800_53'];
+    const slugs = Object.fromEntries(curatedIds.map((id) => [id, `${id}-slug`]));
+    const counts = Object.fromEntries(curatedIds.map((id) => [`${id}-slug`, 5]));
+
     const failures = await checkOfferedFrameworksResolve(
-      client({}, {}),
+      client(slugs, counts),
       'v1',
-      new Set(['iso27001', 'iso27701', 'BR-LGPD', 'EU-GDPR', 'EU-DORA', 'soc2', 'nist_800_53', 'TX-LEVEL-2', 'fedramp', 'IEC-62304']),
+      new Set(['fedramp']),
     );
-    expect(failures).toEqual([]);
+
+    expect(failures).toHaveLength(1);
+    expect(failures[0].framework).toBe('IEC-62304');
+    expect(failures.some((f) => f.framework === 'fedramp')).toBe(false);
+  });
+
+  it('defaults to KNOWN_UNCURATED when no exempt set is given', async () => {
+    // fedramp/IEC-62304 have no curated identity here either, but are left
+    // out of the call entirely — relying on the function's own default.
+    // nist_800_53 is deliberately broken and NOT in KNOWN_UNCURATED, so it
+    // must still be reported: proof the default is the real constant, not
+    // an accidental "exempt everything".
+    expect(KNOWN_UNCURATED).toEqual(new Set(['fedramp', 'IEC-62304']));
+
+    const curatedIds = ['iso27001', 'iso27701', 'TX-LEVEL-2', 'BR-LGPD', 'EU-GDPR', 'EU-DORA', 'soc2'];
+    const slugs = Object.fromEntries(curatedIds.map((id) => [id, `${id}-slug`]));
+    const counts = Object.fromEntries(curatedIds.map((id) => [`${id}-slug`, 5]));
+
+    const failures = await checkOfferedFrameworksResolve(client(slugs, counts), 'v1');
+
+    expect(failures).toHaveLength(1);
+    expect(failures[0].framework).toBe('nist_800_53');
   });
 });
