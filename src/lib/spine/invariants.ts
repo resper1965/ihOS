@@ -80,6 +80,64 @@ export async function checkOfferedFrameworksResolve(
   return failures;
 }
 
+export interface VersionInvariantFailure {
+  framework: string;
+  reason: string;
+}
+
+/**
+ * A curated identity is a decision a person made while looking at one
+ * catalogue. When the vendor publishes a new one, that decision is not
+ * automatically wrong — it is unconfirmed, which is a different thing and has
+ * to be said out loud.
+ *
+ * On 2026-09-08 the catalogue moved and all eight identities kept being
+ * trusted. They happened to be re-curated eleven days later; nothing in the
+ * system had asked for it.
+ *
+ * `confidence` travels in the message because it changes what reconfirming
+ * costs. `iso27701` and `nist_800_53` are `probable`, and a probable identity
+ * surviving a catalogue change is a coincidence, not a confirmation.
+ */
+export async function checkCurationVersionCurrent(
+  client: unknown,
+  scfVersionId: string,
+): Promise<VersionInvariantFailure[]> {
+  const db = client as {
+    from: (t: string) => {
+      select: (cols: string) => Promise<{
+        data: Array<Record<string, unknown>> | null;
+        error: { message: string } | null;
+      }>;
+    };
+  };
+
+  const { data, error } = await db
+    .from('framework_identity_curation')
+    .select('local_code, decided_against_version, confidence');
+
+  if (error) {
+    return [{ framework: '(curation)', reason: `framework_identity_curation: ${error.message}` }];
+  }
+
+  const failures: VersionInvariantFailure[] = [];
+  for (const row of data ?? []) {
+    const decidedAgainst = String(row.decided_against_version ?? '');
+    if (decidedAgainst === scfVersionId) continue;
+
+    failures.push({
+      framework: String(row.local_code),
+      reason:
+        `identity decided against catalogue version ${decidedAgainst || '(none recorded)'}, ` +
+        `but the catalogue in force is ${scfVersionId}. Confidence was ` +
+        `"${String(row.confidence ?? 'unknown')}". A person must reconfirm which vendor ` +
+        `framework this local code means in the new catalogue.`,
+    });
+  }
+
+  return failures;
+}
+
 export interface AnnexInvariantFailure {
   annexCode: string;
   reason: string;

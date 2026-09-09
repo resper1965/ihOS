@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { checkOfferedFrameworksResolve, KNOWN_UNCURATED } from '@/lib/spine/invariants';
+import {
+  checkOfferedFrameworksResolve,
+  checkCurationVersionCurrent,
+  KNOWN_UNCURATED,
+} from '@/lib/spine/invariants';
 
 /**
  * `counts` maps a vendor slug to how many mapping rows it has.
@@ -101,5 +105,68 @@ describe('every offered framework resolves to real mappings', () => {
 
     expect(failures).toHaveLength(1);
     expect(failures[0].framework).toBe('nist_800_53');
+  });
+});
+
+/** A client whose framework_identity_curation table holds exactly `rows`. */
+function curationClient(
+  rows: Array<{ local_code: string; decided_against_version: string; confidence: string }>,
+  error: { message: string } | null = null,
+) {
+  return {
+    from: (_table: string) => ({
+      select: async (_cols: string) => ({ data: error ? null : rows, error }),
+    }),
+  };
+}
+
+describe('a curated identity decided against an older catalogue', () => {
+  it('passes when every identity was decided against the current version', async () => {
+    const failures = await checkCurationVersionCurrent(
+      curationClient([
+        { local_code: 'iso27001', decided_against_version: 'v-current', confidence: 'exact' },
+        { local_code: 'soc2', decided_against_version: 'v-current', confidence: 'exact' },
+      ]),
+      'v-current',
+    );
+    expect(failures).toEqual([]);
+  });
+
+  it('fails one row per identity decided against an older catalogue', async () => {
+    // This is 2026-09-08: the catalogue moved and eight decisions kept being
+    // trusted because nothing compared them against the version in force.
+    const failures = await checkCurationVersionCurrent(
+      curationClient([
+        { local_code: 'iso27001', decided_against_version: 'v-old', confidence: 'exact' },
+        { local_code: 'soc2', decided_against_version: 'v-current', confidence: 'exact' },
+        { local_code: 'iso27701', decided_against_version: 'v-old', confidence: 'probable' },
+      ]),
+      'v-current',
+    );
+    expect(failures.map((f) => f.framework).sort()).toEqual(['iso27001', 'iso27701']);
+  });
+
+  it('names both versions and the confidence, because a probable row costs more to reconfirm', async () => {
+    const failures = await checkCurationVersionCurrent(
+      curationClient([
+        { local_code: 'iso27701', decided_against_version: 'v-old', confidence: 'probable' },
+      ]),
+      'v-current',
+    );
+    expect(failures).toHaveLength(1);
+    expect(failures[0].reason).toContain('v-old');
+    expect(failures[0].reason).toContain('v-current');
+    expect(failures[0].reason).toContain('probable');
+  });
+
+  it('turns a query error into one failure instead of throwing', async () => {
+    // The cron awaits every check with no try/catch. A throw here would discard
+    // the results the other checks have already computed.
+    const failures = await checkCurationVersionCurrent(
+      curationClient([], { message: 'relation does not exist' }),
+      'v-current',
+    );
+    expect(failures).toHaveLength(1);
+    expect(failures[0].reason).toContain('relation does not exist');
   });
 });
