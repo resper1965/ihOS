@@ -23,8 +23,8 @@
     "probe:standard-api": "tsx scripts/probe-standard-api.ts"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^3.0.67",
-    "@ai-sdk/react": "^3.0.198",
+    "@ai-sdk/openai": "^3.0.110",
+    "@ai-sdk/react": "^3.0.281",
     "@composio/core": "^0.11.0",
     "@composio/vercel": "^0.9.3",
     "@react-pdf/renderer": "^4.5.1",
@@ -35,7 +35,7 @@
     "@tanstack/react-query": "^5.101.1",
     "@upstash/ratelimit": "^2.0.8",
     "@upstash/redis": "^1.38.0",
-    "ai": "^6.0.196",
+    "ai": "^6.0.278",
     "lucide-react": "^1.17.0",
     "mammoth": "^1.12.0",
     "next": "16.2.7",
