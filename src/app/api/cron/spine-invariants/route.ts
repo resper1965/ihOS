@@ -7,7 +7,12 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getCachedScfVersionId } from '@/lib/standard-api/sync/catalog';
-import { checkOfferedFrameworksResolve, checkAnnexMappingsResolve } from '@/lib/spine/invariants';
+import {
+  checkOfferedFrameworksResolve,
+  checkAnnexMappingsResolve,
+  checkCurationVersionCurrent,
+  checkMappingCountsStable,
+} from '@/lib/spine/invariants';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -31,8 +36,13 @@ export async function GET(req: Request) {
 
   const admin = createAdminClient();
   const scfVersionId = await getCachedScfVersionId();
+  // checkMappingCountsStable compares the baseline's version against the one in
+  // force and returns a single "skipped" entry when they differ, so the order
+  // of these four is presentational rather than load-bearing.
   const failures = [
     ...(await checkOfferedFrameworksResolve(admin, scfVersionId)),
+    ...(await checkCurationVersionCurrent(admin, scfVersionId)),
+    ...(await checkMappingCountsStable(admin, scfVersionId)),
     ...(await checkAnnexMappingsResolve(admin, scfVersionId)),
   ];
 
