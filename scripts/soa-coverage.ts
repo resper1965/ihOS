@@ -49,7 +49,13 @@ async function main() {
   }
 
   // The crosswalk's key is (edition, annex_code, control_code) -- all three
-  // order it totally.
+  // order it totally. The same annex_code can legally appear under two
+  // different editions, so the map is keyed by the (edition, annex_code)
+  // pair, not by annex_code alone -- a hand-curated row could otherwise
+  // inflate the link count with a row that has nothing to do with the SoA
+  // entry's own standard.
+  const editionKey = (edition: unknown, annexCode: unknown) => `${String(edition)}|${String(annexCode)}`;
+
   const mapped = new Map<string, number>();
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await db
@@ -62,15 +68,18 @@ async function main() {
     if (error) throw new Error(`annex_control_mappings: ${error.message}`);
     const rows = data ?? [];
     for (const r of rows) {
-      const k = String(r.annex_code);
+      const k = editionKey(r.edition, r.annex_code);
       mapped.set(k, (mapped.get(k) ?? 0) + 1);
     }
     if (rows.length < PAGE) break;
   }
 
+  // Every lookup is scoped to the SoA entry's own standard -- soa_entries.standard
+  // and annex_control_mappings.edition share the same vocabulary
+  // (iso27001:2022, iso27701:2019), so this is a scoping join, not a translation.
   const applicable = soa.filter((r) => r.applicable === true);
-  const unmapped = applicable.filter((r) => !mapped.has(String(r.annex_code)));
-  const links = applicable.reduce((a, r) => a + (mapped.get(String(r.annex_code)) ?? 0), 0);
+  const unmapped = applicable.filter((r) => !mapped.has(editionKey(r.standard, r.annex_code)));
+  const links = applicable.reduce((a, r) => a + (mapped.get(editionKey(r.standard, r.annex_code)) ?? 0), 0);
 
   console.log('# Cobertura da SoA sobre a espinha SCF\n');
   console.log(`Documento: ${SOA_DOCUMENT_ID}  `);
@@ -79,6 +88,8 @@ async function main() {
   console.log('coisas diferentes. O primeiro é uma lacuna de cobertura: nós reivindicamos o');
   console.log('controle e não sabemos dizer a que ele corresponde no SCF. O segundo é uma');
   console.log('decisão registrada. Nenhum dos dois pode sumir de um denominador em silêncio.\n');
+  console.log('As ligações contadas abaixo são restritas à norma (`standard`/`edition`) de cada');
+  console.log('entrada da SoA -- uma mesma sigla de anexo sob outra norma não entra na conta.\n');
 
   console.log('## Por norma e anexo\n');
   console.log('| norma | anexo | controles | aplicáveis | aplicáveis sem mapeamento |');
@@ -88,7 +99,7 @@ async function main() {
     const [std, ann] = g.split('|');
     const rows = soa.filter((r) => r.standard === std && r.annex === ann);
     const ap = rows.filter((r) => r.applicable === true);
-    const un = ap.filter((r) => !mapped.has(String(r.annex_code)));
+    const un = ap.filter((r) => !mapped.has(editionKey(r.standard, r.annex_code)));
     console.log(`| ${std} | ${ann} | ${rows.length} | ${ap.length} | ${un.length} |`);
   }
 
