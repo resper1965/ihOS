@@ -201,10 +201,21 @@ Conformance stays in Assessments, where the evidence lives.
 
 ## 6. The other new page, and the honesty fix
 
-**`/posture`** — a thin page over `/api/posture`, which already returns what a
-page needs. The page renders what the endpoint gives and computes nothing. The
-Overview keeps its widget: the page is where the axis lives, the widget is the
-glance.
+**`/posture`** — a Server Component calling `src/lib/posture/read.ts` directly,
+the same pattern `/compliance` uses. The Overview keeps its widget: the page is
+where the axis lives, the widget is the glance.
+
+**Corrected while planning.** This section first called it "a thin page over
+`/api/posture` that computes nothing". It cannot be. That route requires an
+explicit `controls` query parameter and returns 400 without one
+(`src/app/api/posture/route.ts:38`), capped at 500 — so something must still
+decide *which* controls to ask about, and no endpoint supplies that list.
+
+The scope decided is **the controls that carry evidence**, read from
+`control_evidence`. Asking about the rest would render a wall of `gap` rows that
+describe the query rather than the posture. When the 500 cap truncates, the page
+says so; a truncated list that hides its truncation is the silent loss this
+codebase keeps removing. The HTTP route is left exactly as it is.
 
 **The stats card.** `src/app/api/dashboard/stats/route.ts:79` stops falling back
 to `avgConfidence`. With no scorecard, the card shows `—`. The fallback is
