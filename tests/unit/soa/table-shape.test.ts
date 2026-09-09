@@ -22,7 +22,7 @@ describe('the SoA is stored as declarations, not as prose', () => {
   });
 
   it('stores applicability as a boolean, because there is no third state', () => {
-    expect(sql).toMatch(/applicable\s+boolean\s+not null/i);
+    expect(sql).toMatch(/\bapplicable\s+boolean\s+not null/i);
   });
 
   it('refuses a declaration with no justification', () => {
@@ -31,13 +31,14 @@ describe('the SoA is stored as declarations, not as prose', () => {
     expect(sql).toMatch(/justification\s+text\s+not null/i);
   });
 
-  it('constrains standard and annex to the values that exist', () => {
-    const std = constraintBody('soa_entries_standard_known');
-    expect(std).toContain("'iso27001:2022'");
-    expect(std).toContain("'iso27701:2019'");
-    const annex = constraintBody('soa_entries_annex_known');
-    expect(annex).toContain("'A'");
-    expect(annex).toContain("'B'");
+  it('constrains standard and annex to valid pairs only', () => {
+    // Only three combinations exist: ISO 27001:2022 Annex A, ISO 27701:2019 Annex A,
+    // and ISO 27701:2019 Annex B. An independent check on each column would allow
+    // impossible pairs (e.g. ISO 27001:2022 Annex B, which does not exist).
+    const constraint = constraintBody('soa_entries_standard_annex_valid_pair');
+    expect(constraint).toContain("('iso27001:2022', 'A')");
+    expect(constraint).toContain("('iso27701:2019', 'A')");
+    expect(constraint).toContain("('iso27701:2019', 'B')");
   });
 
   it('keeps the sheet and row a value came from', () => {

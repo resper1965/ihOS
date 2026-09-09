@@ -48,17 +48,14 @@ CREATE TABLE IF NOT EXISTS public.soa_entries (
 -- and both prevent a silent gap later.
 
 ALTER TABLE public.soa_entries
-  DROP CONSTRAINT IF EXISTS soa_entries_standard_known;
+  DROP CONSTRAINT IF EXISTS soa_entries_standard_annex_valid_pair;
 ALTER TABLE public.soa_entries
-  ADD CONSTRAINT soa_entries_standard_known CHECK (
-    standard IN ('iso27001:2022', 'iso27701:2019')
-  );
-
-ALTER TABLE public.soa_entries
-  DROP CONSTRAINT IF EXISTS soa_entries_annex_known;
-ALTER TABLE public.soa_entries
-  ADD CONSTRAINT soa_entries_annex_known CHECK (
-    annex IN ('A', 'B')
+  ADD CONSTRAINT soa_entries_standard_annex_valid_pair CHECK (
+    (standard, annex) IN (
+      ('iso27001:2022', 'A'),
+      ('iso27701:2019', 'A'),
+      ('iso27701:2019', 'B')
+    )
   );
 
 CREATE INDEX IF NOT EXISTS soa_entries_applicable_idx
