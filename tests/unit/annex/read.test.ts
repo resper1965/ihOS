@@ -34,6 +34,23 @@ describe('reading the Annex A crosswalk', () => {
     expect(calls).toContainEqual(['annex_code', 'A.8.24']);
   });
 
+  it('excludes rejected mappings -- a rejected row is a positive "does not hold"', async () => {
+    // Leaking a rejected row into posture would invert its meaning: it exists
+    // to record that a mapping does NOT hold, not to sit alongside the ones
+    // that do.
+    const { client } = clientReturning([
+      { control_code: 'GOV-01', edition: 'iso27001:2022', confidence: 'probable', relationship_type: null },
+      { control_code: 'GOV-99', edition: 'iso27001:2022', confidence: 'rejected', relationship_type: null },
+      { control_code: 'GOV-02', edition: 'iso27001:2022', confidence: 'exact', relationship_type: 'subset' },
+    ]);
+    const links = await scfControlsForAnnex('A.5.1', client as never);
+    expect(links).toEqual([
+      { controlCode: 'GOV-01', edition: 'iso27001:2022', confidence: 'probable', relationshipType: null },
+      { controlCode: 'GOV-02', edition: 'iso27001:2022', confidence: 'exact', relationshipType: 'subset' },
+    ]);
+    expect(links.some((l) => l.confidence === 'rejected')).toBe(false);
+  });
+
   it('returns an empty list for an unmapped control rather than throwing', async () => {
     // A control the crosswalk does not cover is a real state -- the SoA may
     // apply something none of the 124 ids reaches. The caller reports it as

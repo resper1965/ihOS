@@ -11,15 +11,37 @@ function client(annexRows: Array<{ annex_code: string; control_code: string }>, 
       select: (_c: string, _o?: unknown) => {
         if (table === 'annex_control_mappings') {
           return {
-            range: async () => ({ data: annexRows, error: null }),
+            order: () => ({
+              range: async () => ({ data: annexRows, error: null }),
+            }),
           };
         }
         return {
           eq: () => ({
-            range: async () => ({ data: catalogue.map((c) => ({ control_code: c })), error: null }),
+            order: () => ({
+              range: async () => ({ data: catalogue.map((c) => ({ control_code: c })), error: null }),
+            }),
           }),
         };
       },
+    }),
+  };
+}
+
+/** A client whose reads fail, as they do before the migration is applied. */
+function brokenClient(message: string) {
+  return {
+    from: () => ({
+      select: () => ({
+        order: () => ({
+          range: async () => ({ data: null, error: { message } }),
+        }),
+        eq: () => ({
+          order: () => ({
+            range: async () => ({ data: null, error: { message } }),
+          }),
+        }),
+      }),
     }),
   };
 }
@@ -44,5 +66,18 @@ describe('every Annex mapping points at a control that exists', () => {
     expect(failures).toHaveLength(1);
     expect(failures[0].annexCode).toBe('A.5.1');
     expect(failures[0].reason).toMatch(/GONE-99/);
+  });
+
+  it('reports a missing table as a failure instead of throwing', async () => {
+    // Before the migration is applied, PostgREST returns "relation
+    // annex_control_mappings does not exist". That must become one legible
+    // failure entry, not an exception that discards the sibling check's
+    // already-computed results (the cron route awaits both with no try/catch).
+    const failures = await checkAnnexMappingsResolve(
+      brokenClient('relation "scf_controls_cache" does not exist') as never,
+      'v1',
+    );
+    expect(failures).toHaveLength(1);
+    expect(failures[0].reason).toMatch(/does not exist/);
   });
 });

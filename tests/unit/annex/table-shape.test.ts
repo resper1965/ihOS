@@ -2,10 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const sql = readFileSync(
-  resolve(process.cwd(), 'supabase/migrations/20260909000002_annex_control_mappings.sql'),
-  'utf8',
-);
+const MIGRATION_PATH = 'supabase/migrations/20260909000002_annex_control_mappings.sql';
+const MIRROR_PATH = 'docs/sql/2026-09-09c_APPLY_ME_annex_crosswalk.sql';
+
+const sql = readFileSync(resolve(process.cwd(), MIGRATION_PATH), 'utf8');
 
 describe('the Annex A crosswalk is a first-class table', () => {
   it('keys on (edition, annex_code, control_code), never on an id alone', () => {
@@ -57,5 +57,24 @@ describe('the Annex A crosswalk is a first-class table', () => {
   it('enables row level security, like every other spine table', () => {
     expect(sql).toMatch(/ALTER TABLE public\.annex_control_mappings\s+ENABLE ROW LEVEL SECURITY/i);
     expect(sql).toMatch(/CREATE POLICY .* ON public\.annex_control_mappings/i);
+  });
+
+  it('the docs/sql mirror a person actually applies carries this migration verbatim', () => {
+    // table-shape only ever reads the migration file. The mirror is what gets
+    // pasted into the database -- deliberately not byte-identical, it carries
+    // an extra "-- Mirrors: ..." header -- so nothing else asserts they agree
+    // on the SQL itself. A later fix to the migration alone would otherwise
+    // leave the tested schema and the deployed schema silently diverged.
+    const mirror = readFileSync(resolve(process.cwd(), MIRROR_PATH), 'utf8');
+    const migrationFirstLine = sql.split('\n')[0];
+    const mirrorLines = mirror.split('\n');
+
+    // Strip the mirror's header by finding where the migration's own first
+    // line begins, rather than assuming a fixed number of header lines.
+    const bodyStart = mirrorLines.indexOf(migrationFirstLine);
+    expect(bodyStart).toBeGreaterThan(-1);
+
+    const mirrorBody = mirrorLines.slice(bodyStart).join('\n');
+    expect(mirrorBody).toBe(sql);
   });
 });

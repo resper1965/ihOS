@@ -99,32 +99,46 @@ export async function checkAnnexMappingsResolve(
   scfVersionId: string,
 ): Promise<AnnexInvariantFailure[]> {
   const PAGE = 1000;
+  type Page = Promise<{ data: Array<Record<string, unknown>> | null; error: { message: string } | null }>;
   const db = client as {
     from: (t: string) => {
       select: (c: string, o?: unknown) => {
-        range?: (a: number, b: number) => Promise<{ data: Array<Record<string, unknown>> | null; error: { message: string } | null }>;
+        order?: (col: string) => { range: (a: number, b: number) => Page };
         eq?: (col: string, v: string) => {
-          range: (a: number, b: number) => Promise<{ data: Array<Record<string, unknown>> | null; error: { message: string } | null }>;
+          order: (col: string) => { range: (a: number, b: number) => Page };
         };
       };
     };
   };
 
+  const failures: AnnexInvariantFailure[] = [];
+
+  // A missing table (migration not yet applied) becomes one legible failure
+  // here, not a thrown error: this function's sibling, checkOfferedFrameworksResolve,
+  // never throws either, and the cron route awaits both with no try/catch —
+  // one throw here would discard the other check's already-computed results.
   const catalogue = new Set<string>();
   for (let from = 0; ; from += PAGE) {
     const q = db.from('scf_controls_cache').select('control_code');
-    const { data, error } = await q.eq!('scf_version_id', scfVersionId).range(from, from + PAGE - 1);
-    if (error) throw new Error(`scf_controls_cache: ${error.message}`);
+    // .order() alongside .range(): Postgres gives no stable row order between
+    // two range() requests without one, so page 2 could repeat or skip rows.
+    const { data, error } = await q.eq!('scf_version_id', scfVersionId).order('control_code').range(from, from + PAGE - 1);
+    if (error) {
+      failures.push({ annexCode: '(catalogue)', reason: `scf_controls_cache: ${error.message}` });
+      return failures;
+    }
     const rows = data ?? [];
     for (const r of rows) catalogue.add(String(r.control_code));
     if (rows.length < PAGE) break;
   }
 
-  const failures: AnnexInvariantFailure[] = [];
   for (let from = 0; ; from += PAGE) {
     const q = db.from('annex_control_mappings').select('annex_code, control_code');
-    const { data, error } = await q.range!(from, from + PAGE - 1);
-    if (error) throw new Error(`annex_control_mappings: ${error.message}`);
+    const { data, error } = await q.order!('annex_code').range(from, from + PAGE - 1);
+    if (error) {
+      failures.push({ annexCode: '(crosswalk)', reason: `annex_control_mappings: ${error.message}` });
+      return failures;
+    }
     const rows = data ?? [];
     for (const r of rows) {
       const control = String(r.control_code);

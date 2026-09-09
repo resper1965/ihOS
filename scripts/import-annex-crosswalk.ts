@@ -31,10 +31,12 @@ async function main() {
   const db = createAdminClient() as never as {
     from: (t: string) => {
       select: (c: string) => {
-        range: (a: number, b: number) => Promise<{
-          data: LegacyRow[] | null;
-          error: { message: string } | null;
-        }>;
+        order: (col: string) => {
+          range: (a: number, b: number) => Promise<{
+            data: LegacyRow[] | null;
+            error: { message: string } | null;
+          }>;
+        };
       };
       upsert: (
         rows: Array<Record<string, unknown>>,
@@ -45,11 +47,17 @@ async function main() {
 
   // Paged with .range(): supabase-js caps an unbounded select at 1,000 rows and
   // .limit() does not lift it. The legacy table holds 10,074.
+  //
+  // .order() alongside .range(): without a deterministic order, Postgres gives
+  // no guarantee of stable row order between two range() requests -- page 2
+  // could repeat a row from page 1 and skip another, and nothing in the
+  // "to import: N rows" summary below would tell the difference.
   const legacy: LegacyRow[] = [];
   for (let from = 0; ; from += PAGE) {
     const { data, error } = await db
       .from('scf_framework_mappings')
       .select('target_control_id, scf_control_code')
+      .order('target_control_id')
       .range(from, from + PAGE - 1);
     if (error) throw new Error(`read scf_framework_mappings: ${error.message}`);
     const rows = data ?? [];
