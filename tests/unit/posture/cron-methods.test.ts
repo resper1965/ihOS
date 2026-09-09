@@ -13,6 +13,7 @@ const SCHEDULED = [
   'run-threat-model',
   'recalibrate-scrms',
   'agentic-triggers',
+  'spine-invariants',
 ];
 
 function routeSource(name: string): string {

@@ -25,6 +25,10 @@
     {
       "path": "/api/cron/agentic-triggers",
       "schedule": "0 */6 * * *"
+    },
+    {
+      "path": "/api/cron/spine-invariants",
+      "schedule": "0 6 * * *"
     }
   ]
 }
