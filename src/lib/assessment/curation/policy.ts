@@ -103,6 +103,12 @@ const BY_RELATIONSHIP: Record<Relationship, Contribution> = {
  * `(parseFloat("strong") || 0.5)`. Reading the field would be reading a
  * constant. If a future seed makes it meaningful, using it is a policy version
  * bump — not a silent change in what a score means.
+ *
+ * That claim no longer holds as of 2026-09-09: measured distribution is
+ * `0.500`×37, `1.000`×14, `0.800`×11, `0.300`×1, `0.000`×1. See
+ * docs/superpowers/specs/2026-09-09-vendor-drift-design.md §8. The decision
+ * to ignore the field may still stand — it is the "every value is 0.500"
+ * reason above that has expired, not necessarily the decision itself.
  */
 export function contributionOf(facts: MappingFacts): Contribution {
   // Absence of a recorded relationship is its own answer, and it is reported

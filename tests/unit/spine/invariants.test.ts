@@ -5,6 +5,8 @@ import {
   checkMappingCountsStable,
   KNOWN_UNCURATED,
 } from '@/lib/spine/invariants';
+import { FRAMEWORK_REGISTRY } from '@/lib/assessment/framework-registry';
+import { CATALOGUE_BASELINE } from '@/lib/spine/baseline';
 
 /**
  * `counts` maps a vendor slug to how many mapping rows it has.
@@ -262,7 +264,7 @@ describe('a mapping count that moves without reaching zero', () => {
       BASE,
     );
     expect(failures).toHaveLength(1);
-    expect(failures[0].framework).toBe('(catalogue)');
+    expect(failures[0].framework).toBe('(catalogue totals)');
     expect(failures[0].reason).toContain('70000');
   });
 
@@ -286,6 +288,21 @@ describe('a mapping count that moves without reaching zero', () => {
       'v-current',
       BASE,
     );
-    expect(failures.some((f) => f.framework === 'iso27001')).toBe(true);
+    expect(failures).toHaveLength(1);
+    expect(failures[0].framework).toBe('iso27001');
+    expect(failures[0].reason).toMatch(/no curated/i);
+  });
+});
+
+describe('the baseline is checked against the framework registry', () => {
+  it('covers every offered framework that is not a known gap', () => {
+    // The baseline is only as good as its key set. A framework added to the
+    // registry but not here is watched by the binary check alone, which is the
+    // check this file exists to supplement.
+    const expected = FRAMEWORK_REGISTRY
+      .map((f) => f.id)
+      .filter((id) => !KNOWN_UNCURATED.has(id))
+      .sort();
+    expect(Object.keys(CATALOGUE_BASELINE.byFramework).sort()).toEqual(expected);
   });
 });

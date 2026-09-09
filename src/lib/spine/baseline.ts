@@ -23,6 +23,12 @@
 // written to detect it.
 //
 // Spec: docs/superpowers/specs/2026-09-09-vendor-drift-design.md §4
+export type CatalogueBaseline = {
+  scfVersionId: string;
+  totalMappings: number;
+  byFramework: Record<string, number>;
+};
+
 export const CATALOGUE_BASELINE = {
   scfVersionId: '826a1f05-f065-4feb-9f44-ced8019a6701',
   totalMappings: 67234,
@@ -35,5 +41,5 @@ export const CATALOGUE_BASELINE = {
     soc2: 1478,
     'TX-LEVEL-2': 366,
     nist_800_53: 1117,
-  } as Record<string, number>,
-};
+  },
+} as const;

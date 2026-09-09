@@ -12,7 +12,7 @@
 
 import { FRAMEWORK_REGISTRY } from '@/lib/assessment/framework-registry';
 import { resolveVendorFrameworkCode } from '@/lib/assessment/curation/identity';
-import { CATALOGUE_BASELINE } from '@/lib/spine/baseline';
+import { CATALOGUE_BASELINE, type CatalogueBaseline } from '@/lib/spine/baseline';
 
 export interface InvariantFailure {
   framework: string;
@@ -165,12 +165,12 @@ export interface CountInvariantFailure {
 export async function checkMappingCountsStable(
   client: unknown,
   scfVersionId: string,
-  baseline: typeof CATALOGUE_BASELINE = CATALOGUE_BASELINE,
+  baseline: CatalogueBaseline = CATALOGUE_BASELINE,
 ): Promise<CountInvariantFailure[]> {
   if (baseline.scfVersionId !== scfVersionId) {
     return [
       {
-        framework: '(catalogue)',
+        framework: '(catalogue totals)',
         reason:
           `count checks skipped: the baseline was measured against catalogue version ` +
           `${baseline.scfVersionId}, and the version in force is ${scfVersionId}. ` +
@@ -198,10 +198,10 @@ export async function checkMappingCountsStable(
     .eq('scf_version_id', scfVersionId);
 
   if (totalQuery.error) {
-    failures.push({ framework: '(catalogue)', reason: `total count failed: ${totalQuery.error.message}` });
+    failures.push({ framework: '(catalogue totals)', reason: `total count failed: ${totalQuery.error.message}` });
   } else if ((totalQuery.count ?? 0) !== baseline.totalMappings) {
     failures.push({
-      framework: '(catalogue)',
+      framework: '(catalogue totals)',
       reason:
         `catalogue holds ${totalQuery.count ?? 0} mapping rows in version ${scfVersionId}; ` +
         `the baseline records ${baseline.totalMappings}. Either the vendor re-imported or ` +
