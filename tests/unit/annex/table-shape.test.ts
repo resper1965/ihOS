@@ -37,8 +37,21 @@ describe('the Annex A crosswalk is a first-class table', () => {
   it('refuses an exact row that nobody signed', () => {
     // An exact mapping with no decided_by is the shape of a guess wearing a
     // signature. The CHECK makes it unstorable.
-    expect(sql).toMatch(/CHECK\s*\(/i);
-    expect(sql).toMatch(/decided_by/);
+    // Extract the exact_is_signed constraint to verify all three signature
+    // columns are required when confidence = 'exact'.
+    const constraintMatch = sql.match(
+      /ADD CONSTRAINT annex_control_mappings_exact_is_signed CHECK \(([\s\S]*?)\);/
+    );
+    expect(constraintMatch).toBeTruthy();
+
+    const constraintBody = constraintMatch![1];
+    // Verify the constraint references confidence and 'exact'
+    expect(constraintBody).toContain("confidence");
+    expect(constraintBody).toContain("'exact'");
+    // Verify all three signature columns are required
+    expect(constraintBody).toContain("decided_by");
+    expect(constraintBody).toContain("decided_at");
+    expect(constraintBody).toContain("rationale");
   });
 
   it('enables row level security, like every other spine table', () => {

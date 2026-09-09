@@ -1,3 +1,5 @@
+-- Mirrors: supabase/migrations/20260909000002_annex_control_mappings.sql
+--
 -- Migration 20260909000002: the Annex A crosswalk, as an asset rather than a
 -- leftover.
 --
