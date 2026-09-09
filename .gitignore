@@ -67,3 +67,6 @@ scratch/
 # Local agent skills and CLI scratch — never project code.
 .claude/
 supabase/.temp/
+
+# SDD scratch (superpowers) — ledger, briefs, review packages
+.superpowers/
