@@ -4,21 +4,11 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard,
-  MessageSquare,
-  Target,
-  ClipboardCheck,
-  FileText,
-  BarChart3,
-  ShieldCheck,
   ChevronLeft,
   Menu,
   Settings,
   LogOut,
-  Database,
-  AlertTriangle,
   Users,
-  Flag,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
 import { signOut } from "@/lib/supabase/auth-actions";
@@ -30,23 +20,7 @@ import { PageTitleProvider, useCurrentPageMeta } from "@/lib/context/page-title-
 import { HelpProvider, useHelp } from "@/lib/context/help-context";
 import { HelpSidebar } from "@/components/dashboard/help-sidebar";
 import { HelpCircle } from "lucide-react";
-
-const NAV_ITEMS = [
-  { label: "Overview", href: "/", icon: LayoutDashboard },
-  { label: "Standards & Norms", href: "/compliance", icon: ShieldCheck },
-  { label: "Partner Requirements", href: "/compliance/scrms", icon: Target },
-  { label: "Evidence Map", href: "/compliance/mappings", icon: Database },
-  { label: "Risk Analysis", href: "/threat-modeling", icon: AlertTriangle },
-  { label: "Chat", href: "/chat", icon: MessageSquare },
-  { label: "Audits & Checks", href: "/assessments", icon: ClipboardCheck },
-  // Goals was only reachable through the Overview widget — a tracked
-  // remediation program deserves first-class navigation (spec US11).
-  { label: "Goals & Tasks", href: "/goals", icon: Flag },
-  // Label must match the destination: /documents manages documents;
-  // the RAG-health page (/knowledge-base) is linked from Documents.
-  { label: "Documents", href: "/documents", icon: FileText },
-  { label: "Reports", href: "/reports", icon: BarChart3 },
-] as const;
+import { NAV_GROUPS, NAV_ITEMS, isNavItemActive } from "@/lib/dashboard/navigation";
 
 function getRoleLabel(role: string | undefined | null): string {
   switch (role) {
@@ -128,30 +102,36 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           </div>
 
           <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
-            {NAV_ITEMS.map((item) => {
-              const isExact = pathname === item.href;
-              const isPrefix = item.href !== "/" && pathname.startsWith(item.href);
-              const hasMoreSpecificMatch = NAV_ITEMS.some(
-                (other) =>
-                  other.href !== item.href &&
-                  other.href !== "/" &&
-                  pathname.startsWith(other.href) &&
-                  other.href.length > item.href.length
-              );
-              const isActive = (isExact || isPrefix) && !hasMoreSpecificMatch;
-              return (
-                <Link key={item.href} href={item.href}
-                  className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 border ${
-                    isActive 
-                      ? "bg-primary/10 text-primary border-primary/20 shadow-sm shadow-primary/5 font-semibold" 
-                      : "border-transparent text-text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-text-primary"
-                  }`}>
-                  <item.icon className={`h-5 w-5 shrink-0 stroke-[1.5] ${isActive ? "text-primary" : "text-text-muted group-hover:text-text-secondary"}`} />
-                  {sidebarOpen && <span>{item.label}</span>}
-                </Link>
-              );
-            })}
-            
+            {NAV_GROUPS.map((group, groupIndex) => (
+              <div key={group.heading ?? `group-${groupIndex}`} className="space-y-1">
+                {group.heading && sidebarOpen && (
+                  <div
+                    aria-hidden="true"
+                    className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-text-muted"
+                  >
+                    {group.heading}
+                  </div>
+                )}
+                {group.heading === null && groupIndex > 0 && (
+                  <div className="my-2 border-t border-border-glass" />
+                )}
+                {group.items.map((item) => {
+                  const isActive = isNavItemActive(item.href, pathname, NAV_ITEMS);
+                  return (
+                    <Link key={item.href} href={item.href}
+                      className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 border ${
+                        isActive
+                          ? "bg-primary/10 text-primary border-primary/20 shadow-sm shadow-primary/5 font-semibold"
+                          : "border-transparent text-text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-text-primary"
+                      }`}>
+                      <item.icon className={`h-5 w-5 shrink-0 stroke-[1.5] ${isActive ? "text-primary" : "text-text-muted group-hover:text-text-secondary"}`} />
+                      {sidebarOpen && <span>{item.label}</span>}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
+
             {profile?.role === "admin" && (
                 <Link href="/admin/users"
                   className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
