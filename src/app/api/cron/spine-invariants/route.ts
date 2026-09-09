@@ -7,7 +7,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getCachedScfVersionId } from '@/lib/standard-api/sync/catalog';
-import { checkOfferedFrameworksResolve } from '@/lib/spine/invariants';
+import { checkOfferedFrameworksResolve, checkAnnexMappingsResolve } from '@/lib/spine/invariants';
 import { logger } from '@/lib/logger';
 
 export const dynamic = 'force-dynamic';
@@ -31,7 +31,10 @@ export async function GET(req: Request) {
 
   const admin = createAdminClient();
   const scfVersionId = await getCachedScfVersionId();
-  const failures = await checkOfferedFrameworksResolve(admin, scfVersionId);
+  const failures = [
+    ...(await checkOfferedFrameworksResolve(admin, scfVersionId)),
+    ...(await checkAnnexMappingsResolve(admin, scfVersionId)),
+  ];
 
   if (failures.length > 0) {
     logger.error('spine invariant failed', {

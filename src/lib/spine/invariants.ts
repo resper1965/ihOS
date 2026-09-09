@@ -79,3 +79,64 @@ export async function checkOfferedFrameworksResolve(
 
   return failures;
 }
+
+export interface AnnexInvariantFailure {
+  annexCode: string;
+  reason: string;
+}
+
+/**
+ * Every Annex A mapping must point at an SCF control the current catalogue
+ * still has.
+ *
+ * A vendor version bump can retire a control code. When that happens the
+ * mapping points at nothing, and a projection over it loses coverage without
+ * saying so — the same silence that let all eight curated framework identities
+ * break unnoticed for eleven days on 2026-09-08.
+ */
+export async function checkAnnexMappingsResolve(
+  client: unknown,
+  scfVersionId: string,
+): Promise<AnnexInvariantFailure[]> {
+  const PAGE = 1000;
+  const db = client as {
+    from: (t: string) => {
+      select: (c: string, o?: unknown) => {
+        range?: (a: number, b: number) => Promise<{ data: Array<Record<string, unknown>> | null; error: { message: string } | null }>;
+        eq?: (col: string, v: string) => {
+          range: (a: number, b: number) => Promise<{ data: Array<Record<string, unknown>> | null; error: { message: string } | null }>;
+        };
+      };
+    };
+  };
+
+  const catalogue = new Set<string>();
+  for (let from = 0; ; from += PAGE) {
+    const q = db.from('scf_controls_cache').select('control_code');
+    const { data, error } = await q.eq!('scf_version_id', scfVersionId).range(from, from + PAGE - 1);
+    if (error) throw new Error(`scf_controls_cache: ${error.message}`);
+    const rows = data ?? [];
+    for (const r of rows) catalogue.add(String(r.control_code));
+    if (rows.length < PAGE) break;
+  }
+
+  const failures: AnnexInvariantFailure[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const q = db.from('annex_control_mappings').select('annex_code, control_code');
+    const { data, error } = await q.range!(from, from + PAGE - 1);
+    if (error) throw new Error(`annex_control_mappings: ${error.message}`);
+    const rows = data ?? [];
+    for (const r of rows) {
+      const control = String(r.control_code);
+      if (!catalogue.has(control)) {
+        failures.push({
+          annexCode: String(r.annex_code),
+          reason: `maps to ${control}, which is not in catalogue version ${scfVersionId}`,
+        });
+      }
+    }
+    if (rows.length < PAGE) break;
+  }
+
+  return failures;
+}
