@@ -103,13 +103,8 @@ const HELP_DATABASE: Record<string, PageHelpData> = {
     tourSteps: [
       {
         targetId: "compliance-scorecards",
-        title: "Framework Posture",
-        content: "Compare performance across different standards, detailing covered controls and open gaps."
-      },
-      {
-        targetId: "remediation-roi-card",
-        title: "Priority Remediation (ROI)",
-        content: "Follow this list to optimize tasks, focusing on controls that cover the largest integration footprint."
+        title: "Framework Coverage",
+        content: "For each framework, see how many requirements exist, how many the crosswalk maps, and how many the vendor left unrecorded or unevaluated. Frameworks with no curated identity are shown as undecided, with no numbers, until someone assigns one."
       },
       {
         targetId: "compliance-gaps-table",

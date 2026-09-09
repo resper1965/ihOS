@@ -5,19 +5,17 @@ import {
   TrendingUp,
   BarChart3,
 } from "lucide-react";
-import { ComplianceScorecard } from "@/components/dashboard/compliance-scorecard";
 import { EvidenceSummary } from "@/components/dashboard/evidence-summary";
 import { GapTable } from "@/components/dashboard/gap-table";
-import { RoiPriority } from "@/components/dashboard/roi-priority";
 import { RealtimeRefresher } from "@/components/dashboard/realtime-refresher";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import {
-  getFrameworkScores,
   getEvaluationSummary,
   getTopGaps,
-  getRoiPath,
   getDomainBreakdown,
 } from "@/lib/data/compliance-data";
+import { collectCoverage } from "@/lib/compliance/coverage";
+import { getCachedScfVersionId } from "@/lib/standard-api/sync/catalog";
 
 export const metadata: Metadata = {
   title: "Compliance Intelligence — ihOS",
@@ -32,19 +30,19 @@ export const dynamic = "force-dynamic";
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default async function CompliancePage() {
-  const [frameworkScores, evaluationSummary, topGaps, roiPath, domainBreakdown] =
-    await Promise.all([
-      getFrameworkScores(),
-      getEvaluationSummary(),
-      getTopGaps(),
-      getRoiPath(),
-      getDomainBreakdown(),
-    ]);
+  const scfVersionId = await getCachedScfVersionId();
+  const coverage = await collectCoverage(scfVersionId);
+  const [evaluationSummary, topGaps, domainBreakdown] = await Promise.all([
+    getEvaluationSummary(),
+    getTopGaps(),
+    getDomainBreakdown(),
+  ]);
+  const curatedCount = coverage.filter((c) => c.status === "projected").length;
 
   const quickStats = [
     {
       label: "Monitored Frameworks",
-      value: frameworkScores.length.toString(),
+      value: curatedCount.toString(),
       icon: ShieldCheck,
       color: "text-primary",
       bgColor: "bg-primary/10",
@@ -75,8 +73,8 @@ export default async function CompliancePage() {
   return (
     <div className="w-full space-y-8">
       <PageTitleRegistrar
-        title={<>Compliance <span className="text-emerald-400">Intelligence</span></>}
-        subtitle={`Real-time posture across ${frameworkScores.length} frameworks`}
+        title={<>Compliance <span className="text-primary">Intelligence</span></>}
+        subtitle={`Crosswalk coverage for ${curatedCount} curated frameworks`}
         icon={<ShieldCheck className="h-4 w-4 text-primary" />}
       />
 
@@ -102,17 +100,60 @@ export default async function CompliancePage() {
         ))}
       </div>
 
-      {/* Compliance Scorecard */}
+      {/* Framework Coverage */}
       <section id="compliance-scorecards">
         <div className="mb-4 flex items-center gap-2">
           <h2 className="text-lg font-semibold text-text-primary">
-            Framework Scores
+            Framework Coverage
           </h2>
           <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-            {frameworkScores.length} active
+            {curatedCount} curated
           </span>
         </div>
-        <ComplianceScorecard frameworks={frameworkScores} />
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {coverage.map((c) => (
+            <div
+              key={c.localCode}
+              className="glass-card border border-border-glass bg-bg-card p-5"
+            >
+              <p className="text-sm font-semibold text-text-primary">{c.name}</p>
+              {c.status === "undecided" ? (
+                <p className="mt-2 text-xs text-text-secondary">
+                  No curated identity — a person must decide which vendor
+                  framework this means.
+                </p>
+              ) : (
+                <div className="mt-3 space-y-1 text-xs text-text-secondary">
+                  <p>
+                    Requirements:{" "}
+                    <span className="font-semibold text-text-primary">
+                      {c.requirementsTotal}
+                    </span>
+                  </p>
+                  <p>
+                    Unrecorded:{" "}
+                    <span className="font-semibold text-text-primary">
+                      {c.requirementsUnrecorded}
+                    </span>
+                  </p>
+                  <p>
+                    Unevaluated:{" "}
+                    <span className="font-semibold text-text-primary">
+                      {c.requirementsUnevaluated}
+                    </span>
+                  </p>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+        <p className="mt-4 text-xs text-text-muted">
+          Curation policy{" "}
+          {coverage.find((c) => c.status === "projected")?.policyVersion ?? "—"},
+          owned by{" "}
+          {coverage.find((c) => c.status === "projected")?.policyOwner ?? "—"}.
+          Catalogue version {scfVersionId}.
+        </p>
       </section>
 
       {/* Evidence Evaluation + Domain Breakdown */}
@@ -128,10 +169,13 @@ export default async function CompliancePage() {
         <GapTable gaps={topGaps} />
       </section>
 
-      {/* ROI Priority Path */}
-      <section id="remediation-roi-card">
-        <RoiPriority items={roiPath} />
-      </section>
+      {/* The ROI widget was removed on 2026-09-09. getRoiPath asks the vendor
+          about ["ISO 27701", "HIPAA", "ISO 27001"] — hardcoded phrase-format
+          names the vendor abandoned on 2026-09-08 (FINDINGS_2026-09-09.md B9),
+          one of which we quarantined for matching three frameworks at once. It
+          has almost certainly rendered nothing since. Repairing it means reading
+          the codes from framework_identity_curation, which is vendor
+          integration, not information architecture. See the design doc §5.3. */}
 
       <RealtimeRefresher />
     </div>
