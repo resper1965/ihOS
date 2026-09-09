@@ -1,6 +1,20 @@
 import { describe, it, expect } from 'vitest';
 import { checkAnnexMappingsResolve } from '@/lib/spine/invariants';
 
+// The real query chains .order() any number of times before .range() —
+// annex_control_mappings needs three keys to reach a total order — so the
+// mock's `order` must return something that is itself both orderable and
+// rangeable, not terminate after one call.
+function orderable(resolve: () => Promise<{ data: unknown; error: { message: string } | null }>): {
+  order: () => ReturnType<typeof orderable>;
+  range: () => Promise<{ data: unknown; error: { message: string } | null }>;
+} {
+  return {
+    order: () => orderable(resolve),
+    range: resolve,
+  };
+}
+
 /**
  * `annexRows` are what the crosswalk holds; `catalogue` is the set of SCF
  * control codes the current version knows.
@@ -10,18 +24,10 @@ function client(annexRows: Array<{ annex_code: string; control_code: string }>, 
     from: (table: string) => ({
       select: (_c: string, _o?: unknown) => {
         if (table === 'annex_control_mappings') {
-          return {
-            order: () => ({
-              range: async () => ({ data: annexRows, error: null }),
-            }),
-          };
+          return orderable(async () => ({ data: annexRows, error: null }));
         }
         return {
-          eq: () => ({
-            order: () => ({
-              range: async () => ({ data: catalogue.map((c) => ({ control_code: c })), error: null }),
-            }),
-          }),
+          eq: () => orderable(async () => ({ data: catalogue.map((c) => ({ control_code: c })), error: null })),
         };
       },
     }),
@@ -33,14 +39,8 @@ function brokenClient(message: string) {
   return {
     from: () => ({
       select: () => ({
-        order: () => ({
-          range: async () => ({ data: null, error: { message } }),
-        }),
-        eq: () => ({
-          order: () => ({
-            range: async () => ({ data: null, error: { message } }),
-          }),
-        }),
+        ...orderable(async () => ({ data: null, error: { message } })),
+        eq: () => orderable(async () => ({ data: null, error: { message } })),
       }),
     }),
   };

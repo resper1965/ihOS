@@ -100,13 +100,15 @@ export async function checkAnnexMappingsResolve(
 ): Promise<AnnexInvariantFailure[]> {
   const PAGE = 1000;
   type Page = Promise<{ data: Array<Record<string, unknown>> | null; error: { message: string } | null }>;
+  // .order() is chainable — a select with a non-unique first sort key needs a
+  // second (or third) call to reach a total order, so the type must let
+  // .order() follow .order().
+  type Orderable = { order: (col: string) => Orderable; range: (a: number, b: number) => Page };
   const db = client as {
     from: (t: string) => {
       select: (c: string, o?: unknown) => {
-        order?: (col: string) => { range: (a: number, b: number) => Page };
-        eq?: (col: string, v: string) => {
-          order: (col: string) => { range: (a: number, b: number) => Page };
-        };
+        order?: (col: string) => Orderable;
+        eq?: (col: string, v: string) => Orderable;
       };
     };
   };
@@ -134,7 +136,16 @@ export async function checkAnnexMappingsResolve(
 
   for (let from = 0; ; from += PAGE) {
     const q = db.from('annex_control_mappings').select('annex_code, control_code');
-    const { data, error } = await q.order!('annex_code').range(from, from + PAGE - 1);
+    // annex_code alone is not unique (~18 rows per id); annex_code+control_code
+    // still is not, since the primary key also includes edition — the same
+    // annex_code/control_code pair can occur once per edition. All three
+    // together match the table's primary key, which is the total order this
+    // pagination needs.
+    const { data, error } = await q
+      .order!('annex_code')
+      .order('control_code')
+      .order('edition')
+      .range(from, from + PAGE - 1);
     if (error) {
       failures.push({ annexCode: '(crosswalk)', reason: `annex_control_mappings: ${error.message}` });
       return failures;
