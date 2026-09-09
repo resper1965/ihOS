@@ -82,7 +82,11 @@ export function parseSoaSheet(rows: unknown[][], spec: SoaSheetSpec): SoaEntry[]
       const key = String(v ?? '').trim().toLowerCase();
       if (key) map[key] = j;
     });
-    if (map[HEADERS.applicable] !== undefined && map[HEADERS.justification] !== undefined) {
+    if (
+      map[HEADERS.code] !== undefined &&
+      map[HEADERS.applicable] !== undefined &&
+      map[HEADERS.justification] !== undefined
+    ) {
       headerIndex = i;
       columns = map;
       break;
@@ -91,9 +95,9 @@ export function parseSoaSheet(rows: unknown[][], spec: SoaSheetSpec): SoaEntry[]
 
   if (headerIndex === -1) {
     throw new Error(
-      `sheet "${spec.sheetName}": no header row carrying both ` +
-        `"${HEADERS.applicable}" and "${HEADERS.justification}". Refusing to guess ` +
-        `the layout — a silently skipped sheet is how controls disappear.`,
+      `sheet "${spec.sheetName}": no header row carrying ` +
+        `"${HEADERS.code}", "${HEADERS.applicable}" and "${HEADERS.justification}". ` +
+        `Refusing to guess the layout — a silently skipped sheet is how controls disappear.`,
     );
   }
 
@@ -165,6 +169,14 @@ export function parseSoaSheet(rows: unknown[][], spec: SoaSheetSpec): SoaEntry[]
       sourceSheet: spec.sheetName,
       sourceRow,
     });
+  }
+
+  if (out.length === 0) {
+    throw new Error(
+      `sheet "${spec.sheetName}": header found, but zero rows parsed as controls. ` +
+        `A control sheet with no controls is never correct — refusing to return an ` +
+        `empty result indistinguishable from a sheet that parsed fine.`,
+    );
   }
 
   return out;

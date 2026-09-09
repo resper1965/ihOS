@@ -17,6 +17,17 @@ import { createHash } from 'node:crypto';
 const DRY_RUN = process.argv.includes('--dry-run');
 const BATCH = 200;
 
+// The count a person checked by hand once, against the dry run's six numbers,
+// per the plan. Put in code so a typo that turns a control id invalid (e.g.
+// "A5.7" instead of "A.5.7") -- which the parser only skips as a section
+// banner -- cannot silently shrink a sheet and still exit 0. Keyed by sheet
+// name so the failure names the sheet, not just a total.
+const EXPECTED_SHEET_CONTROL_COUNTS: Record<string, number> = {
+  'Controls (Annex A) -  27001': 93,
+  'Controls (Annex A) - 27701': 31,
+  'Controls (Annex B) - 27701': 18,
+};
+
 async function main() {
   const XLSX = await import('xlsx');
   const { parseSoaSheet, CONTROL_SHEETS, sameSheetName } = await import('../src/lib/soa/parse');
@@ -46,7 +57,7 @@ async function main() {
 
   const { data: doc, error: docError } = await db
     .from('compliance_documents')
-    .select('id, year, filepath, title')
+    .select('id, year, filepath, title, doc_type')
     .eq('id', SOA_DOCUMENT_ID)
     .maybeSingle();
   if (docError) throw new Error(`compliance_documents: ${docError.message}`);
@@ -117,7 +128,12 @@ async function main() {
   }
 
   const problems = checkSoaSource(
-    { id: Number(doc.id), year: doc.year === null ? null : Number(doc.year), sha256: recorded },
+    {
+      id: Number(doc.id),
+      year: doc.year === null ? null : Number(doc.year),
+      doc_type: doc.doc_type === null || doc.doc_type === undefined ? null : String(doc.doc_type),
+      sha256: recorded,
+    },
     otherSoa,
     sha256,
   );
@@ -147,6 +163,19 @@ async function main() {
     }) as unknown[][];
     const parsed = parseSoaSheet(rows, spec);
     console.log(`${spec.sheetName}: ${parsed.length} controls, ${parsed.filter((e) => e.applicable).length} applicable`);
+
+    const expected = EXPECTED_SHEET_CONTROL_COUNTS[spec.sheetName];
+    if (expected === undefined) {
+      throw new Error(`no expected control count defined for sheet "${spec.sheetName}".`);
+    }
+    if (parsed.length !== expected) {
+      throw new Error(
+        `sheet "${spec.sheetName}": expected ${expected} controls, parsed ${parsed.length}. ` +
+          `Refusing to import a SoA that shrank or grew against the known-good count -- ` +
+          `a control id typo (e.g. "A5.7" instead of "A.5.7") is silently skipped by the ` +
+          `parser as a section banner, and this is the check that catches it.`,
+      );
+    }
     entries.push(...parsed);
   }
 
@@ -180,7 +209,39 @@ async function main() {
     if (error) throw new Error(`upsert soa_entries: ${error.message}`);
     console.log(`  wrote ${Math.min(i + BATCH, rows.length)} / ${rows.length}`);
   }
+
+  // Nothing above checks that the batches actually landed. If one fails
+  // partway through a run, the table is left holding rows from two different
+  // imports under two different source_sha256 values -- breaking the
+  // invariant the migration comment asserts and Guard 1 depends on (it reads
+  // one arbitrary row for "the" recorded hash). Reading back the count this
+  // document_id now holds closes that window without needing a transaction
+  // the client cannot express.
+  let written = 0;
+  for (let from = 0; ; from += 1000) {
+    const { data: page, error: verifyError } = await db
+      .from('soa_entries')
+      .select('annex_code')
+      .eq('document_id', SOA_DOCUMENT_ID)
+      .order('annex_code')
+      .range(from, from + 999);
+    if (verifyError) throw new Error(`soa_entries: ${verifyError.message}`);
+    const pageRows = page ?? [];
+    written += pageRows.length;
+    if (pageRows.length < 1000) break;
+  }
+  if (written !== rows.length) {
+    throw new Error(
+      `wrote ${rows.length} rows but soa_entries now holds ${written} for document ` +
+        `${SOA_DOCUMENT_ID}. A batch likely failed partway through -- refusing to treat ` +
+        `this import as complete.`,
+    );
+  }
+
   console.log('\ndone.');
 }
 
-main();
+main().catch((err) => {
+  console.error(err instanceof Error ? err.message : err);
+  process.exit(1);
+});

@@ -78,6 +78,31 @@ COMMENT ON COLUMN public.soa_entries.annex_code IS
 
 ALTER TABLE public.soa_entries ENABLE ROW LEVEL SECURITY;
 
+-- Scoped the way its parent document is scoped (005_rls_policies.sql,
+-- section 5, DOCUMENT_CHUNKS): a soa_entries row has no visibility of its
+-- own, it inherits compliance_documents' visibility for its document_id, the
+-- same way document_chunks inherits it for the document it belongs to.
+-- Before this, soa_entries_read granted every authenticated user (including
+-- client_user) unconditional SELECT -- broader than compliance_documents
+-- itself, where docs_select_client restricts a client_user to ISMS_CORE and
+-- their own B2B_<org> overlay. That gap let a client_user who cannot read
+-- document 392 read all 142 of its rows, justification text included.
 DROP POLICY IF EXISTS soa_entries_read ON public.soa_entries;
-CREATE POLICY soa_entries_read ON public.soa_entries
-  FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY soa_entries_select_internal ON public.soa_entries
+  FOR SELECT
+  USING (public.get_user_role() IN ('admin', 'ionic_user'));
+
+CREATE POLICY soa_entries_select_client ON public.soa_entries
+  FOR SELECT
+  USING (
+    public.get_user_role() = 'client_user'
+    AND EXISTS (
+      SELECT 1 FROM public.compliance_documents d
+      WHERE d.id = document_id
+        AND (
+            d.category = 'ISMS_CORE'
+            OR d.category::text = 'B2B_' || public.get_user_client_org()
+        )
+    )
+  );

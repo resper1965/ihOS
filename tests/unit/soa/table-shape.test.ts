@@ -58,4 +58,29 @@ describe('the SoA is stored as declarations, not as prose', () => {
     expect(sql).toMatch(/ALTER TABLE public\.soa_entries\s+ENABLE ROW LEVEL SECURITY/i);
     expect(sql).toMatch(/CREATE POLICY .* ON public\.soa_entries/i);
   });
+
+  it('scopes SELECT the way compliance_documents scopes its own rows, not wider', () => {
+    // 005_rls_policies.sql restricts a client_user to ISMS_CORE and their own
+    // B2B_<org> overlay (docs_select_client). A soa_entries row has no
+    // visibility of its own -- it must inherit that scoping via document_id,
+    // the same way document_chunks inherits it (chunks_select_client), not
+    // grant every authenticated user unconditional SELECT.
+    expect(sql).not.toMatch(/FOR SELECT TO authenticated USING \(true\)/i);
+
+    // An internal-roles policy, same allowlist compliance_documents uses.
+    expect(sql).toMatch(
+      /FOR SELECT\s+USING \(public\.get_user_role\(\) IN \('admin', 'ionic_user'\)\)/i,
+    );
+
+    // A client_user policy that re-checks the parent document's own
+    // visibility rule rather than trusting soa_entries in isolation.
+    const clientPolicy = sql.match(
+      /CREATE POLICY soa_entries_select_client[\s\S]*?public\.get_user_role\(\) = 'client_user'[\s\S]*?\);/i,
+    );
+    expect(clientPolicy, 'a client_user policy must exist').toBeTruthy();
+    expect(clientPolicy![0]).toMatch(/compliance_documents/i);
+    expect(clientPolicy![0]).toMatch(/d\.id = document_id/i);
+    expect(clientPolicy![0]).toMatch(/ISMS_CORE/);
+    expect(clientPolicy![0]).toMatch(/get_user_client_org/i);
+  });
 });

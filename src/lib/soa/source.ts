@@ -14,6 +14,7 @@ export const SOA_DOCUMENT_ID = 392;
 export interface SoaSourceRow {
   id: number;
   year: number | null;
+  doc_type: string | null;
   /** Hash recorded at the last import; null before the first one. */
   sha256: string | null;
 }
@@ -35,6 +36,13 @@ export function checkSoaSource(
 ): string[] {
   const problems: string[] = [];
 
+  if (configured.doc_type !== 'soa') {
+    problems.push(
+      `document ${configured.id} has doc_type ${JSON.stringify(configured.doc_type)}, ` +
+        `not 'soa'. The configured SoA source must itself be classified as a SoA.`,
+    );
+  }
+
   if (configured.sha256 !== null && configured.sha256 !== currentSha256) {
     problems.push(
       `document ${configured.id} changed under the constant: recorded hash ` +
@@ -43,9 +51,23 @@ export function checkSoaSource(
     );
   }
 
-  const configuredYear = configured.year ?? 0;
+  if (configured.year === null) {
+    problems.push(
+      `document ${configured.id} (the configured SoA) has no year recorded. It ` +
+        `cannot be compared against other SoA documents, so this guard cannot do its job.`,
+    );
+  }
+
   for (const other of otherSoaDocuments) {
-    if ((other.year ?? 0) > configuredYear) {
+    if (other.year === null) {
+      problems.push(
+        `document ${other.id} is a SoA with no year recorded. It cannot be ` +
+          `compared against the configured document ${configured.id} — a later SoA ` +
+          `uploaded with an unset year would otherwise go unnoticed indefinitely.`,
+      );
+      continue;
+    }
+    if (configured.year !== null && other.year > configured.year) {
       problems.push(
         `document ${other.id} is a SoA for year ${other.year}, later than the ` +
           `configured document ${configured.id} (${configured.year}). It is NOT ` +

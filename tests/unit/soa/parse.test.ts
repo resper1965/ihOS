@@ -96,6 +96,34 @@ describe('parsing one SoA control sheet', () => {
     ).toThrow(/header/i);
   });
 
+  it('throws when the header carries no Number column', () => {
+    // Without it every row's code cell reads as '', CONTROL_ID rejects every
+    // row, and the sheet would silently parse to zero controls.
+    expect(() =>
+      parseSoaSheet(
+        [
+          ['Annex', 'Title', 'Description', 'Applicability', 'Justification', 'Notes'],
+          ['g', 't', 'd', 'Applicable', 'j', ''],
+        ],
+        A27001,
+      ),
+    ).toThrow(/header/i);
+  });
+
+  it('throws when a sheet with a valid header parses to zero controls', () => {
+    // A control sheet with no controls is never correct -- an empty array is
+    // indistinguishable from a sheet that parsed fine.
+    expect(() =>
+      parseSoaSheet(
+        sheet([
+          ['Annex A.5: Organizational Controls', '', '', '', '', '', ''],
+          [],
+        ]),
+        A27001,
+      ),
+    ).toThrow(/zero rows/i);
+  });
+
   it('throws on an applicability value it does not recognise', () => {
     expect(() =>
       parseSoaSheet(sheet([['g', 'A.5.1', 't', 'd', 'Partially', 'j', '']]), A27001),
