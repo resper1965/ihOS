@@ -1,8 +1,8 @@
 // tests/unit/standard-api/cached-catalogue.test.ts
 // Both engines read the SCF catalogue from scf_controls_cache through one
 // function (spec 2026-09-10 §3). The Standard-API engine used to fetch it live
-// against /scf/versions/latest, an endpoint that does not exist, and failed
-// every night from 2026-08-29.
+// against /scf/versions/latest, which in production answered an HTML page
+// instead of JSON, and failed every night from 2026-08-29.
 
 import { describe, it, expect, vi } from 'vitest';
 import { loadCachedCatalogue, type CatalogueReader } from '@/lib/standard-api/sync/catalog';

@@ -63,11 +63,16 @@ trusted.
   `runAssessment threw: Unexpected token '<', "<!DOCTYPE"... is not valid JSON`.
 - The runtime log for 2026-09-10 02:00 shows the request that failed:
   `GET https://standard-api.bekaa.eu/api/v1/scf/versions/latest`.
-- **That endpoint does not exist.** The vendor's published contract
-  (`src/lib/standard-api/generated/schema.d.ts`) declares no version endpoint at
-  all, and the working catalogue sync (`sync/catalog.ts:70`) uses `/scf/versions` —
-  the crosswalk walk succeeded at 2026-09-09 00:08, two hours before the assessment
-  failed against `/latest` the same night.
+- **The contract declares the endpoint; production did not honour it.** The
+  vendor's published contract (`src/lib/standard-api/generated/schema.d.ts`,
+  the `"/api/v1/scf/versions/latest"` key) declares it. In production it
+  answered an HTML page instead of JSON, while the catalogue sync's
+  `/scf/versions` (`sync/catalog.ts:70`) answered JSON with the same key —
+  the crosswalk walk succeeded at 2026-09-09 00:08, two hours before the
+  assessment failed against `/latest` the same night.
+- **2026-09-10 correction:** an earlier draft of this section claimed the
+  endpoint was undeclared. That check had searched the schema without the
+  `/api/v1` prefix the routes are actually keyed under.
 - **The client hid the HTTP status for twelve nights.** `get()` calls
   `response.json()` before it checks `response.ok` (`client.ts:221-223`); `post()`
   does the same. When the vendor answered with an HTML error page, the parse threw,

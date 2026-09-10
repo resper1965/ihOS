@@ -143,8 +143,10 @@ export async function GET() {
   let detail: string | null = null;
 
   // 1. GET /scf/versions — proves the credential authenticates at all. This
-  //    probed /scf/versions/latest until 2026-09-10; that endpoint does not
-  //    exist, so the probe could never report the key as working.
+  //    probed /scf/versions/latest until 2026-09-10: in production that
+  //    endpoint answered an HTML page rather than JSON, so the probe could
+  //    never report the key as working. /scf/versions is what the catalogue
+  //    sync uses, and it answered JSON with the same key.
   try {
     const versionsRes = await probe(`${baseUrl}/scf/versions`, {
       method: "GET",

@@ -153,8 +153,8 @@ const CATALOGUE_PAGE = 1000;
  *
  * Moved here from local-engine.ts so the Standard-API engine reads the same
  * source (spec 2026-09-10 §3). That engine fetched the catalogue live against
- * /scf/versions/latest, which does not exist, and failed every night from
- * 2026-08-29 to 2026-09-10.
+ * /scf/versions/latest, which in production answered an HTML page instead of
+ * JSON, and failed every night from 2026-08-29 to 2026-09-10.
  *
  * Paged with .range(): supabase-js caps an unbounded select at 1,000 rows and
  * a version holds ~1,468 controls — the cap crosswalk.ts documents.

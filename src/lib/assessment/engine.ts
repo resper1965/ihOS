@@ -202,9 +202,10 @@ export async function runAssessment(
 
   // The catalogue comes from the local cache, at the version the cache holds —
   // the source local-engine.ts reads. Fetching it live used a version endpoint
-  // that does not exist (/scf/versions/latest) and failed every night from
-  // 2026-08-29 to 2026-09-10. Principle VIII is reconciled in spec 2026-09-10
-  // §3: scf_controls_cache is the vendor's catalogue, synced from the API.
+  // (/scf/versions/latest) that in production answered an HTML page instead
+  // of JSON, and failed every night from 2026-08-29 to 2026-09-10. Principle
+  // VIII is reconciled in spec 2026-09-10 §3: scf_controls_cache is the
+  // vendor's catalogue, synced from the API.
   const { getCachedScfVersionId, loadCachedCatalogue } = await import('@/lib/standard-api/sync/catalog');
   const scfVersionId = await getCachedScfVersionId();
   let allControls: any[] = await loadCachedCatalogue(scfVersionId);

@@ -33,7 +33,9 @@ export async function POST(request: NextRequest) {
     const adminSupabase = createAdminClient();
 
     // 1. The newest catalogue version, asked the way the catalogue sync asks.
-    // This called GET /scf/versions/latest until 2026-09-10; it does not exist.
+    // This called GET /scf/versions/latest until 2026-09-10: the contract
+    // declares it, but in production it answered an HTML page instead of
+    // JSON every night from 2026-08-29.
     const scf_version_id = await getLatestScfVersionId(createThrottle());
 
     // 2. Fetch controls from GRC API
