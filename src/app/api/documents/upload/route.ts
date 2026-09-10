@@ -3,7 +3,7 @@
 
 import { NextResponse, waitUntil } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { chunkComplianceDocument } from '@/lib/chat/chunker';
+import { chunkByFormat } from '@/lib/chat/chunker';
 import { runPostIngestPipeline } from '@/lib/chat/post-ingest-pipeline';
 import { generateEmbeddings } from '@/lib/chat/embeddings';
 import { resolveFileType, extractText } from '@/lib/chat/document-extractor';
@@ -166,7 +166,7 @@ export async function POST(req: Request) {
     documentId = docRecord.id;
 
     // ── 6. Chunk text ────────────────────────────────────────────────────
-    const chunks = chunkComplianceDocument(text);
+    const chunks = chunkByFormat(text, fileType);
 
     if (chunks.length === 0) {
       await adminSupabase

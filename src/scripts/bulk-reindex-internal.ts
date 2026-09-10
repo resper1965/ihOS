@@ -5,7 +5,7 @@ if (!global.WebSocket) {
 }
 
 import { createAdminClient } from '../lib/supabase/admin';
-import { chunkComplianceDocument } from '../lib/chat/chunker';
+import { chunkByFormat } from '../lib/chat/chunker';
 import { generateEmbeddings } from '../lib/chat/embeddings';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
@@ -102,7 +102,7 @@ async function runBulkReindexInternal() {
       // documento ficava sem nenhum chunk enquanto total_chunks continuava
       // dizendo o numero da ultima ingestao boa. Produzir primeiro e apagar
       // depois torna esse estado impossivel.
-      const chunks = chunkComplianceDocument(text);
+      const chunks = chunkByFormat(text, format);
       if (chunks.length === 0) {
         console.error(`  ❌ Extracao devolveu texto sem nenhum chunk — pulando, chunks antigos intactos.`);
         continue;

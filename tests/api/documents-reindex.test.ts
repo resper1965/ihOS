@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { mockSupabaseServer, mockSupabaseAdmin } from '../setup';
 import { extractText } from '@/lib/chat/document-extractor';
-import { chunkComplianceDocument } from '@/lib/chat/chunker';
+import { chunkByFormat } from '@/lib/chat/chunker';
 import { generateEmbeddings } from '@/lib/chat/embeddings';
 import { extractDeltasFromDocument } from '@/lib/assessment/delta-extractor';
 import { triggerGrcRecalibration } from '@/lib/assessment/grc-trigger';
@@ -17,6 +17,9 @@ vi.mock('@/lib/chat/chunker', () => ({
   // The ingest routes moved to the compliance-oriented chunker
   // (vectorization hardening) — mock both exports.
   chunkComplianceDocument: vi.fn(),
+  // Since 2026-09-10 the routes call chunkByFormat, which picks the chunker
+  // from the file type. The mock has to carry it or the route throws at import.
+  chunkByFormat: vi.fn(),
 }));
 
 vi.mock('@/lib/chat/embeddings', () => ({
@@ -131,7 +134,7 @@ describe('Document Re-indexing API', () => {
 
     // Setup mock implementations for extraction & chunking
     (extractText as any).mockResolvedValue('Extracted document text content.');
-    (chunkComplianceDocument as any).mockReturnValue([
+    (chunkByFormat as any).mockReturnValue([
       { content: 'Chunk 1', index: 0, metadata: { sectionTitle: 'Section 1' } },
     ]);
     (generateEmbeddings as any).mockResolvedValue([[0.1, 0.2, 0.3]]);
@@ -157,7 +160,10 @@ describe('Document Re-indexing API', () => {
     expect(body.data.chunkCount).toBe(1);
 
     expect(extractText).toHaveBeenCalled();
-    expect(chunkComplianceDocument).toHaveBeenCalledWith('Extracted document text content.');
+    // The route chunks whatever extractText returned. Asserting the first
+    // argument keeps that property without pinning the format argument,
+    // which the fixture does not set.
+    expect((chunkByFormat as any).mock.calls[0][0]).toBe('Extracted document text content.');
     
     // Wait briefly for background promises to settle
     await new Promise((resolve) => setTimeout(resolve, 50));

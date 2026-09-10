@@ -312,3 +312,77 @@ export function chunkComplianceDocument(
 
   return chunks;
 }
+
+// ── CSV ──────────────────────────────────────────────────────────────────────
+
+/**
+ * Chunk a CSV so every chunk carries the column names.
+ *
+ * A spreadsheet flattened to CSV chunks badly under the generic path: the
+ * header line lands in chunk 0 and every chunk after it is bare values.
+ * `A.5.1,Politicas de seguranca,Aplicavel,...` retrieved on its own does not
+ * say which column is which, and on a RACI matrix or an Annex A table the
+ * column names are exactly the part that answers the question — who is
+ * responsible, whether the control is applicable, what the justification was.
+ *
+ * So the header is repeated at the top of each chunk. It costs a line per
+ * chunk and it is the difference between a retrievable row and a tuple.
+ *
+ * Introduced 2026-09-10, when 22 spreadsheets were converted to CSV and
+ * ingested after xlsx was refused outright (see SECURITY.md and
+ * docs/sql/2026-09-09e_APPLY_ME_reconcile_chunk_counts.sql).
+ */
+export function chunkCsvDocument(
+  text: string,
+  options: ChunkOptions = {},
+): DocumentChunk[] {
+  const trimmed = text.trim();
+  if (trimmed.length === 0) return [];
+
+  const newline = trimmed.indexOf('\n');
+  // A header with no rows under it is not a document — it is a column list.
+  if (newline === -1) return [];
+
+  const header = trimmed.slice(0, newline).trimEnd();
+  const body = trimmed.slice(newline + 1).trim();
+  if (body.length === 0) return [];
+
+  // The body is chunked on its own, then each chunk is prefixed. Reserving the
+  // header's width keeps a prefixed chunk from exceeding the size the caller
+  // asked for, which is what the embedding model is sized against.
+  const { chunkSize = COMPLIANCE_CHUNK_SIZE, ...rest } = options;
+  const prefix = header + '\n';
+  const bodyChunkSize = Math.max(chunkSize - prefix.length, Math.floor(chunkSize / 2));
+
+  const bodyChunks = chunkComplianceDocument(body, { ...rest, chunkSize: bodyChunkSize });
+
+  return bodyChunks.map((c, i) => ({
+    content: prefix + c.content,
+    index: i,
+    metadata: {
+      // Offsets stay relative to the original text, so they still point at the
+      // row the chunk came from rather than at the prefixed copy.
+      startChar: c.metadata.startChar + newline + 1,
+      endChar: c.metadata.endChar + newline + 1,
+      sectionTitle: header,
+    },
+  }));
+}
+
+/**
+ * Pick the chunker the format deserves.
+ *
+ * One place decides, because the three ingestion paths — upload, reindex and
+ * the bulk script — must not drift apart on it. A document chunked one way on
+ * upload and another way on reindex would silently change what retrieval
+ * returns for it, with nothing in the product reporting the difference.
+ */
+export function chunkByFormat(
+  text: string,
+  fileType: string | null | undefined,
+  options: ChunkOptions = {},
+): DocumentChunk[] {
+  return fileType === 'csv'
+    ? chunkCsvDocument(text, options)
+    : chunkComplianceDocument(text, options);
+}

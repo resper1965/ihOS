@@ -1,7 +1,7 @@
 import { logger } from '@/lib/logger';
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { chunkComplianceDocument } from '@/lib/chat/chunker';
+import { chunkByFormat } from '@/lib/chat/chunker';
 import { generateEmbeddings } from '@/lib/chat/embeddings';
 import { extractText } from '@/lib/chat/document-extractor';
 import { extractDeltasFromDocument, persistDeltas } from '@/lib/assessment/delta-extractor';
@@ -106,7 +106,7 @@ export async function POST(
     }
 
     // ── 5. Chunking ──────────────────────────────────────────────────────
-    const chunks = chunkComplianceDocument(text);
+    const chunks = chunkByFormat(text, doc.file_format);
 
     // ── 6. Delete old provenance & invalidate caches ───────────────────
     const adminReindex = createAdminClient();
