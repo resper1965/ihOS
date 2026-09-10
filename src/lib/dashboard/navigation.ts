@@ -12,7 +12,7 @@
 // were one tangled percentage before.
 
 import {
-  LayoutDashboard, MessageSquare, Target, ClipboardCheck, FileText,
+  LayoutDashboard, Target, ClipboardCheck, FileText,
   BarChart3, ShieldCheck, Database, AlertTriangle, Flag, Activity,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -41,7 +41,11 @@ export const NAV_GROUPS: NavGroup[] = [
       // document call these assessments.
       { label: 'Assessments', href: '/assessments', icon: ClipboardCheck },
       { label: 'Partner Requirements', href: '/compliance/scrms', icon: Target },
-      { label: 'Chat', href: '/chat', icon: MessageSquare },
+      // Chat is hidden from the menu as of 2026-09-10, at the product owner's
+      // request, for now — not removed. The route, the page and its tests are
+      // untouched: /chat still answers, and anyone holding the link still
+      // reaches it. Restore the entry here to bring it back; nothing else has
+      // to change.
     ],
   },
   {
