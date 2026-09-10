@@ -1,11 +1,11 @@
 // tests/api/standard-api-key.test.ts
 // Storing a credential, so the gate and the non-disclosure are the tests that
-// matter. Also pins the precedence trap: getSecret checks process.env FIRST,
-// so a key saved to the Vault is inert wherever the env var is set. The route
-// must say so rather than reporting a success that changes nothing.
+// matter. Also pins which source is in use after a save: since 2026-09-10 the
+// Vault wins for this key (vault.ts, VAULT_FIRST), so a saved key is the one
+// in use even where the env var is set.
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { mockSupabaseServer } from '../setup';
+import { mockSupabaseServer, mockSupabaseAdmin } from '../setup';
 
 function asRole(role: string) {
   mockSupabaseServer.auth.getUser.mockResolvedValue({
@@ -26,6 +26,7 @@ describe('POST /api/settings/integrations/standard-api/key', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     asRole('admin');
+    mockSupabaseAdmin.rpc.mockResolvedValue({ data: [], error: null });
   });
 
   it('returns 401 when unauthenticated', async () => {
@@ -57,18 +58,28 @@ describe('POST /api/settings/integrations/standard-api/key', () => {
     expect(raw).not.toContain('0123456789abcdef0123456789abcdef');
   });
 
-  it('warns that a stored key is shadowed when the env var is set', async () => {
+  it('reports a saved key as in use even when the env var is set', async () => {
+    // Inverted on 2026-09-10. This test used to assert the env var shadowed a
+    // saved key; the Vault now wins for this key (spec §1).
+    const key = 'standard_live_0123456789abcdef0123456789abcdef';
+    mockSupabaseAdmin.rpc.mockImplementation(async (fn: string) =>
+      fn === 'get_vault_secret' ? { data: key, error: null } : { data: null, error: null },
+    );
+
     const { POST } = await import('@/app/api/settings/integrations/standard-api/key/route');
-    const saved = process.env.STANDARD_GRC_API_KEY;
-    process.env.STANDARD_GRC_API_KEY = 'standard_live_envvaluewinsxxxxxxxxxxxxxxxx';
+    const body = await (await POST(req({ key }))).json();
 
-    const res = await POST(req({ key: 'standard_live_0123456789abcdef0123456789abcdef' }));
-    const body = await res.json();
+    expect(body.shadowedByEnv).toBe(false);
+  });
 
-    // The save may succeed, but the response must say it has no effect here.
+  it('reports the env var as in use when the Vault read comes back empty', async () => {
+    // The save call succeeded but the read did not find it: the response must
+    // not claim the new key is in use.
+    mockSupabaseAdmin.rpc.mockResolvedValue({ data: null, error: null });
+
+    const { POST } = await import('@/app/api/settings/integrations/standard-api/key/route');
+    const body = await (await POST(req({ key: 'standard_live_0123456789abcdef0123456789abcdef' }))).json();
+
     expect(body.shadowedByEnv).toBe(true);
-
-    if (saved === undefined) delete process.env.STANDARD_GRC_API_KEY;
-    else process.env.STANDARD_GRC_API_KEY = saved;
   });
 });

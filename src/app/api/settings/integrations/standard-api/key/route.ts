@@ -2,13 +2,11 @@
 //
 // Lets an admin/ionic_user store the Standard GRC API key in Supabase Vault.
 //
-// The important part is not the write — it's that `getSecret` (src/lib/
-// supabase/vault.ts) checks process.env FIRST, so a key saved here is inert
-// wherever STANDARD_GRC_API_KEY is set as an env var, which is every
-// environment today (local and Vercel). That precedence is deliberate:
-// deployed configuration must stay authoritative over a database row. So this
-// route does not invert it — it reports `shadowedByEnv` so the response never
-// looks like a no-op success.
+// Since 2026-09-10 the Vault wins for this key (src/lib/supabase/vault.ts,
+// VAULT_FIRST): a key saved here is the one in use, and the env var is only
+// the fallback for an empty Vault. `shadowedByEnv` still reports the source
+// actually resolved after the save, so the response never claims a success
+// that changed nothing.
 //
 // Auth gate mirrors src/app/api/settings/integrations/standard-api/route.ts
 // (itself copied from src/app/api/compliance/mappings/sync/route.ts:18-29).

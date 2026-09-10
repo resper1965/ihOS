@@ -142,9 +142,11 @@ export async function GET() {
   let scopesMissing: string[] | null = null;
   let detail: string | null = null;
 
-  // 1. GET /scf/versions/latest — proves the credential authenticates at all.
+  // 1. GET /scf/versions — proves the credential authenticates at all. This
+  //    probed /scf/versions/latest until 2026-09-10; that endpoint does not
+  //    exist, so the probe could never report the key as working.
   try {
-    const versionsRes = await probe(`${baseUrl}/scf/versions/latest`, {
+    const versionsRes = await probe(`${baseUrl}/scf/versions`, {
       method: "GET",
       headers: authHeaders,
     });

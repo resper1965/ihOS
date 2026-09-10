@@ -16,6 +16,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createThrottle, type Throttle } from './throttle';
+import { getSecret } from '@/lib/supabase/vault';
 
 const API_BASE = process.env.STANDARD_GRC_API_URL ?? 'https://standard-api.bekaa.eu/api/v1';
 
@@ -29,9 +30,12 @@ export interface CatalogSyncResult {
   rejected: Array<{ line: number; reason: string }>;
 }
 
-function authHeaders(extra: Record<string, string> = {}): Record<string, string> {
-  const key = process.env.STANDARD_GRC_API_KEY;
-  if (!key) throw new Error('STANDARD_GRC_API_KEY is not set');
+async function authHeaders(extra: Record<string, string> = {}): Promise<Record<string, string>> {
+  // Through getSecret, not process.env: since 2026-09-10 the key is set in the
+  // Vault (vault.ts, VAULT_FIRST), and a direct env read would keep sending
+  // the revoked one.
+  const key = await getSecret('STANDARD_GRC_API_KEY');
+  if (!key) throw new Error('STANDARD_GRC_API_KEY is set neither in the Vault nor in the environment');
   return { Authorization: `Bearer ${key}`, ...extra };
 }
 
@@ -46,7 +50,7 @@ function observe(res: Response, throttle: Throttle): void {
 
 async function requestJson<T>(path: string, throttle: Throttle): Promise<T> {
   return throttle.run(async () => {
-    const res = await fetch(`${API_BASE}${path}`, { headers: authHeaders() });
+    const res = await fetch(`${API_BASE}${path}`, { headers: await authHeaders() });
     observe(res, throttle);
     if (!res.ok) {
       const err = new Error(`GET ${path} → ${res.status}`) as Error & {

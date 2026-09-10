@@ -24,6 +24,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin';
 import { createThrottle, type Throttle } from './throttle';
+import { getSecret } from '@/lib/supabase/vault';
 
 const API_BASE = process.env.STANDARD_GRC_API_URL ?? 'https://standard-api.bekaa.eu/api/v1';
 // Small on purpose. At ~11 mappings per control, 500 rows is ~45 controls and
@@ -245,8 +246,9 @@ export async function syncCrosswalk(
   const throttle = opts.throttle ?? createThrottle();
   const supabase = createAdminClient() as unknown as UpsertableClient;
   let result0SkippedAlreadyDone = 0;
-  const key = process.env.STANDARD_GRC_API_KEY;
-  if (!key) throw new Error('STANDARD_GRC_API_KEY is not set');
+  // Through getSecret, not process.env — see authHeaders in catalog.ts.
+  const key = await getSecret('STANDARD_GRC_API_KEY');
+  if (!key) throw new Error('STANDARD_GRC_API_KEY is set neither in the Vault nor in the environment');
 
   // Ascending control_code order is what makes resumption a single comparison.
   //
