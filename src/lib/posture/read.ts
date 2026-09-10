@@ -13,6 +13,35 @@ export interface ControlPosture {
   operational: EvidenceLink[];
 }
 
+export interface ControlCodeSelection {
+  /** The codes to actually query, capped at `max`. */
+  codes: string[];
+  /** The true distinct count, computed before capping — never the post-slice length. */
+  totalDistinct: number;
+  /** True only when the distinct count exceeds `max`, never on an exact match. */
+  truncated: boolean;
+}
+
+/**
+ * Distinct control codes carrying evidence, sorted and capped.
+ *
+ * Extracted so the subtitle and the truncation notice can both be driven by
+ * the pre-slice count: computing them after `.slice()` states a truncated
+ * number as the whole, and firing "more exist" on `length === max` is wrong
+ * exactly when the corpus has precisely `max` codes and nothing was dropped.
+ */
+export function selectControlCodes(
+  rows: readonly Record<string, unknown>[],
+  max: number,
+): ControlCodeSelection {
+  const distinct = [...new Set(rows.map((r) => String(r.scf_control_code)))].sort();
+  return {
+    codes: distinct.slice(0, max),
+    totalDistinct: distinct.length,
+    truncated: distinct.length > max,
+  };
+}
+
 export function rowsToLinks(rows: readonly Record<string, unknown>[]): EvidenceLink[] {
   return rows.map((r) => ({
     scfControlCode: String(r.scf_control_code),

@@ -105,10 +105,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {NAV_GROUPS.map((group, groupIndex) => (
               <div key={group.heading ?? `group-${groupIndex}`} className="space-y-1">
                 {group.heading && sidebarOpen && (
-                  <div
-                    aria-hidden="true"
-                    className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-text-muted"
-                  >
+                  <div className="px-3 pb-1 pt-4 text-[11px] font-semibold uppercase tracking-wider text-text-muted">
                     {group.heading}
                   </div>
                 )}

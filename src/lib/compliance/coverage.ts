@@ -21,7 +21,13 @@ import { logger } from '@/lib/logger';
 export interface FrameworkCoverage {
   localCode: string;
   name: string;
-  status: 'projected' | 'undecided';
+  /**
+   * 'undecided' — nobody has curated which vendor framework this local code
+   * means. 'error' — a read failed; this says nothing about curation and must
+   * never render as if it did. 'projected' — curation resolved; requirement
+   * counts follow (see `reason` for whether the crosswalk itself has rows).
+   */
+  status: 'projected' | 'undecided' | 'error';
   requirementsTotal: number | null;
   requirementsUnrecorded: number | null;
   requirementsUnevaluated: number | null;
@@ -54,7 +60,39 @@ export async function collectCoverage(scfVersionId: string): Promise<FrameworkCo
         // The projection throws rather than returning zero when no person has
         // decided which vendor framework a local code means. Surfacing that as
         // its own state keeps "undecided" from being read as "covers nothing".
+        //
+        // But a genuinely missing identity is not the only thing that throws
+        // here: resolveVendorFrameworkCode also throws on a read failure
+        // against framework_identity_curation, and the mapping read below it
+        // throws on a scf_control_mappings failure. Neither of those is a
+        // statement about curation, and rendering them as "undecided" tells
+        // the operator that nobody decided when the truth is the database
+        // could not be read. Only the identity resolver's own "no curated
+        // vendor framework for" message names a real curation gap; every
+        // other message here is an error, not a decision.
         const message = err instanceof Error ? err.message : String(err);
+        const isGenuinelyUncurated = /no curated vendor framework for/.test(message);
+
+        if (!isGenuinelyUncurated) {
+          logger.error('coverage: framework read failed', {
+            context: 'api/compliance/coverage',
+            meta: { framework: fw.id, message },
+          });
+          return {
+            localCode: fw.id,
+            name: fw.name,
+            status: 'error' as const,
+            requirementsTotal: null,
+            requirementsUnrecorded: null,
+            requirementsUnevaluated: null,
+            score: null,
+            reason: null,
+            policyVersion: null,
+            policyOwner: null,
+            note: message,
+          };
+        }
+
         logger.warn('coverage: framework not projectable', {
           context: 'api/compliance/coverage',
           meta: { framework: fw.id, message },

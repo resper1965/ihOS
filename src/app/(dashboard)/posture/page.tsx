@@ -11,10 +11,12 @@
 //
 // Spec: docs/superpowers/specs/2026-09-09-ui-information-architecture-design.md §6
 
+import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
-import { groupPosture, rowsToLinks, summarise } from '@/lib/posture/read';
+import { groupPosture, rowsToLinks, selectControlCodes, summarise } from '@/lib/posture/read';
 import { PageTitleRegistrar } from '@/components/dashboard/page-title-registrar';
 import { Activity } from 'lucide-react';
+import { redirect } from 'next/navigation';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +24,40 @@ export const dynamic = 'force-dynamic';
 const MAX_CONTROLS = 500;
 const EVIDENCE_PAGE_SIZE = 1000;
 
+function forbiddenPage() {
+  return (
+    <div className="w-full space-y-8">
+      <PageTitleRegistrar
+        title="Posture"
+        subtitle="Forbidden"
+        icon={<Activity className="h-4 w-4 text-primary" />}
+      />
+      <p className="text-sm text-text-secondary">
+        Posture evidence is restricted to admin and ionic_user roles.
+      </p>
+    </div>
+  );
+}
+
 export default async function PosturePage() {
+  // Same gate as this page's API twin (src/app/api/posture/route.ts:18-35):
+  // the user-scoped client decides who may see cross-tenant evidence, and
+  // only after that decision does anything touch the admin client below.
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single();
+  if (profile?.role !== 'admin' && profile?.role !== 'ionic_user') {
+    return forbiddenPage();
+  }
+
   const db = createAdminClient();
 
   // PostgREST caps a response at max-rows and gives no stable order between two
@@ -32,9 +67,15 @@ export default async function PosturePage() {
   // evidence itself.
   const evidenceRows: Array<Record<string, unknown>> = [];
   for (let from = 0; ; from += EVIDENCE_PAGE_SIZE) {
+    // Unversioned baseline: same default as the API route when no version is
+    // named (route.ts:62-64). Without this filter, evidence recorded against
+    // different product versions merges into one control's link list and
+    // deriveVerdict can call a control conforming when no single version has
+    // conforming evidence for it.
     const { data, error } = await db
       .from('control_evidence')
       .select('scf_control_code, product_version_id, chunk_id, document_id, role, score, snippet')
+      .is('product_version_id', null)
       .order('scf_control_code')
       .order('chunk_id')
       .range(from, from + EVIDENCE_PAGE_SIZE - 1);
@@ -55,9 +96,10 @@ export default async function PosturePage() {
     if (page.length < EVIDENCE_PAGE_SIZE) break;
   }
 
-  const controlCodes = [...new Set(evidenceRows.map((r) => String(r.scf_control_code)))]
-    .sort()
-    .slice(0, MAX_CONTROLS);
+  const { codes: controlCodes, totalDistinct, truncated } = selectControlCodes(
+    evidenceRows,
+    MAX_CONTROLS,
+  );
 
   const postures = groupPosture(controlCodes, rowsToLinks(evidenceRows));
   const summary = summarise(postures);
@@ -66,7 +108,7 @@ export default async function PosturePage() {
     <div className="w-full space-y-8">
       <PageTitleRegistrar
         title="Posture"
-        subtitle={`${controlCodes.length} controls carrying evidence`}
+        subtitle={`${totalDistinct} controls carrying evidence`}
         icon={<Activity className="h-4 w-4 text-primary" />}
       />
 
@@ -105,7 +147,7 @@ export default async function PosturePage() {
         </table>
       </div>
 
-      {controlCodes.length === MAX_CONTROLS && (
+      {truncated && (
         <p className="text-xs text-text-muted">
           Showing the first {MAX_CONTROLS} controls by code. More carry evidence than are
           listed here.

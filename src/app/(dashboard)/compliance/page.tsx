@@ -20,7 +20,7 @@ import { getCachedScfVersionId } from "@/lib/standard-api/sync/catalog";
 export const metadata: Metadata = {
   title: "Compliance Intelligence — ihOS",
   description:
-    "Real-time compliance posture across LGPD, HIPAA, ISO 27701, ISO 27001, and EU GDPR. Gap analysis, evidence evaluation, and ROI-driven remediation priorities.",
+    "Crosswalk coverage per curated framework, plus evidence evaluation and gap analysis.",
 };
 
 export const dynamic = "force-dynamic";
@@ -121,6 +121,15 @@ export default async function CompliancePage() {
                 <p className="mt-2 text-xs text-text-secondary">
                   No curated identity — a person must decide which vendor
                   framework this means.
+                </p>
+              ) : c.status === "error" ? (
+                <p className="mt-2 text-xs text-danger">
+                  Could not be read: {c.note ?? "unknown error"}
+                </p>
+              ) : c.reason === "no_requirements_mapped" ? (
+                <p className="mt-2 text-xs text-text-secondary">
+                  Curated, but its crosswalk has no rows at this catalogue
+                  version — nothing can be said about its coverage yet.
                 </p>
               ) : (
                 <div className="mt-3 space-y-1 text-xs text-text-secondary">

@@ -7,6 +7,14 @@
 // Component can share it without duplicating the "undecided" vs. "covers
 // nothing" distinction.
 //
+// Deliberately retained despite having no in-app caller: src/app/(dashboard)/
+// compliance/page.tsx calls collectCoverage directly, in-process, rather than
+// over HTTP, so this route's own request log staying empty is expected, not
+// evidence of abandonment. It is kept as the external API surface for the
+// coverage question — freshly written and tested — unlike /api/compliance/gaps
+// and /roi, which this same branch removed because nothing, in-app or out,
+// still asked them anything.
+//
 // Spec: docs/superpowers/specs/2026-09-09-ui-information-architecture-design.md §5
 
 import { NextResponse } from 'next/server';
