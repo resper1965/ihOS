@@ -267,6 +267,40 @@ describe('POST /api/chat/download-filled', () => {
     resetMocks();
   });
 
+  it('refuses an unauthenticated caller before parsing the uploaded workbook', async () => {
+    // This route is the SECOND place that runs XLSX.read over a file the caller
+    // supplied — the workbook arrives base64-encoded in the request body. The
+    // xlsx advisories accepted in SECURITY.md (ReDoS, prototype pollution) are
+    // reachable through it, and the only thing standing in front of them is
+    // this 401. Nothing guarded it until now, which is precisely the
+    // "accepted risk whose mitigation is not guarded" that SECURITY.md warns
+    // about. Remove the gate and this test breaks.
+    mockSupabaseServer.auth.getUser.mockResolvedValue({
+      data: { user: null },
+      error: null,
+    });
+
+    const { POST } = await import(
+      '@/app/api/chat/download-filled/route'
+    );
+
+    const req = new Request('http://localhost/api/chat/download-filled', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        originalFileBase64: Buffer.from('fake-xlsx').toString('base64'),
+        fileName: 'questionnaire.xlsx',
+        answers: [{ cellCoords: 'C2', sheetName: 'Sheet1', answer: 'x' }],
+      }),
+    });
+
+    const res = await POST(req);
+    const body = await res.json();
+
+    expect(res.status).toBe(401);
+    expect(body.success).toBe(false);
+  });
+
   it('returns xlsx binary response for valid payload', async () => {
     const { POST } = await import(
       '@/app/api/chat/download-filled/route'

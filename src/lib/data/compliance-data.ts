@@ -7,6 +7,7 @@
 import { createClient } from "@/lib/supabase/server";
 import * as standardApi from "@/lib/standard-api/client";
 import { resolveFrameworkName, resolveFrameworkIcon } from "@/lib/assessment/framework-registry";
+import { resolveVendorFrameworkCode, type CurationReader } from "@/lib/assessment/curation/identity";
 import { Redis } from "@upstash/redis";
 
 // ── Redis Setup ─────────────────────────────────────────────────────────────
@@ -509,12 +510,56 @@ export async function getTopGaps(): Promise<GapItem[]> {
 // ---------------------------------------------------------------------------
 // 4. getRoiPath()
 // Call Standard API roiPath() with fallback to mock.
+//
+// Fixed 2026-09-10. It had been asking the vendor about
+// ["ISO 27701", "HIPAA", "ISO 27001"] on the `target_frameworks` field. Three
+// separate faults:
+//
+//   1. `target_frameworks` is the LEGACY field; the live API takes
+//      `target_framework`, singular (see RoiPathRequest).
+//   2. Those are phrase-format names, which the vendor abandoned on 2026-09-08
+//      when framework_code became a slug (FINDINGS_2026-09-09.md, B9). They had
+//      resolved to nothing since.
+//   3. "HIPAA" is the one label this project quarantined, because it matches
+//      three distinct vendor frameworks and nobody has decided which we mean.
+//
+// It failed silently into the mock fallback, so the report kept rendering an
+// ROI section that had not consulted the vendor in over a month.
+//
+// ASSUMPTION, STATED SO SOMEBODY CAN OVERRULE IT: the singular field takes one
+// framework, and the old call named three. This asks about iso27001 — the
+// framework the ISMS is built around, and the first of DEFAULT_FRAMEWORKS. That
+// is a product choice made here for lack of anywhere better to make it. If the
+// report should prioritise against a different framework, change this constant.
 // ---------------------------------------------------------------------------
+
+/** Which framework the report's ROI path prioritises against. See above. */
+const ROI_TARGET_LOCAL_CODE = "iso27001";
 
 export async function getRoiPath(): Promise<RoiItem[]> {
   try {
+    // The vendor is addressed by its own slug, never by our local code and
+    // never by a literal — the join lives in framework_identity_curation and a
+    // person wrote it. Hardcoding the vendor's vocabulary is what broke this.
+    // resolveVendorFrameworkCode is the one reader of that table; it throws
+    // rather than returning null, because a missing identity means nobody has
+    // decided yet and a null would flow downstream and become a zero.
+    const supabase = await createClient();
+    let vendorCode: string;
+    try {
+      vendorCode = await resolveVendorFrameworkCode(
+        ROI_TARGET_LOCAL_CODE,
+        supabase as unknown as CurationReader,
+      );
+    } catch (err) {
+      console.warn(
+        `[compliance-data] getRoiPath: ${err instanceof Error ? err.message : String(err)} — skipping the vendor call`,
+      );
+      return [];
+    }
+
     const apiResult = await standardApi.roiPath({
-      target_frameworks: ["ISO 27701", "HIPAA", "ISO 27001"],
+      target_framework: vendorCode,
       top_n: 10,
     });
 

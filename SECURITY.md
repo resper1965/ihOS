@@ -103,18 +103,35 @@ dependência do registro npm, da cobertura do `npm audit` e da procedência que
 ele oferece — uma troca de cadeia de suprimento que o projeto optou por não
 fazer.
 
-**Exposição.** Das quatro utilizações de `xlsx` no código, três apenas
-*escrevem* planilha (exportação de threat model, de relatório de conformidade e
-de questionário preenchido) e não tocam entrada externa. A única que *lê*
-arquivo de terceiro é `POST /api/chat/parse-questionnaire`, que recebe o
-questionário enviado por um cliente.
+**Exposição.** *Corrigida em 2026-09-10: a descrição anterior subestimava o
+alcance.* Ela dizia que três das quatro utilizações apenas escreviam planilha e
+que só uma lia arquivo de terceiro. Medido no código, `XLSX.read` é chamado em
+**três** lugares, e **dois** deles recebem arquivo enviado pelo chamador:
 
-**Mitigação.** Essa rota exige sessão autenticada e devolve 401 sem ela
-(`src/app/api/chat/parse-questionnaire/route.ts`). O cenário residual é um
-usuário já autenticado enviando um arquivo malicioso — não um anônimo.
+| onde | o que faz | entrada |
+|---|---|---|
+| `POST /api/chat/parse-questionnaire` (via `src/lib/chat/parser.ts`) | lê | questionário enviado por um cliente |
+| `POST /api/chat/download-filled` | lê e reescreve | planilha original em base64, **no corpo da requisição** |
+| `scripts/import-soa.ts` | lê | arquivo do nosso próprio bucket, rodado por operador |
+| exportação de threat model, de relatório e de questionário | só escrevem | nenhuma |
 
-**Guarda.** `tests/api/questionnaire.test.ts`, caso
-*"returns 401 when unauthenticated"*. Se alguém remover o gate, a suíte quebra.
+O `download-filled` é o que faltava: ele decodifica `originalFileBase64` do
+corpo e passa direto para `XLSX.read`. É entrada controlada pelo chamador, como
+a outra rota — a diferença é que ninguém tinha notado.
+
+**Mitigação.** As duas rotas exigem sessão autenticada e devolvem 401 sem ela
+(`parse-questionnaire/route.ts`, `download-filled/route.ts:17-22`). O cenário
+residual continua sendo um usuário já autenticado enviando arquivo malicioso —
+não um anônimo. O `import-soa.ts` não é rota: roda por operador, sobre arquivo
+que já está no nosso bucket.
+
+**Guarda.** `tests/api/questionnaire.test.ts`, dois casos:
+*"returns 401 when unauthenticated"* e
+*"refuses an unauthenticated caller before parsing the uploaded workbook"*. O
+segundo foi escrito em 2026-09-10, junto com esta correção — até então a trava
+do `download-filled` não era guardada por nada, que é exatamente o
+"risco aceito cuja mitigação não é guardada" contra o qual esta seção adverte.
+Ambos foram verificados por mutação: removendo o gate, a suíte quebra.
 
 **Revisão.** Reavaliar se o SheetJS voltar ao npm, se surgir advisory explorável
 sem autenticação, ou se a rota deixar de ser autenticada.

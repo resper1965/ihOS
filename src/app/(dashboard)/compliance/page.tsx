@@ -123,8 +123,13 @@ export default async function CompliancePage() {
                   framework this means.
                 </p>
               ) : c.status === "error" ? (
+                // The underlying message is deliberately NOT rendered. It is a
+                // raw PostgREST/Postgres string naming tables and columns, and
+                // this page has no role gate — every signed-in user, client_user
+                // included, would see it. coverage.ts already sends it to
+                // logger.error, which is where an operator looks.
                 <p className="mt-2 text-xs text-danger">
-                  Could not be read: {c.note ?? "unknown error"}
+                  Could not be read. The failure is in the server log.
                 </p>
               ) : c.reason === "no_requirements_mapped" ? (
                 <p className="mt-2 text-xs text-text-secondary">
