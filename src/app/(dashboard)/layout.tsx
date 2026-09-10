@@ -8,6 +8,7 @@ import {
   Menu,
   Settings,
   LogOut,
+  KeyRound,
   Users,
 } from "lucide-react";
 import { useUser } from "@/hooks/use-user";
@@ -290,6 +291,10 @@ function HeaderWithTitle({
                 <Link href="/settings" onClick={() => setShowUserMenu(false)}
                   className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-text-primary transition-colors">
                   <Settings className="h-4 w-4 stroke-[1.5]" /> Settings
+                </Link>
+                <Link href="/settings#change-password" onClick={() => setShowUserMenu(false)}
+                  className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-black/5 dark:hover:bg-white/5 hover:text-text-primary transition-colors">
+                  <KeyRound className="h-4 w-4 stroke-[1.5]" /> Change password
                 </Link>
                 <button onClick={() => { setShowUserMenu(false); signOut(); }}
                   className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-text-secondary hover:bg-red-500/10 hover:text-red-500 dark:hover:text-red-400 transition-colors">

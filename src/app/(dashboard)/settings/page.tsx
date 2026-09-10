@@ -326,7 +326,9 @@ export default function SettingsPage() {
         )}
 
         {!isLoading && (
-          <div className="mt-6 border-t border-border-glass pt-6">
+          // O menu de usuario no header aponta para esta ancora. scroll-mt
+          // compensa o header fixo, senao o titulo fica escondido atras dele.
+          <div id="change-password" className="mt-6 scroll-mt-24 border-t border-border-glass pt-6">
             <h3 className="mb-4 text-sm font-semibold text-text-primary">
               Change password
             </h3>
