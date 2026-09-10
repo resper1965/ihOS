@@ -92,3 +92,32 @@ jobs:
           if [ "$count" -lt "$TSC_BASELINE" ]; then
             echo "::notice::$((TSC_BASELINE - count)) fewer than baseline — lower TSC_BASELINE to $count"
           fi
+
+      # Lint ran nowhere. next.config.ts sets eslint.ignoreDuringBuilds, so the
+      # production build skips it, and no CI step invoked it either — 1,223
+      # findings accumulated with nothing able to notice a new one.
+      #
+      # Same ratchet as the type errors above, and for the same reason: 884
+      # errors cannot be fixed today, but they can stop growing. A rule
+      # disabled or a file added carelessly ADDS findings and fails here.
+      #
+      # Like TSC_BASELINE, this number is whatever THIS environment measures.
+      # A Windows/WSL tree counts 1223. If the first CI run reports a different
+      # number, set the baseline to CI's number once and leave it — do not
+      # reconcile the two.
+      #
+      # When someone fixes findings, lower ESLINT_BASELINE in the same PR.
+      - name: Lint findings must not increase
+        env:
+          ESLINT_BASELINE: 1223
+        run: |
+          count=$(npx eslint . 2>&1 | grep -oE '[0-9]+ problems' | grep -oE '^[0-9]+' || echo 0)
+          echo "eslint problems: $count (baseline $ESLINT_BASELINE)"
+          if [ "$count" -gt "$ESLINT_BASELINE" ]; then
+            echo "::error::lint findings rose from $ESLINT_BASELINE to $count"
+            npx eslint . 2>&1 | grep -E 'error|warning' | head -40
+            exit 1
+          fi
+          if [ "$count" -lt "$ESLINT_BASELINE" ]; then
+            echo "::notice::$((ESLINT_BASELINE - count)) fewer than baseline — lower ESLINT_BASELINE to $count"
+          fi

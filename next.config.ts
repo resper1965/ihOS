@@ -2,7 +2,23 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
 const nextConfig: NextConfig = {
-  // Skip pre-existing TS errors during production build
+  // Both flags below silence a gate. They are here because turning either off
+  // today blocks every deploy — measured 2026-09-10: 201 type errors and 1,223
+  // lint findings, nearly all of them Supabase generated-type friction that
+  // predates this configuration.
+  //
+  // They are NOT the whole story, and reading them alone gives the wrong
+  // impression. Both counts are gated in CI by a ratchet
+  // (.github/workflows/ci.yml, "must not increase"): the existing findings are
+  // tolerated, a new one fails the build. So the flags mean "do not block the
+  // deploy on the backlog", not "nobody is watching".
+  //
+  // What is genuinely missing is upstream of here: Vercel publishes without
+  // waiting for CI, so a push whose ratchet fails still reaches production.
+  // That is a project setting, not a code change.
+  //
+  // To remove these flags, drive both baselines to zero. Each PR that lowers
+  // one is progress toward deleting this comment.
   typescript: {
     ignoreBuildErrors: true,
   },
