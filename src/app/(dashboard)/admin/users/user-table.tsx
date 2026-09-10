@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
-import { updateUserStatus } from "./actions";
+import { updateUserStatus, updateUserRole } from "./actions";
 
 import { useToast } from "@/components/ui/toast";
 
@@ -17,16 +17,30 @@ interface UserRow {
 
 export function UserTable({ users }: { users: UserRow[] }) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const [roleLoadingId, setRoleLoadingId] = useState<string | null>(null);
   const { error: toastError } = useToast();
 
   const handleAction = async (id: string, newStatus: "approved" | "rejected") => {
     setLoadingId(id);
     try {
       await updateUserStatus(id, newStatus);
-    } catch (err: any) {
-      toastError(`Error updating user: ${err.message}`);
+    } catch (err: unknown) {
+      toastError(`Error updating user: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setLoadingId(null);
+    }
+  };
+
+  // A action recusa papel fora da lista e recusa rebaixar o ultimo admin; o
+  // erro dela chega aqui como toast em vez de sumir no console.
+  const handleRoleChange = async (id: string, role: string) => {
+    setRoleLoadingId(id);
+    try {
+      await updateUserRole(id, role);
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRoleLoadingId(null);
     }
   };
 
@@ -57,9 +71,17 @@ export function UserTable({ users }: { users: UserRow[] }) {
                   <div className="text-xs text-text-muted font-mono mt-0.5">{u.id}</div>
                 </td>
                 <td className="px-6 py-4">
-                  <Badge variant="neutral" className="text-[10px]">
-                    {u.role}
-                  </Badge>
+                  <select
+                    aria-label={`Role for ${u.email || u.id}`}
+                    value={u.role}
+                    disabled={roleLoadingId === u.id}
+                    onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                    className="rounded-lg border border-border-glass bg-bg-card px-2 py-1 text-xs text-text-primary disabled:opacity-50"
+                  >
+                    <option value="admin">admin</option>
+                    <option value="ionic_user">ionic_user</option>
+                    <option value="client_user">client_user</option>
+                  </select>
                 </td>
                 <td className="px-6 py-4">
                   {u.status === "approved" && (

@@ -109,7 +109,7 @@ jobs:
       # When someone fixes findings, lower ESLINT_BASELINE in the same PR.
       - name: Lint findings must not increase
         env:
-          ESLINT_BASELINE: 1223
+          ESLINT_BASELINE: 1222
         run: |
           count=$(npx eslint . 2>&1 | grep -oE '[0-9]+ problems' | grep -oE '^[0-9]+' || echo 0)
           echo "eslint problems: $count (baseline $ESLINT_BASELINE)"

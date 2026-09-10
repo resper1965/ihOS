@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useUser } from "@/hooks/use-user";
+import { PasswordForm } from "./password-form";
 import { usePreferences } from "@/hooks/use-preferences";
 import { PageTitleRegistrar } from "@/components/dashboard/page-title-registrar";
 import { signOut } from "@/lib/supabase/auth-actions";
@@ -321,6 +322,15 @@ export default function SettingsPage() {
               <LogOut className="h-4 w-4" />
               Sign Out
             </button>
+          </div>
+        )}
+
+        {!isLoading && (
+          <div className="mt-6 border-t border-border-glass pt-6">
+            <h3 className="mb-4 text-sm font-semibold text-text-primary">
+              Change password
+            </h3>
+            <PasswordForm email={user?.email ?? null} />
           </div>
         )}
       </section>
