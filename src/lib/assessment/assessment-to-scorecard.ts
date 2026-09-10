@@ -15,18 +15,74 @@ const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisTo
 /**
  * Whether a framework's score rests on anything.
  *
- * `totalRequired === 0` means the run evaluated no controls for this framework
- * — the engine's framework filter matched nothing, or the API scoring call
- * failed. Writing a score in that state produced the 2026-08-26 incident: an
- * assessment that evaluated zero controls deleted the existing scorecard rows
- * and wrote 0.0, so the dashboard reported 0% for frameworks it had never
- * measured, and an operator had to remove the rows by hand.
+ * Two ways it does not:
+ * - `totalRequired === 0`: nothing was required, so nothing was measured.
+ *   Writing a score in that state produced the 2026-08-26 incident: an
+ *   assessment that evaluated zero controls deleted the existing scorecard
+ *   rows and wrote 0.0, and an operator had to remove them by hand.
+ * - `score === null`: the projection could not decide a single requirement.
+ *   This writer used to recompute implemented/total itself and write 0% —
+ *   "cannot compute" turned into "0% compliant", one layer below where
+ *   finding I2 closed it (spec 2026-09-10 §3.6).
  *
- * A genuine zero — controls required, none implemented — IS backed and must
+ * A computed zero — requirements decided, none satisfied — IS backed and must
  * still be written. That is a finding, not an absence.
  */
-export function isScoreBacked(fw: { totalRequired: number; implementedCount: number }): boolean {
-  return fw.totalRequired > 0;
+export function isScoreBacked<T extends { totalRequired: number; score: number | null }>(
+  fw: T,
+): fw is T & { score: number } {
+  return fw.totalRequired > 0 && fw.score !== null;
+}
+
+/** One framework of the 'all' container, as a screen or an alert may show it. */
+export interface StampedFrameworkEntry {
+  code: string;
+  name: string;
+  /** 0-100, from the projection. */
+  score: number;
+  /** Requirements satisfied. */
+  satisfied: number;
+  /** Requirements in the official crosswalk: the denominator. */
+  total: number;
+  policyVersion: string;
+  policyOwner: string | null;
+}
+
+/**
+ * The entries of an 'all' scorecard row that can be shown: scored, with a
+ * denominator, and stamped with the curation policy that produced them.
+ *
+ * Everything else is dropped rather than shown. Until 2026-09-10 the
+ * agentic-triggers cron wrote this row from the legacy scf_framework_mappings
+ * with no stamp; a number that cannot name its policy is not one this product
+ * can defend (spec 2026-09-10 §4).
+ */
+export function stampedFrameworkEntries(snapshotData: unknown): StampedFrameworkEntry[] {
+  const frameworks = (snapshotData as { frameworks?: unknown } | null | undefined)?.frameworks;
+  if (!Array.isArray(frameworks)) return [];
+  return frameworks.flatMap((raw): StampedFrameworkEntry[] => {
+    const e = raw as Record<string, unknown>;
+    if (
+      typeof e.code !== 'string' ||
+      typeof e.policy_version !== 'string' ||
+      typeof e.score !== 'number' ||
+      typeof e.total_required !== 'number' ||
+      e.total_required <= 0
+    ) {
+      return [];
+    }
+    return [
+      {
+        code: e.code,
+        name: typeof e.name === 'string' ? e.name : e.code,
+        score: e.score,
+        satisfied: typeof e.implemented === 'number' ? e.implemented : 0,
+        total: e.total_required,
+        policyVersion: e.policy_version,
+        policyOwner: typeof e.policy_owner === 'string' ? e.policy_owner : null,
+      },
+    ];
+  });
 }
 
 /**
@@ -60,17 +116,15 @@ export async function syncScorecard(
     // only figures on the dashboard.
     if (!isScoreBacked(fw)) {
       console.warn(
-        `[syncScorecard] Skipping ${code}: 0 controls required, so no score is backed. Existing scorecard left untouched.`,
+        `[syncScorecard] Skipping ${code}: score not backed (0 controls required or cannot compute). Existing scorecard left untouched.`,
       );
       continue;
     }
 
-    const score = fw.totalRequired > 0
-      ? Math.round((fw.implementedCount / fw.totalRequired) * 100)
-      : (fw.score ?? null);
-    const coverage = fw.totalRequired > 0
-      ? Math.round((fw.implementedCount / fw.totalRequired) * 100)
-      : null;
+    // The projection's score, not a recomputation: recomputing is what turned
+    // a null ("cannot compute") into 0%. isScoreBacked narrowed it to a number.
+    const score = Math.round(fw.score);
+    const coverage = Math.round((fw.implementedCount / fw.totalRequired) * 100);
 
     const snapshotData = {
       name: resolveFrameworkName(code),
@@ -82,6 +136,9 @@ export async function syncScorecard(
       implemented: fw.implementedCount,
       total_required: fw.totalRequired,
       evaluated_at: result.completedAt,
+      // Which curation policy produced this score, and who answers for it.
+      policy_version: fw.policyVersion ?? null,
+      policy_owner: fw.policyOwner ?? null,
       // 2-Phase addition:
       isms_score: fw.ismsScore ?? null,
       evidence_score: fw.evidenceScore ?? null,
@@ -117,6 +174,8 @@ export async function syncScorecard(
           implemented: fw.implementedCount,
           total_required: fw.totalRequired,
           missing_controls: fw.missingControls.slice(0, 20),
+          policy_version: fw.policyVersion ?? null,
+          policy_owner: fw.policyOwner ?? null,
           isms_score: fw.ismsScore ?? null,
           evidence_score: fw.evidenceScore ?? null,
           conforming_count: fw.conformingCount ?? null,
@@ -133,22 +192,37 @@ export async function syncScorecard(
       });
   }
 
-  // ── 2. Update the "all" aggregate scorecard ────────────────────────
-  const allFrameworks = result.frameworkScores.map((fw) => {
+  // ── 2. Update the "all" container ──────────────────────────────────
+  // It holds the per-framework entries that the agent tool, the MCP tool and
+  // the Overview cards read. It no longer holds a cross-framework score:
+  // `overall_score` divided compliant controls by evaluated controls, summed
+  // across every framework — a blend of different standards in a unit no
+  // other screen used (spec 2026-09-10 §2, §4).
+  //
+  // Only backed frameworks get an entry. Writing the container from an
+  // all-unbacked run produced the null-scored 'all' row the 2026-08-26
+  // cleanup had to remove.
+  const backedFrameworks = result.frameworkScores.filter(isScoreBacked);
+  if (backedFrameworks.length === 0) {
+    console.warn('[syncScorecard] No framework had a backed score; leaving the aggregate untouched.');
+    return;
+  }
+
+  const allFrameworks = backedFrameworks.map((fw) => {
     const code = fw.frameworkId;
-    const calculatedScore = fw.totalRequired > 0
-      ? Math.round((fw.implementedCount / fw.totalRequired) * 100)
-      : (fw.score ?? null);
+    const score = Math.round(fw.score);
 
     return {
       code,
       name: resolveFrameworkName(code),
-      score: calculatedScore,
-      coverage: calculatedScore,
+      score,
+      coverage: score,
       missing: fw.missingControls.length,
       icon: resolveFrameworkIcon(code),
       implemented: fw.implementedCount,
       total_required: fw.totalRequired,
+      policy_version: fw.policyVersion ?? null,
+      policy_owner: fw.policyOwner ?? null,
       // 2-Phase addition:
       isms_score: fw.ismsScore ?? null,
       evidence_score: fw.evidenceScore ?? null,
@@ -174,15 +248,6 @@ export async function syncScorecard(
   const allEvidenceScore = result.totalControlsEvaluated > 0
     ? Math.round((totalEv / result.totalControlsEvaluated) * 100)
     : null;
-
-  // The aggregate is only meaningful if at least one framework contributed a
-  // backed score. Writing it from an all-unbacked run produced the null-scored
-  // 'all' row the 2026-08-26 cleanup had to remove.
-  const backedFrameworks = result.frameworkScores.filter(isScoreBacked);
-  if (backedFrameworks.length === 0) {
-    console.warn('[syncScorecard] No framework had a backed score; leaving the aggregate untouched.');
-    return;
-  }
 
   // Delete old "all" scorecard
   await adminSupabase
@@ -216,9 +281,6 @@ export async function syncScorecard(
       snapshot_data: {
         frameworks: allFrameworks,
         evaluated_at: result.completedAt,
-        overall_score: result.totalControlsEvaluated > 0
-          ? Math.round((result.totalControlsCompliant / result.totalControlsEvaluated) * 100)
-          : null,
         isms_score: allIsmsScore,
         evidence_score: allEvidenceScore,
         conforming_count: conforming,
@@ -228,9 +290,8 @@ export async function syncScorecard(
         run_estimated_count: runEstimatedCount,
         run_evaluation_error_count: runEvaluationErrorCount,
       },
-      score: result.totalControlsEvaluated > 0
-        ? Math.round((result.totalControlsCompliant / result.totalControlsEvaluated) * 100)
-        : null,
+      // No cross-framework score. Each framework's lives in its own entry.
+      score: null,
       user_id: null,
       metadata: null,
     });
