@@ -2,9 +2,8 @@
 // Core Assessment Engine — orchestrates RAG + Standard API
 
 import { searchDocuments } from '@/lib/chat/rag-search';
-import { projectFrameworkFromCrosswalk } from './projection';
+import { projectFrameworkFromCrosswalk, controlCodesForFrameworks } from './projection';
 import * as standardApi from '@/lib/standard-api/client';
-import { createClient } from '@/lib/supabase/server';
 import { createAdminClient } from '@/lib/supabase/admin';
 import { getCorpusFingerprint } from './corpus-fingerprint';
 import { asControlCode, type ControlCode } from '@/lib/standard-api/identity';
@@ -210,31 +209,20 @@ export async function runAssessment(
   const scfVersionId = await getCachedScfVersionId();
   let allControls: any[] = await loadCachedCatalogue(scfVersionId);
 
-  // Optimize: Filter controls by selected frameworks to avoid timing out on 1,468 items
+  // Evaluate exactly the controls the score is computed from: the official
+  // crosswalk's controls for the selected frameworks, at the cached version,
+  // through the read the projection itself uses (projection.ts,
+  // readCrosswalkRows). This read scf_framework_mappings, the legacy table,
+  // until 2026-09-10 (spec §3.1).
+  //
+  // No mapped controls means nothing to evaluate — never all 1,468, which does
+  // not fit Vercel's 300-second limit.
   if (config.frameworks && config.frameworks.length > 0) {
-    try {
-      const isCron = process.env.IS_CRON === 'true';
-      const supabase = isCron ? createAdminClient() : await createClient();
-      const { data: mappings } = await supabase
-        .from('scf_framework_mappings')
-        .select('scf_control_code')
-        .in('framework_code', config.frameworks);
-        
-      if (mappings && mappings.length > 0) {
-        const relevantControlIds = new Set<ControlCode>(
-          mappings.map((m: any) => asControlCode(m.scf_control_code)),
-        );
-        allControls = allControls.filter(c => relevantControlIds.has(controlIdentity(c)));
-      } else {
-        // If no mappings exist for the selected frameworks, do NOT evaluate all 1,468 controls!
-        // This avoids the 5-minute Vercel timeout.
-        allControls = [];
-      }
-    } catch (err) {
-      console.warn('[Assessment] Failed to filter controls by framework, falling back to all controls:', err);
-      // In case of DB error, we also avoid evaluating 1,468 controls to prevent timeout
-      allControls = [];
+    const relevant = await controlCodesForFrameworks(config.frameworks, scfVersionId);
+    if (relevant.size === 0) {
+      console.warn('[Assessment] The crosswalk maps no controls to the selected frameworks; evaluating none.');
     }
+    allControls = allControls.filter((c) => relevant.has(controlIdentity(c)));
   }
 
   // ── Privacy-role applicability (NPR v3 Moment 1, variable 2) ─────────

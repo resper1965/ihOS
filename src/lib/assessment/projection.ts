@@ -218,23 +218,78 @@ export async function projectFrameworkFromCrosswalk(
     );
   }
 
+  const rows = await readCrosswalkRows(localFrameworkCode, scfVersionId, client);
+
+  return computeProjection({
+    mappings: rows as unknown as ProjectionInput['mappings'],
+    verdicts: verdictsFromEvaluations(evaluations),
+  });
+}
+
+/**
+ * The official crosswalk rows for one framework at one catalogue version.
+ *
+ * Shared by the projection (what a score is computed from) and by the engine's
+ * control filter (what gets evaluated), so the two sets come from one read.
+ * They were two different tables until 2026-09-10 (spec §3.4).
+ *
+ * Throws when the framework has no curated identity — see
+ * resolveVendorFrameworkCode for why that is not a zero.
+ */
+export async function readCrosswalkRows(
+  localFrameworkCode: string,
+  scfVersionId: string,
+  client: ReadableClient,
+): Promise<Array<Record<string, unknown>>> {
   const { resolveVendorFrameworkCode } = await import('@/lib/assessment/curation/identity');
   const vendorCode = await resolveVendorFrameworkCode(
     localFrameworkCode,
     client as unknown as import('@/lib/assessment/curation/identity').CurationReader,
   );
 
-  const { data: rows, error: mappingError } = await client
+  // ponytail: unpaged, as it was inside the projection. Both callers share this
+  // read, so they see the same rows; page it here if one framework's rows at a
+  // version ever pass supabase-js's 1,000-row default cap.
+  const { data, error } = await client
     .from('scf_control_mappings')
     .select('requirement_code, control_code, relationship_type, relationship_strength, is_official')
     .eq('framework_code', vendorCode)
     .eq('scf_version_id', scfVersionId);
-  if (mappingError) throw new Error(`scf_control_mappings: ${mappingError.message}`);
+  if (error) throw new Error(`scf_control_mappings: ${error.message}`);
+  return data ?? [];
+}
 
-  return computeProjection({
-    mappings: (rows ?? []) as unknown as ProjectionInput['mappings'],
-    verdicts: verdictsFromEvaluations(evaluations),
-  });
+/**
+ * The distinct SCF control codes the official crosswalk maps to these
+ * frameworks at this version: the set the engine evaluates.
+ *
+ * A framework with no curated identity contributes nothing, and says so in
+ * the log. Its projection reports no score for the same reason, so evaluating
+ * controls for it would cost vendor calls and change no number.
+ */
+export async function controlCodesForFrameworks(
+  localFrameworkCodes: string[],
+  scfVersionId: string,
+  client?: ReadableClient,
+): Promise<Set<string>> {
+  const { createAdminClient } = await import('@/lib/supabase/admin');
+  const db = client ?? (createAdminClient() as unknown as ReadableClient);
+  const codes = new Set<string>();
+  for (const framework of localFrameworkCodes) {
+    let rows: Array<Record<string, unknown>>;
+    try {
+      rows = await readCrosswalkRows(framework, scfVersionId, db);
+    } catch (err) {
+      console.warn(
+        `[projection] ${framework}: no controls selected — ${err instanceof Error ? err.message : String(err)}`,
+      );
+      continue;
+    }
+    for (const row of rows) {
+      if (typeof row.control_code === 'string' && row.control_code.length > 0) codes.add(row.control_code);
+    }
+  }
+  return codes;
 }
 
 export function computeProjection(input: ProjectionInput): FrameworkProjection {
