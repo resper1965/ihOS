@@ -118,3 +118,72 @@ describe('updateUserRole', () => {
     expect(update).toHaveBeenCalledWith({ role: 'admin' });
   });
 });
+
+describe('setUserPassword', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  /** Gives mockSupabaseAdmin the auth.admin surface this action needs. */
+  function withAuthAdmin(error: { message: string } | null = null) {
+    const updateUserById = vi.fn().mockResolvedValue({ data: {}, error });
+    (mockSupabaseAdmin as unknown as { auth: { admin: unknown } }).auth = {
+      ...(mockSupabaseAdmin as unknown as { auth: object }).auth,
+      admin: { updateUserById },
+    };
+    return { updateUserById };
+  }
+
+  it('refuses a caller who is not an admin', async () => {
+    callerIs('ionic_user');
+    const { updateUserById } = withAuthAdmin();
+    const { setUserPassword } = await import('@/app/(dashboard)/admin/users/actions');
+    await expect(setUserPassword('target-1', 'umaSenhaLonga1')).rejects.toThrow(/Forbidden/i);
+    expect(updateUserById).not.toHaveBeenCalled();
+  });
+
+  it('refuses a password shorter than the self-service floor', async () => {
+    // The admin path must not become the back door for weak passwords that the
+    // self-service form refuses.
+    callerIs('admin');
+    const { updateUserById } = withAuthAdmin();
+    const { setUserPassword } = await import('@/app/(dashboard)/admin/users/actions');
+    await expect(setUserPassword('target-1', 'curta')).rejects.toThrow(/8/);
+    expect(updateUserById).not.toHaveBeenCalled();
+  });
+
+  it('refuses an empty password', async () => {
+    callerIs('admin');
+    const { updateUserById } = withAuthAdmin();
+    const { setUserPassword } = await import('@/app/(dashboard)/admin/users/actions');
+    await expect(setUserPassword('target-1', '')).rejects.toThrow();
+    expect(updateUserById).not.toHaveBeenCalled();
+  });
+
+  it('refuses an admin setting their OWN password through this path', async () => {
+    // The self-service form re-authenticates before changing anything; this
+    // path asks for nothing. Without this guard, whoever reaches a live admin
+    // session changes the owner's password without ever knowing it, and that
+    // re-authentication becomes decorative.
+    callerIs('admin', 'caller-1');
+    const { updateUserById } = withAuthAdmin();
+    const { setUserPassword } = await import('@/app/(dashboard)/admin/users/actions');
+    await expect(setUserPassword('caller-1', 'umaSenhaLonga1')).rejects.toThrow(/own password/i);
+    expect(updateUserById).not.toHaveBeenCalled();
+  });
+
+  it('sets the password for another user', async () => {
+    callerIs('admin', 'caller-1');
+    const { updateUserById } = withAuthAdmin();
+    const { setUserPassword } = await import('@/app/(dashboard)/admin/users/actions');
+    await setUserPassword('target-1', 'umaSenhaLonga1');
+    expect(updateUserById).toHaveBeenCalledWith('target-1', { password: 'umaSenhaLonga1' });
+  });
+
+  it('surfaces a failure from Supabase instead of reporting success', async () => {
+    callerIs('admin', 'caller-1');
+    withAuthAdmin({ message: 'password is too weak for this project' });
+    const { setUserPassword } = await import('@/app/(dashboard)/admin/users/actions');
+    await expect(setUserPassword('target-1', 'umaSenhaLonga1')).rejects.toThrow(/too weak/);
+  });
+});

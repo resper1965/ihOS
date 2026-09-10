@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Loader2 } from "lucide-react";
-import { updateUserStatus, updateUserRole } from "./actions";
+import { CheckCircle, XCircle, Loader2, KeyRound } from "lucide-react";
+import { updateUserStatus, updateUserRole, setUserPassword } from "./actions";
 
 import { useToast } from "@/components/ui/toast";
 
@@ -18,7 +18,11 @@ interface UserRow {
 export function UserTable({ users }: { users: UserRow[] }) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [roleLoadingId, setRoleLoadingId] = useState<string | null>(null);
-  const { error: toastError } = useToast();
+  // Qual linha esta com o campo de senha aberto, e o que foi digitado nela.
+  const [pwOpenId, setPwOpenId] = useState<string | null>(null);
+  const [pwValue, setPwValue] = useState("");
+  const [pwSavingId, setPwSavingId] = useState<string | null>(null);
+  const { error: toastError, success: toastSuccess } = useToast();
 
   const handleAction = async (id: string, newStatus: "approved" | "rejected") => {
     setLoadingId(id);
@@ -44,6 +48,22 @@ export function UserTable({ users }: { users: UserRow[] }) {
     }
   };
 
+  // A action recusa senha curta, senha vazia e o admin trocando a propria.
+  // O erro dela chega como toast em vez de sumir no console.
+  const handleSetPassword = async (id: string) => {
+    setPwSavingId(id);
+    try {
+      await setUserPassword(id, pwValue);
+      setPwOpenId(null);
+      setPwValue("");
+      toastSuccess("Password set.");
+    } catch (err: unknown) {
+      toastError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPwSavingId(null);
+    }
+  };
+
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString("en-US", {
       day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
@@ -51,6 +71,13 @@ export function UserTable({ users }: { users: UserRow[] }) {
   };
 
   return (
+    <div className="space-y-3">
+      {/* A consequencia fica escrita onde a decisao e tomada, nao so no codigo. */}
+      <p className="text-xs text-text-muted">
+        Setting someone&apos;s password means you know it. From then on, actions
+        recorded in that person&apos;s name are no longer attributable to them
+        alone.
+      </p>
     <div className="glass-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm text-text-secondary">
@@ -125,8 +152,39 @@ export function UserTable({ users }: { users: UserRow[] }) {
                         </button>
                       </>
                     )}
-                    {u.status !== "pending" && u.role !== "admin" && (
-                      <span className="text-xs text-text-muted italic">No actions</span>
+                    {pwOpenId === u.id ? (
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="password"
+                          autoComplete="new-password"
+                          aria-label={`New password for ${u.email || u.id}`}
+                          value={pwValue}
+                          onChange={(e) => setPwValue(e.target.value)}
+                          placeholder="New password"
+                          className="w-40 rounded-lg border border-border-glass bg-bg-card px-2 py-1 text-xs text-text-primary"
+                        />
+                        <button
+                          onClick={() => handleSetPassword(u.id)}
+                          disabled={pwSavingId === u.id}
+                          className="rounded-lg px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+                        >
+                          {pwSavingId === u.id ? "Saving…" : "Save"}
+                        </button>
+                        <button
+                          onClick={() => { setPwOpenId(null); setPwValue(""); }}
+                          className="rounded-lg px-2 py-1 text-xs text-text-muted hover:text-text-primary"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setPwOpenId(u.id); setPwValue(""); }}
+                        className="p-1.5 text-text-secondary hover:bg-black/5 dark:hover:bg-white/5 rounded-lg transition-colors"
+                        title="Set this user's password"
+                      >
+                        <KeyRound className="h-4 w-4 stroke-[1.5]" />
+                      </button>
                     )}
                   </div>
                 </td>
@@ -142,6 +200,7 @@ export function UserTable({ users }: { users: UserRow[] }) {
           </tbody>
         </table>
       </div>
+    </div>
     </div>
   );
 }

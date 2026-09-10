@@ -118,3 +118,55 @@ export async function updateUserRole(userId: string, role: string) {
 
   revalidatePath("/admin/users");
 }
+
+/** Piso de tamanho, o mesmo que settings/password-form.tsx aplica. */
+const MIN_PASSWORD_LENGTH = 8;
+
+/**
+ * Define a senha de OUTRO usuario.
+ *
+ * O que isto custa, escrito onde a decisao mora: a senha definida aqui e
+ * conhecida por quem a definiu, entao a partir deste ponto o admin pode entrar
+ * como aquela pessoa. Toda acao registrada em nome dela -- uma curadoria
+ * assinada, um controle aprovado, um questionario respondido -- deixa de ser
+ * exclusivamente atribuivel a ela. Num produto cujo argumento e evidencia
+ * defensavel, isso enfraquece a assinatura. Foi decidido assim em 2026-09-10,
+ * de olhos abertos, por nao haver SMTP configurado para link de redefinicao.
+ *
+ * Tres guardas:
+ *
+ *   1. Tamanho minimo igual ao do autoatendimento, para este caminho nao virar
+ *      a porta dos fundos das senhas fracas.
+ *   2. Senha vazia recusada.
+ *   3. O admin NAO troca a propria senha por aqui. O formulario de
+ *      autoatendimento exige a senha atual antes de trocar; este caminho nao
+ *      exige nada. Sem esta guarda, quem alcancasse uma sessao de admin viva
+ *      trocaria a senha do dono sem nunca conhece-la, e aquela reautenticacao
+ *      viraria decorativa.
+ */
+export async function setUserPassword(userId: string, password: string) {
+  const caller = await requireAdmin();
+
+  if (userId === caller.id) {
+    throw new Error(
+      "Refusing to set your own password here: this path asks for no current " +
+        "password. Use Change password in the user menu, which does.",
+    );
+  }
+
+  if (!password || password.length < MIN_PASSWORD_LENGTH) {
+    throw new Error(
+      `The password must have at least ${MIN_PASSWORD_LENGTH} characters.`,
+    );
+  }
+
+  const { error } = await createAdminClient().auth.admin.updateUserById(userId, {
+    password,
+  });
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath("/admin/users");
+}
