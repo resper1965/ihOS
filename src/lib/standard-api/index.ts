@@ -10,7 +10,6 @@ export {
   scanVendorContract,
   council,
   StandardApiClientError,
-  getLatestScfVersion,
   getScfControls,
   getScfFrameworks,
 } from "./client";

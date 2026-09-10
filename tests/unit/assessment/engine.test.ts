@@ -209,29 +209,3 @@ describe('engine re-exports', () => {
     expect(DEFAULT_FRAMEWORKS).toHaveLength(2);
   });
 });
-
-// ---------------------------------------------------------------------------
-// MAX_PAGES constant (indirectly verifiable)
-// ---------------------------------------------------------------------------
-
-describe('MAX_PAGES constant', () => {
-  it('is a reasonable value (verifiable via source inspection)', async () => {
-    // MAX_PAGES is defined inside runAssessment and not exported,
-    // so we verify the source file contains a reasonable constant.
-    // This test reads the source to confirm the value rather than
-    // importing a non-exported symbol.
-    const fs = await import('fs');
-    const path = await import('path');
-    const engineSource = fs.readFileSync(
-      path.resolve(__dirname, '../../../src/lib/assessment/engine.ts'),
-      'utf-8',
-    );
-
-    const match = engineSource.match(/MAX_PAGES\s*=\s*(\d+)/);
-    expect(match).not.toBeNull();
-
-    const maxPages = Number(match![1]);
-    expect(maxPages).toBeGreaterThanOrEqual(5);
-    expect(maxPages).toBeLessThanOrEqual(100);
-  });
-});

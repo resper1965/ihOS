@@ -331,13 +331,6 @@ export async function council(request: CouncilRequest): Promise<CouncilData> {
 }
 
 /**
- * Fetch the latest SCF version details from the GRC Engine.
- */
-export async function getLatestScfVersion(): Promise<{ scf_version_id: string; version_label: string }> {
-  return await get<{ scf_version_id: string; version_label: string }>("/scf/versions/latest");
-}
-
-/**
  * Fetch controls for a specific SCF version.
  *
  * `get()` already unwraps the `{ data, trace_id }` envelope, so the real API's

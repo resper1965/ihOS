@@ -122,6 +122,80 @@ export async function getCachedScfVersionId(client?: {
   return id;
 }
 
+/** One control of the vendor catalogue, as both engines evaluate it. */
+export interface CachedControl {
+  id: string;          // control_code, e.g. "AAT-01" — what controlIdentity reads
+  name: string;        // control_title
+  domain: string;      // domain prefix of the code, e.g. "AAT"
+  description: string;
+}
+
+/** The chain loadCachedCatalogue reads through; a test substitutes it. */
+export interface CatalogueReader {
+  from(t: string): {
+    select(c: string): {
+      eq(col: string, v: string): {
+        order(col: string, o: { ascending: boolean }): {
+          range(from: number, to: number): PromiseLike<{
+            data: Array<Record<string, unknown>> | null;
+            error: { message: string } | null;
+          }>;
+        };
+      };
+    };
+  };
+}
+
+const CATALOGUE_PAGE = 1000;
+
+/**
+ * The cached catalogue at one version, mapped for evaluation.
+ *
+ * Moved here from local-engine.ts so the Standard-API engine reads the same
+ * source (spec 2026-09-10 §3). That engine fetched the catalogue live against
+ * /scf/versions/latest, which does not exist, and failed every night from
+ * 2026-08-29 to 2026-09-10.
+ *
+ * Paged with .range(): supabase-js caps an unbounded select at 1,000 rows and
+ * a version holds ~1,468 controls — the cap crosswalk.ts documents.
+ */
+export async function loadCachedCatalogue(
+  scfVersionId: string,
+  client?: CatalogueReader,
+): Promise<CachedControl[]> {
+  const db = client ?? (createAdminClient() as unknown as CatalogueReader);
+  const rows: Array<Record<string, unknown>> = [];
+  for (let from = 0; ; from += CATALOGUE_PAGE) {
+    const { data, error } = await db
+      .from('scf_controls_cache')
+      .select('control_code, control_title, control_description')
+      .eq('scf_version_id', scfVersionId)
+      .order('control_code', { ascending: true })
+      .range(from, from + CATALOGUE_PAGE - 1);
+    if (error) throw new Error(`could not read scf_controls_cache: ${error.message}`);
+    const page = data ?? [];
+    rows.push(...page);
+    if (page.length < CATALOGUE_PAGE) break;
+  }
+
+  return rows
+    .map((r) => {
+      const code = typeof r.control_code === 'string' ? r.control_code : '';
+      return {
+        id: code,
+        name: typeof r.control_title === 'string' ? r.control_title : code,
+        domain: code.split('-')[0] ?? '',
+        description:
+          typeof r.control_description === 'string' && r.control_description.length > 0
+            ? r.control_description
+            : typeof r.control_title === 'string'
+              ? r.control_title
+              : code,
+      };
+    })
+    .filter((c) => c.id.length > 0);
+}
+
 // ── Frameworks ──────────────────────────────────────────────────────────────
 
 interface VendorFramework {

@@ -83,7 +83,7 @@ loadEnv({ path: ENV_LOCAL, override: true });
  */
 const PROBES: Array<{ path: string; note: string; used: boolean }> = [
   // ── consumed by the product today ──
-  { path: '/scf/versions/latest', note: 'catalogue version pin', used: true },
+  { path: '/scf/versions', note: 'catalogue versions', used: true },
   { path: '/scf/frameworks?limit=1', note: 'framework catalogue', used: true },
 
   // ── added by the reformulation; not wired in yet ──

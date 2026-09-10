@@ -200,26 +200,14 @@ export async function runAssessment(
     message: 'Loading SCF control catalog...',
   });
 
-  const scfVersion = await standardApi.getLatestScfVersion();
-  let allControls: any[] = [];
-  let page = 1;
-  // The API caps per_page at 100. Requesting more than the server returns would
-  // make the `items.length < perPage` termination fire on page 1 and silently
-  // load only the first 100 controls. Use 100 so pagination actually advances.
-  const perPage = 100;
-
-  const MAX_PAGES = 20; // 20 × 100 = 2,000 ≥ the full 1,468-control catalog
-  while (page <= MAX_PAGES) {
-    const batch = await standardApi.getScfControls(scfVersion.scf_version_id, page, perPage);
-    const items = batch.data || [];
-    allControls.push(...items);
-    if (items.length < perPage) break;
-    page++;
-  }
-
-  if (page > MAX_PAGES) {
-    console.warn(`[Assessment] Reached max page limit (${MAX_PAGES}), loaded ${allControls.length} controls`);
-  }
+  // The catalogue comes from the local cache, at the version the cache holds —
+  // the source local-engine.ts reads. Fetching it live used a version endpoint
+  // that does not exist (/scf/versions/latest) and failed every night from
+  // 2026-08-29 to 2026-09-10. Principle VIII is reconciled in spec 2026-09-10
+  // §3: scf_controls_cache is the vendor's catalogue, synced from the API.
+  const { getCachedScfVersionId, loadCachedCatalogue } = await import('@/lib/standard-api/sync/catalog');
+  const scfVersionId = await getCachedScfVersionId();
+  let allControls: any[] = await loadCachedCatalogue(scfVersionId);
 
   // Optimize: Filter controls by selected frameworks to avoid timing out on 1,468 items
   if (config.frameworks && config.frameworks.length > 0) {
@@ -603,10 +591,10 @@ export async function runAssessment(
     // evaluation work. The zeros were stopped downstream by isScoreBacked; the
     // cause is removed here.
     try {
-      // The version this run fetched its catalogue against (line ~203), not
-      // "latest" — those differ while a crosswalk walk is in flight.
+      // The version this run read its catalogue at, not the API's "latest" —
+      // those differ while a crosswalk walk is in flight.
       const projection = await projectFrameworkFromCrosswalk(frameworkId, evaluations, {
-        scfVersionId: scfVersion.scf_version_id,
+        scfVersionId,
       });
 
       frameworkScores.push({

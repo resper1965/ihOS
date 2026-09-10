@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin';
 import { generateEmbeddings } from '@/lib/chat/embeddings';
+import type { CachedControl } from '@/lib/standard-api/sync/catalog';
 import type {
   AssessmentConfig,
   AssessmentResult,
@@ -28,12 +29,7 @@ import { projectFrameworkFromCrosswalk } from './projection';
 // That is ~16× the embedding cost of a run against the old JSON.
 // ---------------------------------------------------------------------------
 
-interface CatalogControl {
-  id: string;          // control_code, e.g. "AAT-01"
-  name: string;        // control_title
-  domain: string;      // domain prefix of the code, e.g. "AAT"
-  description: string;
-}
+type CatalogControl = CachedControl;
 
 // ---------------------------------------------------------------------------
 // Confidence thresholds for RAG similarity
@@ -65,45 +61,9 @@ export async function runLocalAssessment(
   // has ever synced — after the 2026-09-08 re-import it held 2,941 rows for
   // 1,468 controls — so an unscoped read evaluates each control once per
   // version, at ~16x embedding cost, and counts it twice.
-  const { getCachedScfVersionId } = await import('@/lib/standard-api/sync/catalog');
+  const { getCachedScfVersionId, loadCachedCatalogue } = await import('@/lib/standard-api/sync/catalog');
   const scfVersionId = await getCachedScfVersionId();
-
-  const { data: catalogRows, error: catalogError } = await (
-    adminSupabase as unknown as {
-      from: (t: string) => {
-        select: (c: string) => {
-          eq: (col: string, v: string) => Promise<{
-            data: Array<Record<string, unknown>> | null;
-            error: { message: string } | null;
-          }>;
-        };
-      };
-    }
-  )
-    .from('scf_controls_cache')
-    .select('control_code, control_title, control_description')
-    .eq('scf_version_id', scfVersionId);
-
-  if (catalogError) {
-    throw new Error(`could not read scf_controls_cache: ${catalogError.message}`);
-  }
-
-  const controls: CatalogControl[] = (catalogRows ?? [])
-    .map((r) => {
-      const code = typeof r.control_code === 'string' ? r.control_code : '';
-      return {
-        id: code,
-        name: typeof r.control_title === 'string' ? r.control_title : code,
-        domain: code.split('-')[0] ?? '',
-        description:
-          typeof r.control_description === 'string' && r.control_description.length > 0
-            ? r.control_description
-            : typeof r.control_title === 'string'
-              ? r.control_title
-              : code,
-      };
-    })
-    .filter((c) => c.id.length > 0);
+  const controls: CatalogControl[] = await loadCachedCatalogue(scfVersionId);
 
   if (controls.length === 0) {
     // Silence here is what produced three nightly runs recording scores against

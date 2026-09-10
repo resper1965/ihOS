@@ -2,7 +2,9 @@ import { logger } from '@/lib/logger';
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getLatestScfVersion, getScfControls } from "@/lib/standard-api/client";
+import { getScfControls } from "@/lib/standard-api/client";
+import { getLatestScfVersionId } from "@/lib/standard-api/sync/catalog";
+import { createThrottle } from "@/lib/standard-api/sync/throttle";
 import { generateEmbeddings } from "@/lib/chat/embeddings";
 
 export const dynamic = "force-dynamic";
@@ -30,8 +32,9 @@ export async function POST(request: NextRequest) {
 
     const adminSupabase = createAdminClient();
 
-    // 1. Get latest SCF version
-    const { scf_version_id, version_label } = await getLatestScfVersion();
+    // 1. The newest catalogue version, asked the way the catalogue sync asks.
+    // This called GET /scf/versions/latest until 2026-09-10; it does not exist.
+    const scf_version_id = await getLatestScfVersionId(createThrottle());
 
     // 2. Fetch controls from GRC API
     let page = 1;
@@ -93,7 +96,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      scf_version: version_label,
+      scf_version: scf_version_id,
       scf_version_id,
       controls_synced: syncedCount,
     });
