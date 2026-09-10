@@ -22,10 +22,6 @@ describe('the navigation is a well-formed structure', () => {
     // that a page is there; nothing else in the build checks it.
     const appDir = join(process.cwd(), 'src', 'app', '(dashboard)');
     for (const item of NAV_ITEMS) {
-      // /posture is created in Task 4 of this plan. Remove this skip with that
-      // task — a nav entry pointing at nothing is exactly what this test exists
-      // to catch, so the skip must not outlive the task.
-      if (item.href === '/posture') continue;
       const segment = item.href === '/' ? '' : item.href;
       const candidate = join(appDir, segment, 'page.tsx');
       expect(existsSync(candidate), `${item.label} -> ${item.href} has no page.tsx`).toBe(true);
