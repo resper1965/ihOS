@@ -116,6 +116,32 @@ async function getConfig(): Promise<StandardApiConfig> {
 // Internal HTTP helper
 // ---------------------------------------------------------------------------
 
+/**
+ * The error for a non-OK response. The status is decided before the body is
+ * read, because a failed response's body is not guaranteed to be JSON. From
+ * 2026-08-29 to 2026-09-10 the vendor answered /scf/versions/latest with an
+ * HTML page; the old parse-first order threw on it, and twelve nightly
+ * failures logged "Unexpected token '<'" instead of an HTTP status.
+ *
+ * 401/403 are HARD authorization errors (missing/invalid credential, RBAC
+ * denial, insufficient scope, cross-tenant block) — callers must NEVER degrade
+ * them to local estimation, which would mask a security/config problem (B3).
+ */
+async function errorFromResponse(response: Response, endpoint: string): Promise<StandardApiClientError> {
+  const body = (await response.json().catch(() => null)) as
+    | { error?: StandardApiError; detail?: unknown }
+    | null;
+  if (body?.error) {
+    return new StandardApiClientError(body.error.message, body.error.code, response.status, body.error.details);
+  }
+  const detail = typeof body?.detail === "string" ? body.detail : response.statusText;
+  return new StandardApiClientError(
+    `HTTP ${response.status} on ${endpoint}${detail ? `: ${detail}` : ""}`,
+    `HTTP_${response.status}`,
+    response.status,
+  );
+}
+
 async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
   const config = await getConfig();
   const url = `${config.baseUrl}${endpoint}`;
@@ -153,19 +179,11 @@ async function post<TReq, TRes>(endpoint: string, body: TReq): Promise<TRes> {
 
     clearTimeout(timeoutId);
 
-    const json = (await response.json()) as { data?: TRes; error?: StandardApiError };
-
     if (!response.ok) {
-      // 401/403 are HARD authorization errors (missing/invalid credential,
-      // RBAC denial, insufficient scope, cross-tenant block) — NEVER degrade to
-      // local estimation, which would mask a security/config problem (B3).
-      // Only 5xx is a candidate for the (opt-in) resiliency fallback.
-      const error: StandardApiError = json.error ?? {
-        code: `HTTP_${response.status}`,
-        message: response.statusText || "Unknown error",
-      };
-      throw new StandardApiClientError(error.message, error.code, response.status, error.details);
+      throw await errorFromResponse(response, endpoint);
     }
+
+    const json = (await response.json()) as { data?: TRes; error?: StandardApiError };
 
     return (json.data !== undefined ? json.data : json) as TRes;
   } catch (err) {
@@ -218,16 +236,11 @@ async function get<TRes>(endpoint: string, nextCache?: RequestInit["next"]): Pro
 
     clearTimeout(timeoutId);
 
-    const json = (await response.json()) as { data?: TRes; error?: StandardApiError };
-
     if (!response.ok) {
-      // 401/403 are hard auth errors — never degrade to local (B3).
-      const error: StandardApiError = json.error ?? {
-        code: `HTTP_${response.status}`,
-        message: response.statusText || "Unknown error",
-      };
-      throw new StandardApiClientError(error.message, error.code, response.status, error.details);
+      throw await errorFromResponse(response, endpoint);
     }
+
+    const json = (await response.json()) as { data?: TRes; error?: StandardApiError };
 
     return (json.data !== undefined ? json.data : json) as TRes;
   } catch (err) {

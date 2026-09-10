@@ -218,6 +218,37 @@ describe('API client with mocked fetch', () => {
     }
   });
 
+  it('names the status and the endpoint when the error body is not JSON', async () => {
+    // 2026-08-29 to 2026-09-10: the vendor answered an HTML page, the client
+    // parsed the body before checking the status, and twelve nightly failures
+    // logged "Unexpected token '<'" instead of an HTTP status.
+    const htmlResponse = {
+      ok: false,
+      status: 404,
+      statusText: 'Not Found',
+      json: async () => {
+        throw new SyntaxError(`Unexpected token '<', "<!DOCTYPE"... is not valid JSON`);
+      },
+    };
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(htmlResponse));
+
+    const client = await import('@/lib/standard-api/client');
+
+    const postErr = await client.complianceScore({ framework_code: 'iso27001' }).catch((e: unknown) => e);
+    expect(postErr).toBeInstanceOf(client.StandardApiClientError);
+    const p = postErr as InstanceType<typeof client.StandardApiClientError>;
+    expect(p.code).toBe('HTTP_404');
+    expect(p.status).toBe(404);
+    expect(p.message).toContain('404');
+    expect(p.message).toContain('/intelligence/compliance-score');
+
+    const getErr = await client.getScfControls('v1', 1, 100).catch((e: unknown) => e);
+    expect(getErr).toBeInstanceOf(client.StandardApiClientError);
+    const g = getErr as InstanceType<typeof client.StandardApiClientError>;
+    expect(g.code).toBe('HTTP_404');
+    expect(g.message).toContain('/scf/');
+  });
+
   it('throws NETWORK_ERROR on fetch failure', async () => {
     vi.stubGlobal(
       'fetch',
