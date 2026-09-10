@@ -124,4 +124,40 @@ describe('Dashboard Stats API Route', () => {
     expect(body.data.activities).toHaveLength(1);
     expect(body.data.msrData.baseline.name).toBe("MSR v1");
   });
+
+  it('shows a dash, not a confidence average, when no scorecard exists', async () => {
+    // The bug: with no scorecard snapshot the card fell back to
+    // evaluationSummary.avgConfidence — a confidence average rendered under a
+    // compliance label. Two quantities, one name. The honest answer to "what is
+    // our compliance score" when nothing has scored it is "—".
+
+    // Mock getEvaluationSummary to return high avgConfidence
+    const complianceData = await import('@/lib/data/compliance-data');
+    vi.spyOn(complianceData, 'getEvaluationSummary').mockResolvedValue({
+      total: 0,
+      compliant: 0,
+      nonCompliant: 0,
+      avgConfidence: 73,
+    });
+
+    // Modify the from mock to return null for intelligence_snapshots
+    const originalFromImpl = mockSupabaseServer.from.getMockImplementation();
+    mockSupabaseServer.from.mockImplementation((table: string) => {
+      const builder = originalFromImpl(table);
+
+      // Override maybeSingle for intelligence_snapshots to return null
+      if (table === 'intelligence_snapshots') {
+        builder.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+      }
+
+      return builder;
+    });
+
+    const { GET } = await import('@/app/api/dashboard/stats/route');
+    const res = await GET(new Request("http://localhost") as any);
+    const body = await res.json();
+
+    expect(body.data.stats.score).toBe('—');
+    expect(body.data.stats.score).not.toContain('73');
+  });
 });

@@ -76,9 +76,10 @@ async function getDashboardStats(supabase: any, versionId: string | null) {
       avgScore = `${score}%`;
     }
   }
-  if (avgScore === "—" && evaluationSummary.avgConfidence > 0) {
-    avgScore = `${evaluationSummary.avgConfidence}%`;
-  }
+  // No fallback to avgConfidence. A confidence average is not a compliance
+  // score, and rendering one under the other's label is the class of thing this
+  // codebase spent a month removing from the backend. With nothing to report,
+  // avgScore stays "—".
 
   return {
     frameworks: frameworkCount,
