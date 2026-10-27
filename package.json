@@ -28,7 +28,7 @@
     "@composio/core": "^0.11.0",
     "@composio/vercel": "^0.9.3",
     "@react-pdf/renderer": "^4.5.1",
-    "@sentry/nextjs": "^10.56.0",
+    "@sentry/nextjs": "^10.75.2",
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.107.0",
     "@tailwindcss/typography": "^0.5.20",
